@@ -18,9 +18,23 @@
  */
 #ifndef _GAUSS_H_
 #define _GAUSS_H_
+#include "StopWatch.h"
+#include "opthelper.h"
+#include "OpenCL_support.h"
 
 enum eGaussType {GAUSS_STANDARD, GAUSS_MULT, GAUSS_DIV};
 
+typedef struct {
+  double c0;
+  double c1;
+  double c2;
+  double b0;
+  double b1;
+} reprocess_data;
+
 void gaussianBlur(float** src, float** dst, const int W, const int H, const double sigma, float *buffer = nullptr, eGaussType gausstype = GAUSS_STANDARD, float** buffer2 = nullptr);
+
+void OpenCLgaussianBlur(OpenCL_helper* helper, int iterations, float** src, float** dst, const int W, const int H, const double sigma, float *buffer = nullptr, eGaussType gausstype = GAUSS_STANDARD, float** buffer2 = nullptr, float damping = 0.0f);
+
 
 #endif

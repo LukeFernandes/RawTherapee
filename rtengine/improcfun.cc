@@ -5814,5 +5814,5 @@ void ImProcFunctions::colorToningLabGrid(LabImage *lab, int xstart, int xend, in
         }
     }
 }
-
+OpenCL_helper* ImProcFunctions::helper = NULL;
 }

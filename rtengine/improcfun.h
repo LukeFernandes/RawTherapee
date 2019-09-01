@@ -35,6 +35,7 @@
 #include "cplx_wavelet_dec.h"
 #include "pipettebuffer.h"
 #include "gamutwarning.h"
+#include "OpenCL_support.h"
 
 namespace rtengine
 {
@@ -180,6 +181,9 @@ class ImProcFunctions
 
 
 public:
+
+  static OpenCL_helper* helper;
+  
     enum class Median {
         TYPE_3X3_SOFT,
         TYPE_3X3_STRONG,
@@ -189,6 +193,7 @@ public:
         TYPE_9X9
     };
 
+    
     double lumimul[3];
 
     ImProcFunctions(const ProcParams* iparams, bool imultiThread = true)

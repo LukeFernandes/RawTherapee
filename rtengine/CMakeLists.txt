@@ -10,6 +10,7 @@ include_directories(${EXTRA_INCDIR}
     ${IPTCDATA_INCLUDE_DIRS}
     ${LCMS_INCLUDE_DIRS}
     ${LENSFUN_INCLUDE_DIRS}
+	"C:/Progra~1/NVIDIAGPUComputingToolkit/CUDA/v10.0/include"
     )
 
 link_directories("${PROJECT_SOURCE_DIR}/rtexif"
@@ -23,6 +24,7 @@ link_directories("${PROJECT_SOURCE_DIR}/rtexif"
     ${IPTCDATA_LIBRARY_DIRS}
     ${LCMS_LIBRARY_DIRS}
     ${LENSFUN_LIBRARY_DIRS}
+	"C:/Progra~1/NVIDIAGPUComputingToolkit/CUDA/v10.0/lib/x64"
     )
 
 set(CAMCONSTSFILE "camconst.json")
@@ -101,6 +103,7 @@ set(RTENGINESOURCEFILES
     lcp.cc
     loadinitial.cc
     myfile.cc
+	OpenCL_support.cc
     pipettebuffer.cc
     pixelshift.cc
     previewimage.cc
@@ -159,7 +162,6 @@ if(NOT WITH_SYSTEM_KLT)
 endif()
 
 include_directories(BEFORE "${CMAKE_CURRENT_BINARY_DIR}")
-
 add_library(rtengine ${RTENGINESOURCEFILES})
 add_dependencies(rtengine UpdateInfo)
 
@@ -185,6 +187,7 @@ target_link_libraries(rtengine rtexif
     ${TIFF_LIBRARIES}
     ${ZLIB_LIBRARIES}
     ${LENSFUN_LIBRARIES}
+	"C:/Progra~1/NVIDIAGPUComputingToolkit/CUDA/v10.0/lib/x64/OpenCL.lib"
     )
 
 install(FILES ${CAMCONSTSFILE} DESTINATION "${DATADIR}" PERMISSIONS OWNER_WRITE OWNER_READ GROUP_READ WORLD_READ)
