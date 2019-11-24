@@ -15,17 +15,23 @@
  *  GNU General Public License for more details.
  *
  *  You should have received a copy of the GNU General Public License
- *  along with RawTherapee.  If not, see <http://www.gnu.org/licenses/>.
+ *  along with RawTherapee.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #pragma once
 
-#include "rawimagesource.h"
 #include <vector>
 
-namespace rtengine {
+#include "noncopyable.h"
+#include "rawimagesource.h"
 
-class PDAFLinesFilter {
+namespace rtengine
+{
+
+class RawImage;
+
+class PDAFLinesFilter: public rtengine::NonCopyable
+{
 public:
     explicit PDAFLinesFilter(RawImage *ri);
     ~PDAFLinesFilter();

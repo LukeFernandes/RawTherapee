@@ -14,15 +14,16 @@
  *  GNU General Public License for more details.
  *
  *  You should have received a copy of the GNU General Public License
- *  along with RawTherapee.  If not, see <http://www.gnu.org/licenses/>.
+ *  along with RawTherapee.  If not, see <https://www.gnu.org/licenses/>.
  */
-#ifndef _THRESHOLDSELECTOR_
-#define _THRESHOLDSELECTOR_
+#pragma once
 
-#include "guiutils.h"
-#include "../rtengine/procparams.h"
-#include "coloredbar.h"
 #include <iomanip>
+
+#include "coloredbar.h"
+#include "guiutils.h"
+
+#include "../rtengine/procparams.h"
 
 class ThresholdSelector;
 
@@ -100,8 +101,8 @@ protected:
     double positions[4];
     eUpdatePolicy updatePolicy;
 
-    const static int hb = 3;  // horizontal border
-    const static int vb = 0;  // vertical border
+    constexpr static double sliderWidth = 11.; // constant must be an odd value
+    constexpr static double verticalSliderPaddingFactor = 1.5 / 7.;
 
     void initValues ();
     void findLitCursor(int posX, int posY);
@@ -245,6 +246,3 @@ inline void ThresholdSelector::getPositions<Glib::ustring> (Glib::ustring& botto
     bottomRight = Glib::ustring::format(std::fixed, std::setprecision(precisionBottom), shapePositionValue(TS_BOTTOMRIGHT));
     topRight    = Glib::ustring::format(std::fixed, std::setprecision(precisionTop),    shapePositionValue(TS_TOPRIGHT));
 }
-
-#endif
-

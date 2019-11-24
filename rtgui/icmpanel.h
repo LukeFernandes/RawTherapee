@@ -14,18 +14,19 @@
  *  GNU General Public License for more details.
  *
  *  You should have received a copy of the GNU General Public License
- *  along with RawTherapee.  If not, see <http://www.gnu.org/licenses/>.
+ *  along with RawTherapee.  If not, see <https://www.gnu.org/licenses/>.
  */
-#ifndef _ICMPANEL_
-#define _ICMPANEL_
+#pragma once
 
 #include <memory>
+
 #include <gtkmm.h>
+
 #include "adjuster.h"
 #include "guiutils.h"
-
-#include "toolpanel.h"
 #include "popupbutton.h"
+#include "toolpanel.h"
+
 #include "../rtengine/imagedata.h"
 
 class ICMPanelListener
@@ -35,7 +36,7 @@ public:
     virtual void saveInputICCReference(const Glib::ustring& fname, bool apply_wb) = 0;
 };
 
-class ICMPanel :
+class ICMPanel final :
     public ToolParamBlock,
     public AdjusterListener,
     public FoldableToolPanel
@@ -126,7 +127,6 @@ public:
     void setBatchMode(bool batchMode) override;
     void setDefaults(const rtengine::procparams::ProcParams* defParams, const ParamsEdited* pedited = nullptr) override;
     void adjusterChanged(Adjuster* a, double newval) override;
-    void adjusterAutoToggled(Adjuster* a, bool newval) override;
 
     void wpChanged();
     void wtrcinChanged();
@@ -149,5 +149,3 @@ public:
         icmplistener = ipl;
     }
 };
-
-#endif

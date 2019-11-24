@@ -14,7 +14,7 @@
 *  GNU General Public License for more details.
 *
 *  You should have received a copy of the GNU General Public License
-*  along with RawTherapee.  If not, see <http://www.gnu.org/licenses/>.
+*  along with RawTherapee.  If not, see <https://www.gnu.org/licenses/>.
 */
 
 #pragma once
@@ -25,15 +25,22 @@
 #include <string>
 #include <sstream>
 
-#include <glibmm.h>
+#include <glibmm/ustring.h>
 #include <expat.h>
 
 #include "cache.h"
-#include "imagefloat.h"
-#include "opthelper.h"
 
 namespace rtengine
 {
+
+namespace procparams
+{
+
+class ProcParams;
+
+struct CoarseTransformParams;
+
+}
 
 enum class LCPCorrectionMode {
     VIGNETTE,
@@ -185,7 +192,7 @@ public:
         bool useCADistP,
         int fullWidth,
         int fullHeight,
-        const CoarseTransformParams& coarse,
+        const procparams::CoarseTransformParams& coarse,
         int rawRotationDeg
     );
 

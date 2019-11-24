@@ -14,20 +14,19 @@
  *  GNU General Public License for more details.
  *
  *  You should have received a copy of the GNU General Public License
- *  along with RawTherapee.  If not, see <http://www.gnu.org/licenses/>.
+ *  along with RawTherapee.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #pragma once
 
 #include <array>
-#include <glibmm.h>
+#include <glibmm/ustring.h>
 
 #include "rt_math.h"
 #include "LUT.h"
-#include "labimage.h"
 #include "iccmatrices.h"
 #include "lcms2.h"
-#include "sleef.c"
+#include "sleef.h"
 
 #define SAT(a,b,c) ((float)max(a,b,c)-(float)min(a,b,c))/(float)max(a,b,c)
 
@@ -102,7 +101,7 @@ private:
 
     static float computeXYZ2Lab(float f);
     static float computeXYZ2LabY(float f);
-    
+
 public:
 
     typedef enum Channel {
@@ -210,6 +209,13 @@ public:
         return r * workingspace[1][0] + g * workingspace[1][1] + b * workingspace[1][2];
     }
 
+#ifdef __SSE2__
+    static vfloat rgbLuminance(vfloat r, vfloat g, vfloat b, const vfloat workingspace[3])
+    {
+        return r * workingspace[0] + g * workingspace[1] + b * workingspace[2];
+    }
+#endif
+
     /**
     * @brief Convert red/green/blue to L*a*b
     * @brief Convert red/green/blue to hue/saturation/luminance
@@ -240,20 +246,20 @@ public:
     static inline void rgb2slfloat(float r, float g, float b, float &s, float &l)
     {
 
-        float m = min(r, g, b);
-        float M = max(r, g, b);
-        float C = M - m;
+        float minVal = min(r, g, b);
+        float maxVal = max(r, g, b);
+        float C = maxVal - minVal;
 
-        l = (M + m) * 7.6295109e-6f; // (0.5f / 65535.f)
+        l = (maxVal + minVal) * 7.6295109e-6f; // (0.5f / 65535.f)
 
         if (C < 0.65535f) { // 0.00001f * 65535.f
             s = 0.f;
         } else {
 
             if (l <= 0.5f) {
-                s = C / (M + m);
+                s = C / (maxVal + minVal);
             } else {
-                s = C / (131070.f - (M + m)); // 131070.f = 2.f * 65535.f
+                s = C / (131070.f - (maxVal + minVal)); // 131070.f = 2.f * 65535.f
             }
         }
     }
@@ -261,11 +267,11 @@ public:
     static inline void rgb2hslfloat(float r, float g, float b, float &h, float &s, float &l)
     {
 
-        float m = min(r, g, b);
-        float M = max(r, g, b);
-        float C = M - m;
+        float minVal = min(r, g, b);
+        float maxVal = max(r, g, b);
+        float C = maxVal - minVal;
 
-        l = (M + m) * 7.6295109e-6f; // (0.5f / 65535.f)
+        l = (maxVal + minVal) * 7.6295109e-6f; // (0.5f / 65535.f)
 
         if (C < 0.65535f) { // 0.00001f * 65535.f
             h = 0.f;
@@ -273,14 +279,14 @@ public:
         } else {
 
             if (l <= 0.5f) {
-                s = C / (M + m);
+                s = C / (maxVal + minVal);
             } else {
-                s = C / (131070.f - (M + m)); // 131070.f = 2.f * 65535.f
+                s = C / (131070.f - (maxVal + minVal)); // 131070.f = 2.f * 65535.f
             }
 
-            if ( r == M ) {
+            if ( r == maxVal ) {
                 h = (g - b);
-            } else if ( g == M ) {
+            } else if ( g == maxVal ) {
                 h = (2.f * C) + (b - r);
             } else {
                 h = (4.f * C) + (r - g);
@@ -617,6 +623,7 @@ public:
     */
     static void XYZ2Lab(float x, float y, float z, float &L, float &a, float &b);
     static void RGB2Lab(float *X, float *Y, float *Z, float *L, float *a, float *b, const float wp[3][3], int width);
+    static void Lab2RGBLimit(float *L, float *a, float *b, float *R, float *G, float *B, const float wp[3][3], float limit, float afactor, float bfactor, int width);
     static void RGB2L(float *X, float *Y, float *Z, float *L, const float wp[3][3], int width);
 
     /**
@@ -683,32 +690,6 @@ public:
     * @param v 'v' channel [unknown range!] (return value)
     */
     static void Lch2Luv(float c, float h, float &u, float &v);
-
-
-    /**
-    * @brief Convert the XYZ values to Luv values
-    * Warning: this method has never been used/tested so far
-    * @param x X coordinate [0 ; 65535] ; can be negative or superior to 65535
-    * @param y Y coordinate [0 ; 65535] ; can be negative or superior to 65535
-    * @param z Z coordinate [0 ; 65535] ; can be negative or superior to 65535
-    * @param L 'L' channel [0 ; 32768] (return value)
-    * @param u 'u' channel [-42000 ; 42000] ; can be more than 42000 (return value)
-    * @param v 'v' channel [-42000 ; 42000] ; can be more than 42000 (return value)
-    */
-    static void XYZ2Luv (float X, float Y, float Z, float &L, float &u, float &v);
-
-
-    /**
-    * @brief Convert the Luv values to XYZ values
-    * Warning: this method has never been used/tested so far
-    * @param L 'L' channel [0 ; 32768]
-    * @param u 'u' channel [-42000 ; 42000] ; can be more than 42000
-    * @param v 'v' channel [-42000 ; 42000] ; can be more than 42000
-    * @param x X coordinate [0 ; 65535] ; can be negative or superior to 65535 (return value)
-    * @param y Y coordinate [0 ; 65535] ; can be negative or superior to 65535 (return value)
-    * @param z Z coordinate [0 ; 65535] ; can be negative or superior to 65535 (return value)
-    */
-    static void Luv2XYZ (float L, float u, float v, float &X, float &Y, float &Z);
 
 
     /**
@@ -841,7 +822,7 @@ public:
     * @param go green channel of output color [0 ; 65535] (return value)
     * @param bo blue channel of output color [0 ; 65535] (return value)
     */
-    static void interpolateRGBColor (const float balance, const float r1, const float g1, const float b1, const float r2, const float g2, const float b2, int channels, const double xyz_rgb[3][3], const double rgb_xyz[3][3], float &ro, float &go, float &bo);
+    static void interpolateRGBColor (float balance, float r1, float g1, float b1, float r2, float g2, float b2, int channels, const double xyz_rgb[3][3], const double rgb_xyz[3][3], float &ro, float &go, float &bo);
 
     /**
     * @brief Interpolate 2 colors from their respective red/green/blue channels, with a balance factor
@@ -871,7 +852,7 @@ public:
     * @param go green channel of output color [0 ; 65535] (return value)
     * @param bo blue channel of output color [0 ; 65535] (return value)
     */
-    static void interpolateRGBColor (float realL, float iplow, float iphigh, int algm,  const float balance, int twoc, int metchrom, float chromat, float luma, const float r1, const float g1, const float b1, const float xl, const float yl, const float zl, const float x2, const float y2, const float z2, const double xyz_rgb[3][3], const double rgb_xyz[3][3], float &ro, float &go, float &bo);
+    static void interpolateRGBColor (float realL, float iplow, float iphigh, int algm, float balance, int twoc, int metchrom, float chromat, float luma, float r1, float g1, float b1, float xl, float yl, float zl, float x2, float y2, float z2, const double xyz_rgb[3][3], const double rgb_xyz[3][3], float &ro, float &go, float &bo);
 
 
     /**
@@ -1088,12 +1069,11 @@ public:
     */
     static inline double gamma2     (double x)      //  g3                  1+g4
     {
-      //  return x <= 0.003041 ? x * 12.92310 : 1.055 * exp(log(x) / 2.39990) - 0.055;//calculate with calcgamma
+        //  return x <= 0.003041 ? x * 12.92310 : 1.055 * exp(log(x) / 2.39990) - 0.055;//calculate with calcgamma
         //return x <= 0.0031308 ? x * 12.92310 : 1.055 * exp(log(x) / sRGBGammaCurve) - 0.055;//standard discontinuous
-		//very small differences between the 2
+        //very small differences between the 2
         return x <= 0.003040 ? x * 12.92310 : 1.055 * exp(log(x) / sRGBGammaCurve) - 0.055;//continuous
-      //  return x <= 0.003041 ? x * 12.92310 : 1.055011 * exp(log(x) / sRGBGammaCurve) - 0.055011;//continuous
-		
+        //  return x <= 0.003041 ? x * 12.92310 : 1.055011 * exp(log(x) / sRGBGammaCurve) - 0.055011;//continuous
     }
 
 
@@ -1105,12 +1085,11 @@ public:
     */
     static inline double igamma2    (double x)      //g2
     {
-       // return x <= 0.039289 ? x / 12.92310 : exp(log((x + 0.055) / 1.055) * 2.39990);//calculate with calcgamma
-       // return x <= 0.04045 ? x / 12.92310 : exp(log((x + 0.055) / 1.055) * sRGBGammaCurve);//standard discontinuous
-		//very small differences between the 4
+        // return x <= 0.039289 ? x / 12.92310 : exp(log((x + 0.055) / 1.055) * 2.39990);//calculate with calcgamma
+        // return x <= 0.04045 ? x / 12.92310 : exp(log((x + 0.055) / 1.055) * sRGBGammaCurve);//standard discontinuous
+        //very small differences between the 4
         return x <= 0.039286 ? x / 12.92310 : exp(log((x + 0.055) / 1.055) * sRGBGammaCurve);//continuous
-      //  return x <= 0.039293 ? x / 12.92310 : exp(log((x + 0.055011) / 1.055011) * sRGBGammaCurve);//continuous
-		
+        //  return x <= 0.039293 ? x / 12.92310 : exp(log((x + 0.055011) / 1.055011) * sRGBGammaCurve);//continuous
     }
 
 
@@ -1428,15 +1407,15 @@ public:
     * @param moreRGB (Debug target only) to calculate iterations for values >65535
     */
 #ifdef _DEBUG
-    static void gamutLchonly  (float HH, float &Lprov1, float &Chprov1, float &R, float &G, float &B, const double wip[3][3], const bool isHLEnabled, const float lowerCoef, const float higherCoef, bool &neg, bool &more_rgb);
-    static void gamutLchonly  (float HH, float2 sincosval, float &Lprov1, float &Chprov1, float &R, float &G, float &B, const double wip[3][3], const bool isHLEnabled, const float lowerCoef, const float higherCoef, bool &neg, bool &more_rgb);
-    static void gamutLchonly  (float2 sincosval, float &Lprov1, float &Chprov1, const float wip[3][3], const bool isHLEnabled, const float lowerCoef, const float higherCoef, bool &neg, bool &more_rgb);
+    static void gamutLchonly  (float HH, float &Lprov1, float &Chprov1, float &R, float &G, float &B, const double wip[3][3], bool isHLEnabled, float lowerCoef, float higherCoef, bool &neg, bool &more_rgb);
+    static void gamutLchonly  (float HH, float2 sincosval, float &Lprov1, float &Chprov1, float &R, float &G, float &B, const double wip[3][3], bool isHLEnabled, float lowerCoef, float higherCoef, bool &neg, bool &more_rgb);
+    static void gamutLchonly  (float2 sincosval, float &Lprov1, float &Chprov1, const float wip[3][3], bool isHLEnabled, float lowerCoef, float higherCoef, bool &neg, bool &more_rgb);
 #else
-    static void gamutLchonly  (float HH, float &Lprov1, float &Chprov1, float &R, float &G, float &B, const double wip[3][3], const bool isHLEnabled, const float lowerCoef, const float higherCoef);
-    static void gamutLchonly  (float HH, float2 sincosval, float &Lprov1, float &Chprov1, float &R, float &G, float &B, const double wip[3][3], const bool isHLEnabled, const float lowerCoef, const float higherCoef);
-    static void gamutLchonly  (float2 sincosval, float &Lprov1, float &Chprov1, const float wip[3][3], const bool isHLEnabled, const float lowerCoef, const float higherCoef);
+    static void gamutLchonly  (float HH, float &Lprov1, float &Chprov1, float &R, float &G, float &B, const double wip[3][3], bool isHLEnabled, float lowerCoef, float higherCoef);
+    static void gamutLchonly  (float HH, float2 sincosval, float &Lprov1, float &Chprov1, float &R, float &G, float &B, const double wip[3][3], bool isHLEnabled, float lowerCoef, float higherCoef);
+    static void gamutLchonly  (float2 sincosval, float &Lprov1, float &Chprov1, const float wip[3][3], bool isHLEnabled, float lowerCoef, float higherCoef);
 #endif
-    static void gamutLchonly  (float HH, float2 sincosval, float &Lprov1, float &Chprov1, float &saturation, const float wip[3][3], const bool isHLEnabled, const float lowerCoef, const float higherCoef);
+    static void gamutLchonly  (float HH, float2 sincosval, float &Lprov1, float &Chprov1, float &saturation, const float wip[3][3], bool isHLEnabled, float lowerCoef, float higherCoef);
 
 
     /**
@@ -1460,7 +1439,7 @@ public:
     * @param wip matrix for working profile
     * @param multiThread whether to parallelize the loop or not
     */
-    static void LabGamutMunsell (float *labL, float *laba, float *labb, const int N, bool corMunsell, bool lumaMuns, bool isHLEnabled, bool gamut, const double wip[3][3]);
+    static void LabGamutMunsell (float *labL, float *laba, float *labb, int N, bool corMunsell, bool lumaMuns, bool isHLEnabled, bool gamut, const double wip[3][3]);
 
 
     /*
@@ -1496,8 +1475,8 @@ public:
     // -------------------------------- end Munsell
 
 
-    static void scalered ( const float rstprotection, const float param, const float limit, const float HH, const float deltaHH, float &scale, float &scaleext);
-    static void transitred (const float HH, const float Chprov1, const float dred, const float factorskin, const float protect_red, const float factorskinext, const float deltaHH, const float factorsat, float &factor);
+    static void scalered ( float rstprotection, float param, float limit, float HH, float deltaHH, float &scale, float &scaleext);
+    static void transitred (float HH, float Chprov1, float dred, float factorskin, float protect_red, float factorskinext, float deltaHH, float factorsat, float &factor);
     static void skinred ( double J, double h, double sres, double Sp, float dred, float protect_red, int sk, float rstprotection, float ko, double &s);
     static void skinredfloat ( float J, float h, float sres, float Sp, float dred, float protect_red, int sk, float rstprotection, float ko, float &s);
 //  static void scaleredcdbl ( float skinprot, float param, float limit, float HH, float deltaHH, float &scale,float &scaleext);
@@ -1508,8 +1487,8 @@ public:
         static const float C9 = 8.f, C8 = 15.f, C7 = 12.f, C4 = 7.f, C3 = 5.f, C2 = 5.f, C1 = 5.f;
         static const float H9 = 0.05f, H8 = 0.25f, H7 = 0.1f, H4 = 0.02f, H3 = 0.02f, H2 = 0.1f, H1 = 0.1f, H10 = -0.2f, H11 = -0.2f;
 
-        // "real" skin color : take into account a slightly usage of contrast and saturation in RT if option "skin" = 1, uses imolicit factor 1.0
-        // wide area  skin color, useful if not accurate colorimetry or if the user has changed hue and saturation, uses explicit facor 0.6
+        // "real" skin color : take into account a slight usage of contrast and saturation in RT if option "skin" = 1, uses implicit factor 1.0
+        // wide area skin color, useful if not accurate colorimetry or if the user has changed hue and saturation, uses explicit factor 0.6
         // wide area for transition, uses explicit factor 0.4
 
         if  (lum >= 85.0f) {
@@ -1587,8 +1566,8 @@ public:
         static const float C9 = 8.f, C8 = 15.f, C7 = 12.f, C4 = 7.f, C3 = 5.f, C2 = 5.f, C1 = 5.f;
         static const float H9 = 0.05f, H8 = 0.25f, H7 = 0.1f, H4 = 0.02f, H3 = 0.02f, H2 = 0.1f, H1 = 0.1f, H10 = -0.2f, H11 = -0.2f;
 
-        // "real" skin color : take into account a slightly usage of contrast and saturation in RT if option "skin" = 1, uses imolicit factor 1.0
-        // wide area  skin color, useful if not accurate colorimetry or if the user has changed hue and saturation, uses explicit facor 0.6
+        // "real" skin color : take into account a slight usage of contrast and saturation in RT if option "skin" = 1, uses implicit factor 1.0
+        // wide area skin color, useful if not accurate colorimetry or if the user has changed hue and saturation, uses explicit factor 0.6
         // wide area for transition, uses explicit factor 0.4
         if((b_l > -0.3f && b_r < 2.f)  || basc == 0) { //range maxi skin
             if  (lum >= 85.0f) {
@@ -1703,8 +1682,8 @@ public:
 
         hue = HH;
 
-        // "real" skin color : take into account a slightly usage of contrast and saturation in RT if option "skin" = 1, uses imolicit factor 1.0
-        // wide area  skin color, useful if not accurate colorimetry or if the user has changed hue and saturation, uses explicit facor 0.6
+        // "real" skin color : take into account a slight usage of contrast and saturation in RT if option "skin" = 1, uses implicit factor 1.0
+        // wide area skin color, useful if not accurate colorimetry or if the user has changed hue and saturation, uses explicit factor 0.6
         // wide area for transition, uses explicit factor 0.4
 
         if  (lum >= 85.0f) {
@@ -1795,7 +1774,7 @@ public:
     static inline double huelab_to_huehsv2 (float HH)
     {
         //hr=translate Hue Lab value  (-Pi +Pi) in approximative hr (hsv values) (0 1) [red 1/6 yellow 1/6 green 1/6 cyan 1/6 blue 1/6 magenta 1/6 ]
-        // with multi linear correspondances (I expect there is no error !!)
+        // with multi linear correspondences (I expect there is no error !!)
         double hr = 0.0;
         //always put h between 0 and 1
 
@@ -1827,6 +1806,29 @@ public:
         }
 
         return (hr);
+    }
+
+    static inline void RGB2Y(const float* R, const float* G, const float* B, float* Y1, float * Y2, int W) {
+        int i = 0;
+#ifdef __SSE2__
+        const vfloat c1v = F2V(0.2627f);
+        const vfloat c2v = F2V(0.6780f);
+        const vfloat c3v = F2V(0.0593f);
+        for (; i < W - 3; i += 4) {
+            const vfloat Rv = vmaxf(LVFU(R[i]), ZEROV);
+            const vfloat Gv = vmaxf(LVFU(G[i]), ZEROV);
+            const vfloat Bv = vmaxf(LVFU(B[i]), ZEROV);
+            vfloat yv = c1v * Rv + c2v * Gv + c3v * Bv;
+            STVFU(Y1[i], yv);
+            STVFU(Y2[i], yv);
+        }
+#endif
+        for (; i < W; ++i) {
+            const float r = std::max(R[i], 0.f);
+            const float g = std::max(G[i], 0.f);
+            const float b = std::max(B[i], 0.f);
+            Y1[i] = Y2[i] = 0.2627f * r + 0.6780f * g + 0.0593f * b;
+        }
     }
 
 };

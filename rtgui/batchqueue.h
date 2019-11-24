@@ -13,22 +13,23 @@
  *  GNU General Public License for more details.
  *
  *  You should have received a copy of the GNU General Public License
- *  along with RawTherapee.  If not, see <http://www.gnu.org/licenses/>.
+ *  along with RawTherapee.  If not, see <https://www.gnu.org/licenses/>.
  */
-#ifndef _BATCHQUEUE_
-#define _BATCHQUEUE_
+#pragma once
 
 #include <set>
 
 #include <gtkmm.h>
 
-#include "../rtengine/rtengine.h"
-
-#include "batchqueueentry.h"
+#include "lwbutton.h"
 #include "lwbuttonset.h"
-#include "options.h"
 #include "threadutils.h"
 #include "thumbbrowserbase.h"
+
+#include "../rtengine/rtengine.h"
+#include "../rtengine/noncopyable.h"
+
+class BatchQueueEntry;
 
 class BatchQueueListener
 {
@@ -44,7 +45,8 @@ class FileCatalog;
 class BatchQueue final :
     public ThumbBrowserBase,
     public rtengine::BatchProcessingListener,
-    public LWButtonListener
+    public LWButtonListener,
+    public rtengine::NonCopyable
 {
 public:
     explicit BatchQueue (FileCatalog* aFileCatalog);
@@ -99,6 +101,8 @@ private:
     bool saveBatchQueue ();
     void notifyListener ();
 
+    using ThumbBrowserBase::redrawNeeded;
+
     BatchQueueEntry* processing;  // holds the currently processed image
     FileCatalog* fileCatalog;
     int sequence; // holds the current sequence index
@@ -120,5 +124,3 @@ private:
 
     IdleRegister idle_register;
 };
-
-#endif

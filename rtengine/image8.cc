@@ -14,11 +14,14 @@
  *  GNU General Public License for more details.
  *
  *  You should have received a copy of the GNU General Public License
- *  along with RawTherapee.  If not, see <http://www.gnu.org/licenses/>.
+ *  along with RawTherapee.  If not, see <https://www.gnu.org/licenses/>.
  */
 #include <cstring>
 #include <cstdio>
+
+#include "colortemp.h"
 #include "image8.h"
+#include "imagefloat.h"
 #include "rtengine.h"
 
 using namespace rtengine;
@@ -55,7 +58,7 @@ void Image8::getScanline (int row, unsigned char* buffer, int bps, bool isFloat)
     }
 }
 
-void Image8::setScanline (int row, unsigned char* buffer, int bps, unsigned int numSamples)
+void Image8::setScanline (int row, const unsigned char* buffer, int bps, unsigned int numSamples)
 {
 
     if (data == nullptr) {
@@ -69,12 +72,12 @@ void Image8::setScanline (int row, unsigned char* buffer, int bps, unsigned int 
                 data[row * width * 3 + 3 * i] = data[row * width * 3 + 3 * i + 1] = data[row * width * 3 + 3 * i + 2] = buffer[i];
             }
         } else {
-            memcpy (data + row * width * 3u, buffer, width * 3);
+            memcpy (data + (uint64_t)row * (uint64_t)width * (uint64_t)3u, buffer, width * 3);
         }
         break;
 
     case (IIOSF_UNSIGNED_SHORT): {
-        unsigned short* sbuffer = (unsigned short*) buffer;
+        const unsigned short* sbuffer = (const unsigned short*) buffer;
 
         for (int i = 0, ix = row * width * 3; i < width * 3; ++i, ++ix) {
             data[ix] = uint16ToUint8Rounded(sbuffer[i]);
@@ -230,10 +233,10 @@ void Image8::getStdImage (const ColorTemp &ctemp, int tran, Imagefloat* image, P
                         lineB[dst_x] = CLIP(bm * btot);
                     } else {
                         // computing a special factor for this incomplete sub-region
-                        float area = src_sub_width * src_sub_height;
-                        lineR[dst_x] = CLIP(rm2 * rtot / area);
-                        lineG[dst_x] = CLIP(gm2 * gtot / area);
-                        lineB[dst_x] = CLIP(bm2 * btot / area);
+                        float larea = src_sub_width * src_sub_height;
+                        lineR[dst_x] = CLIP(rm2 * rtot / larea);
+                        lineG[dst_x] = CLIP(gm2 * gtot / larea);
+                        lineB[dst_x] = CLIP(bm2 * btot / larea);
                     }
                 }
             }

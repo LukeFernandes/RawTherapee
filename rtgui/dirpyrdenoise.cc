@@ -14,17 +14,24 @@
  *  GNU General Public License for more details.
  *
  *  You should have received a copy of the GNU General Public License
- *  along with RawTherapee.  If not, see <http://www.gnu.org/licenses/>.
+ *  along with RawTherapee.  If not, see <https://www.gnu.org/licenses/>.
  */
-#include "dirpyrdenoise.h"
-#include <iomanip>
 #include <cmath>
-#include "edit.h"
+#include <iomanip>
+
+#include "dirpyrdenoise.h"
+
+#include "curveeditor.h"
+#include "curveeditorgroup.h"
+#include "editbuffer.h"
 #include "guiutils.h"
+#include "options.h"
+
+#include "../rtengine/color.h"
+#include "../rtengine/procparams.h"
 
 using namespace rtengine;
 using namespace rtengine::procparams;
-extern Options options;
 
 DirPyrDenoise::DirPyrDenoise () : FoldableToolPanel(this, "dirpyrdenoise", M("TP_DIRPYRDENOISE_LABEL"), true, true), lastmedian(false)
 {
@@ -59,7 +66,7 @@ DirPyrDenoise::DirPyrDenoise () : FoldableToolPanel(this, "dirpyrdenoise", M("TP
     NoiscurveEditorG = new CurveEditorGroup (options.lastDenoiseCurvesDir, M("TP_DIRPYRDENOISE_LUMINANCE_CURVE"));
     //curveEditorG = new CurveEditorGroup (options.lastLabCurvesDir);
     NoiscurveEditorG->setCurveListener (this);
-    defaultCurve = rtengine::DirPyrDenoiseParams().lcurve;
+    defaultCurve = rtengine::procparams::DirPyrDenoiseParams().lcurve;
     lshape = static_cast<FlatCurveEditor*>(NoiscurveEditorG->addCurve(CT_Flat, "", nullptr, false, false));
     lshape->setIdentityValue(0.);
     lshape->setResetCurve(FlatCurveType(defaultCurve.at(0)), defaultCurve);
@@ -135,7 +142,7 @@ DirPyrDenoise::DirPyrDenoise () : FoldableToolPanel(this, "dirpyrdenoise", M("TP
 
     CCcurveEditorG = new CurveEditorGroup (options.lastDenoiseCurvesDir, M("TP_DIRPYRDENOISE_CHROMINANCE_CURVE"));
     CCcurveEditorG->setCurveListener (this);
-    defaultCurve = rtengine::DirPyrDenoiseParams().cccurve;
+    defaultCurve = rtengine::procparams::DirPyrDenoiseParams().cccurve;
     ccshape = static_cast<FlatCurveEditor*>(CCcurveEditorG->addCurve(CT_Flat, "", nullptr, false, false));
     ccshape->setIdentityValue(0.);
     ccshape->setResetCurve(FlatCurveType(defaultCurve.at(0)), defaultCurve);
@@ -982,10 +989,6 @@ void DirPyrDenoise::adjusterChanged(Adjuster* a, double newval)
             listener->panelChanged (EvDPDNpasses, costr);
         }
     }
-}
-
-void DirPyrDenoise::adjusterAutoToggled(Adjuster* a, bool newval)
-{
 }
 
 void DirPyrDenoise::enabledChanged ()

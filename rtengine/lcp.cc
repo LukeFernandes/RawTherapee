@@ -14,12 +14,15 @@
 *  GNU General Public License for more details.
 *
 *  You should have received a copy of the GNU General Public License
-*  along with RawTherapee.  If not, see <http://www.gnu.org/licenses/>.
+*  along with RawTherapee.  If not, see <https://www.gnu.org/licenses/>.
 */
 
 #include <algorithm>
+#include <cassert>
 #include <cstring>
 
+#include <glibmm/ustring.h>
+#include <glibmm/fileutils.h>
 #include <glib/gstdio.h>
 
 #ifdef WIN32
@@ -29,14 +32,11 @@
 
 #include "lcp.h"
 
+#include "opthelper.h"
+#include "procparams.h"
+#include "rt_math.h"
 #include "settings.h"
-
-namespace rtengine
-{
-
-extern const Settings* settings;
-
-}
+#include "utils.h"
 
 class rtengine::LCPProfile::LCPPersModel
 {
@@ -233,8 +233,6 @@ rtengine::LCPProfile::LCPProfile(const Glib::ustring& fname) :
     pCurCommon(nullptr),
     aPersModel{}
 {
-    const int BufferSize = 8192;
-    char buf[BufferSize];
 
     XML_Parser parser = XML_ParserCreate(nullptr);
 
@@ -249,6 +247,8 @@ rtengine::LCPProfile::LCPProfile(const Glib::ustring& fname) :
     FILE* const pFile = g_fopen(fname.c_str (), "rb");
 
     if (pFile) {
+        constexpr int BufferSize = 8192;
+        char buf[BufferSize];
         bool done;
 
         do {
@@ -361,9 +361,8 @@ void rtengine::LCPProfile::calcParams(
             const float focDist = aPersModel[pm]->focDist;
             const float focDistLog = std::log(focDist) + euler;
 
-            double meanErr = 0.0;
-
             if (aPersModel[pm]->hasModeData(mode)) {
+                double meanErr = 0.0;
                 double lowMeanErr = 0.0;
                 double highMeanErr = 0.0;
 
@@ -984,7 +983,7 @@ rtengine::LCPMapper::LCPMapper(
     bool useCADistP,
     int fullWidth,
     int fullHeight,
-    const CoarseTransformParams& coarse,
+    const procparams::CoarseTransformParams& coarse,
     int rawRotationDeg
 ) :
     enableCA(false),

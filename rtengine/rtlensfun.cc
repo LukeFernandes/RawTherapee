@@ -15,16 +15,18 @@
  *  GNU General Public License for more details.
  *
  *  You should have received a copy of the GNU General Public License
- *  along with RawTherapee.  If not, see <http://www.gnu.org/licenses/>.
+ *  along with RawTherapee.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-#include "rtlensfun.h"
-#include "settings.h"
 #include <iostream>
 
-namespace rtengine {
+#include "imagedata.h"
+#include "procparams.h"
+#include "rtlensfun.h"
+#include "settings.h"
 
-extern const Settings *settings;
+namespace rtengine
+{
 
 //-----------------------------------------------------------------------------
 // LFModifier
@@ -131,7 +133,7 @@ Glib::ustring LFModifier::getDisplayString() const
         return "NONE";
     } else {
         Glib::ustring ret;
-        Glib::ustring sep = "";
+        Glib::ustring sep;
         if (flags_ & LF_MODIFY_DISTORTION) {
             ret += "distortion";
             sep = ", ";
@@ -499,7 +501,7 @@ std::unique_ptr<LFModifier> LFDatabase::getModifier(const LFCamera &camera, cons
 }
 
 
-std::unique_ptr<LFModifier> LFDatabase::findModifier(const LensProfParams &lensProf, const FramesMetaData *idata, int width, int height, const CoarseTransformParams &coarse, int rawRotationDeg)
+std::unique_ptr<LFModifier> LFDatabase::findModifier(const procparams::LensProfParams &lensProf, const FramesMetaData *idata, int width, int height, const procparams::CoarseTransformParams &coarse, int rawRotationDeg)
 {
     Glib::ustring make, model, lens;
     float focallen = idata->getFocalLen();

@@ -14,22 +14,29 @@
  *  GNU General Public License for more details.
  *
  *  You should have received a copy of the GNU General Public License
- *  along with RawTherapee.  If not, see <http://www.gnu.org/licenses/>.
+ *  along with RawTherapee.  If not, see <https://www.gnu.org/licenses/>.
  */
-#ifndef __PREFERENCES_H__
-#define __PREFERENCES_H__
+#pragma once
+
+#include <vector>
 
 #include <gtkmm.h>
-#include "adjuster.h"
-#include "options.h"
-#include <vector>
-#include "rtwindow.h"
-#include "dynamicprofilepanel.h"
 
-class Preferences : public Gtk::Dialog, public ProfileStoreListener
+#include "adjuster.h"
+#include "dynamicprofilepanel.h"
+#include "options.h"
+#include "../rtengine/profilestore.h"
+
+class RTWindow;
+class Splash;
+
+class Preferences :
+    public Gtk::Dialog,
+    public ProfileStoreListener
 {
 
-    class ExtensionColumns : public Gtk::TreeModel::ColumnRecord
+    class ExtensionColumns :
+        public Gtk::TreeModel::ColumnRecord
     {
     public:
         Gtk::TreeModelColumn<bool>  enabled;
@@ -145,6 +152,8 @@ class Preferences : public Gtk::Dialog, public ProfileStoreListener
     Gtk::FontButton* colorPickerFontFB;
     Gtk::ColorButton* cropMaskColorCB;
     Gtk::ColorButton* navGuideColorCB;
+    Gtk::CheckButton* pseudoHiDPI;
+
 
     Gtk::SpinButton*   maxRecentFolders;
     Gtk::SpinButton*   maxThumbHeightSB;
@@ -161,6 +170,12 @@ class Preferences : public Gtk::Dialog, public ProfileStoreListener
 
     Gtk::SpinButton*  threadsSpinBtn;
     Gtk::SpinButton*  clutCacheSizeSB;
+    Gtk::CheckButton* measureCB;
+    Gtk::SpinButton*  chunkSizeAMSB;
+    Gtk::SpinButton*  chunkSizeCASB;
+    Gtk::SpinButton*  chunkSizeRCDSB;
+    Gtk::SpinButton*  chunkSizeRGBSB;
+    Gtk::SpinButton*  chunkSizeXTSB;
     Gtk::SpinButton*  maxInspectorBuffersSB;
     Gtk::ComboBoxText *thumbnailInspectorMode;
 
@@ -295,5 +310,3 @@ public:
 //    void selectICCProfileDir ();
 //    void selectMonitorProfile ();
 };
-
-#endif

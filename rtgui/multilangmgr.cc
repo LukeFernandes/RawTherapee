@@ -14,7 +14,7 @@
  *  GNU General Public License for more details.
  *
  *  You should have received a copy of the GNU General Public License
- *  along with RawTherapee.  If not, see <http://www.gnu.org/licenses/>.
+ *  along with RawTherapee.  If not, see <https://www.gnu.org/licenses/>.
  */
 #include "multilangmgr.h"
 
@@ -179,7 +179,7 @@ void MultiLangMgr::load(const Glib::ustring &language, const std::vector<Glib::u
                      value.replace(pos, 2, "\n");
                      pos++;
                 }
-                hint = translations.emplace_hint(hint, key, value);
+                hint = translations.emplace_hint(hint, std::move(key), std::move(value));
             }
         }
     }

@@ -1,21 +1,30 @@
 /*
  *  This file is part of RawTherapee.
  */
-#ifndef _RETINEX_H_
-#define _RETINEX_H_
+#pragma once
 
 #include <gtkmm.h>
+
 #include "adjuster.h"
-#include "toolpanel.h"
-#include "guiutils.h"
-#include "curveeditor.h"
-#include "curveeditorgroup.h"
-#include "thresholdadjuster.h"
 #include "colorprovider.h"
+#include "curvelistener.h"
+#include "curveeditorgroup.h"
+#include "guiutils.h"
+#include "thresholdadjuster.h"
+#include "toolpanel.h"
 
-class Retinex : public ToolParamBlock, public FoldableToolPanel,  public rtengine::RetinexListener, public CurveListener,
-    public AdjusterListener, public ColorProvider
+class CurveEditor;
+class CurveEditorGroup;
+class DiagonalCurveEditor;
+class FlatCurveEditor;
 
+class Retinex final :
+    public ToolParamBlock,
+    public FoldableToolPanel,
+    public rtengine::RetinexListener,
+    public CurveListener,
+    public AdjusterListener,
+    public ColorProvider
 {
 private:
     IdleRegister idle_register;
@@ -104,7 +113,6 @@ public:
     void setDefaults           (const rtengine::procparams::ProcParams* defParams, const ParamsEdited* pedited = nullptr) override;
     void trimValues            (rtengine::procparams::ProcParams* pp) override;
     void adjusterChanged       (Adjuster* a, double newval) override;
-    void adjusterAutoToggled   (Adjuster* a, bool newval) override;
     void autoOpenCurve         () override;
     void medianmapChanged        ();
     void minmaxChanged (double cdma, double cdmin, double mini, double maxi, double Tmean, double Tsigma, double Tmin, double Tmax) override;
@@ -142,5 +150,3 @@ private:
     void foldAllButMe (GdkEventButton* event, MyExpander *expander);
 
 };
-
-#endif

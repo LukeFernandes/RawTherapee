@@ -2,8 +2,13 @@
  *  This file is part of RawTherapee.
  */
 #include "retinex.h"
+
+#include "curveeditor.h"
+#include "curveeditorgroup.h"
 #include "mycurve.h"
 #include "rtimage.h"
+#include "options.h"
+#include "../rtengine/color.h"
 
 using namespace rtengine;
 using namespace rtengine::procparams;
@@ -1360,10 +1365,6 @@ void Retinex::adjusterChanged(Adjuster* a, double newval)
         listener->panelChanged (EvLradius,  radius->getTextValue());
 
     }
-}
-
-void Retinex::adjusterAutoToggled(Adjuster* a, bool newval)
-{
 }
 
 void Retinex::autoOpenCurve  ()

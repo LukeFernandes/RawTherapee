@@ -14,7 +14,7 @@
 *  GNU General Public License for more details.
 *
 *  You should have received a copy of the GNU General Public License
-*  along with RawTherapee.  If not, see <http://www.gnu.org/licenses/>.
+*  along with RawTherapee.  If not, see <https://www.gnu.org/licenses/>.
 */
 #include "extprog.h"
 
@@ -25,6 +25,8 @@
 #include <windows.h>
 #include <shlobj.h>
 #endif
+
+#include <gtkmm.h>
 
 #include "options.h"
 #include "multilangmgr.h"
@@ -58,7 +60,7 @@ bool ExtProgAction::execute (const std::vector<Glib::ustring>& fileNames) const
     }
 
     for (const auto& fileName : fileNames) {
-        cmdLine += " \"" + fileName + "\"";
+        cmdLine += " " + Glib::shell_quote(fileName);
     }
 
     return ExtProgStore::spawnCommandAsync (cmdLine);
@@ -211,7 +213,7 @@ bool ExtProgStore::spawnCommandAsync (const Glib::ustring& cmd)
 
     } catch (const Glib::Exception& exception) {
 
-        if (options.rtSettings.verbose) {
+        if (rtengine::settings->verbose) {
             std::cerr << "Failed to execute \"" << cmd << "\": " << exception.what() << std::endl;
         }
 
@@ -230,7 +232,7 @@ bool ExtProgStore::spawnCommandSync (const Glib::ustring& cmd)
 
     } catch (const Glib::Exception& exception) {
 
-        if (options.rtSettings.verbose) {
+        if (rtengine::settings->verbose) {
             std::cerr << "Failed to execute \"" << cmd << "\": " << exception.what() << std::endl;
         }
 
@@ -256,7 +258,7 @@ bool ExtProgStore::openInGimp (const Glib::ustring& fileName)
 
 #else
 
-    auto cmdLine = Glib::ustring("gimp \"") + fileName + Glib::ustring("\"");
+    auto cmdLine = Glib::ustring("gimp ") + Glib::shell_quote(fileName);
     auto success = spawnCommandAsync (cmdLine);
 
 #endif
@@ -291,7 +293,7 @@ bool ExtProgStore::openInGimp (const Glib::ustring& fileName)
 
 #else
 
-    cmdLine = Glib::ustring("gimp-remote \"") + fileName + Glib::ustring("\"");
+    cmdLine = Glib::ustring("gimp-remote ") + Glib::shell_quote(fileName);
     success = ExtProgStore::spawnCommandAsync (cmdLine);
 
 #endif
@@ -312,7 +314,7 @@ bool ExtProgStore::openInPhotoshop (const Glib::ustring& fileName)
 
 #else
 
-    const auto cmdLine = Glib::ustring("\"") + Glib::build_filename(options.psDir, "Photoshop.exe") + Glib::ustring("\" \"") + fileName + Glib::ustring("\"");
+    const auto cmdLine = Glib::ustring("\"") + Glib::build_filename(options.psDir, "Photoshop.exe") + "\" " + Glib::shell_quote(fileName);
 
 #endif
 
@@ -334,7 +336,7 @@ bool ExtProgStore::openInCustomEditor (const Glib::ustring& fileName)
 
 #else
 
-    const auto cmdLine = Glib::ustring("\"") + options.customEditorProg + Glib::ustring("\" \"") + fileName + Glib::ustring("\"");
+    const auto cmdLine = options.customEditorProg + Glib::ustring(" ") + Glib::shell_quote(fileName);
     return spawnCommandAsync (cmdLine);
 
 #endif

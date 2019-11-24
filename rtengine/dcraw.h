@@ -14,11 +14,10 @@
  *  GNU General Public License for more details.
  *
  *  You should have received a copy of the GNU General Public License
- *  along with RawTherapee.  If not, see <http://www.gnu.org/licenses/>.
+ *  along with RawTherapee.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-#ifndef DCRAW_H
-#define DCRAW_H
+#pragma once
 
 #include "myfile.h"
 #include <csetjmp>
@@ -69,6 +68,7 @@ public:
         gamm[0]=0.45;gamm[1]=4.5;gamm[2]=gamm[3]=gamm[4]=gamm[5]=0;
         user_mul[0]=user_mul[1]=user_mul[2]=user_mul[3]=0;
         greybox[0]=greybox[1]=0; greybox[2]=greybox[3]= UINT_MAX;
+        RT_canon_CR3_data.CR3_CTMDtag = 0;
     }
 
 protected:
@@ -159,10 +159,45 @@ protected:
     std::string RT_software;
     double RT_baseline_exposure;
 
+    struct PanasonicRW2Info {
+        ushort bpp;
+        ushort encoding;
+        PanasonicRW2Info(): bpp(0), encoding(0) {}
+    };
+    PanasonicRW2Info RT_pana_info;
+public:
+    struct CanonCR3Data {
+        // contents of tag CMP1 for relevant track in CR3 file
+        struct crx_data_header_t {
+            int32_t version;
+            int32_t f_width;
+            int32_t f_height;
+            int32_t tileWidth;
+            int32_t tileHeight;
+            int32_t nBits;
+            int32_t nPlanes;
+            int32_t cfaLayout;
+            int32_t encType;
+            int32_t imageLevels;
+            int32_t hasTileCols;
+            int32_t hasTileRows;
+            int32_t mdatHdrSize;
+            // Not from header, but from datastream
+            uint32_t MediaSize;
+            INT64 MediaOffset;
+            uint32_t MediaType; /* 1 -> /C/RAW, 2-> JPEG */
+        };
+        static constexpr size_t CRXTRACKS_MAXCOUNT = 16;
+        crx_data_header_t crx_header[CRXTRACKS_MAXCOUNT];
+        int crx_track_selected;
+        short CR3_CTMDtag;
+    };
+protected:
+    CanonCR3Data RT_canon_CR3_data;
+
     float cam_mul[4], pre_mul[4], cmatrix[3][4], rgb_cam[3][4];
 
-    int histogram[4][0x2000];
-    void (DCraw::*write_thumb)(), (DCraw::*write_fun)();
+    void (DCraw::*write_thumb)();
     void (DCraw::*load_raw)(), (DCraw::*thumb_load_raw)();
     jmp_buf failure;
 
@@ -395,14 +430,19 @@ void nokia_load_raw();
 
 class pana_bits_t{
 public:
-   pana_bits_t(IMFILE *i, unsigned &u): ifp(i), load_flags(u), vbits(0) {}
-   unsigned operator()(int nbits);
+   pana_bits_t(IMFILE *i, unsigned &u, unsigned enc):
+    ifp(i), load_flags(u), vbits(0), encoding(enc) {}
+   unsigned operator()(int nbits, unsigned *bytes=nullptr);
 private:
    IMFILE *ifp;
    unsigned &load_flags;
    uchar buf[0x4000];
    int vbits;
+   unsigned encoding;
 };
+
+void panasonicC6_load_raw();
+void panasonicC7_load_raw();
 
 void canon_rmf_load_raw();
 void panasonic_load_raw();
@@ -517,7 +557,22 @@ void shiftXtransMatrix( const int offsy, const int offsx) {
     }
 }
 
+void nikon_14bit_load_raw(); // ported from LibRaw
+
+//-----------------------------------------------------------------------------
+// Canon CR3 support ported from LibRaw
+//-----------------------------------------------------------------------------
+void parse_canon_cr3();
+void selectCRXTrack(short maxTrack);
+int parseCR3(unsigned long long oAtomList,
+             unsigned long long szAtomList, short &nesting,
+             char *AtomNameStack, short &nTrack, short &TrackType);
+int crxDecodePlane(void *p, uint32_t planeNumber);
+void crxLoadDecodeLoop(void *img, int nPlanes);
+void crxConvertPlaneLineDf(void *p, int imageRow);
+void crxLoadFinalizeLoopE3(void *p, int planeHeight);
+void crxLoadRaw();
+int crxParseImageHeader(uchar *cmp1TagData, int nTrack);
+//-----------------------------------------------------------------------------
+
 };
-
-
-#endif //DCRAW_H

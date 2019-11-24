@@ -14,11 +14,17 @@
  *  GNU General Public License for more details.
  *
  *  You should have received a copy of the GNU General Public License
- *  along with RawTherapee.  If not, see <http://www.gnu.org/licenses/>.
+ *  along with RawTherapee.  If not, see <https://www.gnu.org/licenses/>.
  */
+
+#include <iomanip>
+
 #include "resize.h"
-#include "guiutils.h"
+
 #include "eventmapper.h"
+#include "guiutils.h"
+
+#include "../rtengine/procparams.h"
 
 using namespace rtengine;
 using namespace rtengine::procparams;
@@ -38,9 +44,8 @@ Resize::Resize () : FoldableToolPanel(this, "resize", M("TP_RESIZE_LABEL"), fals
     appliesTo->append (M("TP_RESIZE_FULLIMAGE"));
     appliesTo->set_active (0);
 
-    Gtk::Label *label = Gtk::manage (new Gtk::Label (M("TP_RESIZE_APPLIESTO")));
-    label->set_alignment(0., 0.);
-    combos->attach (*label, 0, 1, 0, 1, Gtk::SHRINK, Gtk::SHRINK, 2, 2);
+    Gtk::Label *label = Gtk::manage (new Gtk::Label (M("TP_RESIZE_APPLIESTO"), Gtk::ALIGN_START));
+    combos->attach (*label, 0, 1, 0, 1, Gtk::SHRINK | Gtk::FILL, Gtk::SHRINK, 2, 2);
     combos->attach (*appliesTo, 1, 2, 0, 1, Gtk::EXPAND | Gtk::FILL, Gtk::SHRINK, 2, 2);
 
     // See Resize::methodChanged() when adding a new method.
@@ -49,9 +54,8 @@ Resize::Resize () : FoldableToolPanel(this, "resize", M("TP_RESIZE_LABEL"), fals
     method->append (M("TP_RESIZE_NEAREST"));
     method->set_active (0);
 
-    label = Gtk::manage (new Gtk::Label (M("TP_RESIZE_METHOD")));
-    label->set_alignment(0., 0.);
-    combos->attach (*label, 0, 1, 1, 2, Gtk::SHRINK, Gtk::SHRINK, 2, 2);
+    label = Gtk::manage (new Gtk::Label (M("TP_RESIZE_METHOD"), Gtk::ALIGN_START));
+    combos->attach (*label, 0, 1, 1, 2, Gtk::SHRINK | Gtk::FILL, Gtk::SHRINK, 2, 2);
     combos->attach (*method, 1, 2, 1, 2, Gtk::EXPAND | Gtk::FILL, Gtk::SHRINK, 2, 2);
 
     spec = Gtk::manage (new MyComboBoxText ());
@@ -61,9 +65,8 @@ Resize::Resize () : FoldableToolPanel(this, "resize", M("TP_RESIZE_LABEL"), fals
     spec->append (M("TP_RESIZE_FITBOX"));
     spec->set_active (0);
 
-    label = Gtk::manage (new Gtk::Label (M("TP_RESIZE_SPECIFY")));
-    label->set_alignment(0., 0.);
-    combos->attach (*label, 0, 1, 2, 3, Gtk::SHRINK, Gtk::SHRINK, 2, 2);
+    label = Gtk::manage (new Gtk::Label (M("TP_RESIZE_SPECIFY"), Gtk::ALIGN_START));
+    combos->attach (*label, 0, 1, 2, 3, Gtk::SHRINK | Gtk::FILL, Gtk::SHRINK, 2, 2);
     combos->attach (*spec, 1, 2, 2, 3, Gtk::EXPAND | Gtk::FILL, Gtk::SHRINK, 2, 2);
 
     pack_start (*combos, Gtk::PACK_SHRINK, 4);
@@ -91,13 +94,12 @@ Resize::Resize () : FoldableToolPanel(this, "resize", M("TP_RESIZE_LABEL"), fals
     sbox->pack_start (*hbox);
 
     sizeBox->pack_start (*sbox, Gtk::PACK_SHRINK, 0);
-
-    allowUpscaling = Gtk::manage(new Gtk::CheckButton(M("TP_RESIZE_ALLOW_UPSCALING")));
-    sizeBox->pack_start(*allowUpscaling);
-    allowUpscaling->signal_toggled().connect(sigc::mem_fun(*this, &Resize::allowUpscalingChanged));
-
     sizeBox->show_all ();
     sizeBox->reference ();
+
+    allowUpscaling = Gtk::manage(new Gtk::CheckButton(M("TP_RESIZE_ALLOW_UPSCALING")));
+    pack_start(*allowUpscaling);
+    allowUpscaling->signal_toggled().connect(sigc::mem_fun(*this, &Resize::allowUpscalingChanged));
 
     w->set_digits (0);
     w->set_increments (1, 100);
@@ -271,10 +273,6 @@ void Resize::adjusterChanged(Adjuster* a, double newval)
     if (listener && (getEnabled () || batchMode)) {
         listener->panelChanged (EvResizeScale, Glib::ustring::format (std::setw(5), std::fixed, std::setprecision(2), scale->getValue()));
     }
-}
-
-void Resize::adjusterAutoToggled(Adjuster* a, bool newval)
-{
 }
 
 int Resize::getComputedWidth()
@@ -576,11 +574,13 @@ void Resize::updateGUI ()
     case (0):
         // Scale mode
         pack_start (*scale, Gtk::PACK_SHRINK, 4);
+        reorder_child(*allowUpscaling, 4);
         break;
 
     case (1):
         // Width mode
         pack_start (*sizeBox, Gtk::PACK_SHRINK, 4);
+        reorder_child(*allowUpscaling, 4);
         w->set_sensitive (true);
         h->set_sensitive (false);
         break;
@@ -588,6 +588,7 @@ void Resize::updateGUI ()
     case (2):
         // Height mode
         pack_start (*sizeBox, Gtk::PACK_SHRINK, 4);
+        reorder_child(*allowUpscaling, 4);
         w->set_sensitive (false);
         h->set_sensitive (true);
         break;
@@ -595,6 +596,7 @@ void Resize::updateGUI ()
     case (3):
         // Bounding box mode
         pack_start (*sizeBox, Gtk::PACK_SHRINK, 4);
+        reorder_child(*allowUpscaling, 4);
         w->set_sensitive (true);
         h->set_sensitive (true);
         break;

@@ -14,16 +14,17 @@
  *  GNU General Public License for more details.
  *
  *  You should have received a copy of the GNU General Public License
- *  along with RawTherapee.  If not, see <http://www.gnu.org/licenses/>.
+ *  along with RawTherapee.  If not, see <https://www.gnu.org/licenses/>.
  */
 #include "crop.h"
+
 #include "options.h"
 #include "rtimage.h"
 
+#include "../rtengine/procparams.h"
+
 using namespace rtengine;
 using namespace rtengine::procparams;
-
-extern Options options;
 
 namespace
 {
@@ -202,7 +203,7 @@ Crop::Crop():
     ppisubgrid->get_style_context()->add_class("grid-spacing");
     setExpandAlignProperties(ppisubgrid, true, false, Gtk::ALIGN_FILL, Gtk::ALIGN_CENTER);
 
-    Gtk::Label* ppilab = Gtk::manage (new Gtk::Label (M("TP_CROP_PPI")));
+    Gtk::Label* ppilab = Gtk::manage (new Gtk::Label (M("TP_CROP_PPI") + ":"));
     setExpandAlignProperties(ppilab, false, false, Gtk::ALIGN_START, Gtk::ALIGN_CENTER);
 
     ppi = Gtk::manage (new MySpinButton ());
@@ -1397,24 +1398,19 @@ void Crop::cropResized (int &x, int &y, int& x2, int& y2)
         y2 = maxh - 1;
     }
 
-    int X, Y;
     int W;
 
     if (x < x2) {
         W = x2 - x + 1;
-        X = x;
     } else {
         W = x - x2 + 1;
-        X = x2;
     }
 
-    int H;
 
+    int Y;
     if (y < y2) {
-        H = y2 - y + 1;
         Y = y;
     } else {
-        H = y - y2 + 1;
         Y = y2;
     }
 
@@ -1422,6 +1418,7 @@ void Crop::cropResized (int &x, int &y, int& x2, int& y2)
         W = maxw;
     }
 
+    int H;
     if (fixr->get_active()) {
         double r = getRatio ();
 
@@ -1454,6 +1451,7 @@ void Crop::cropResized (int &x, int &y, int& x2, int& y2)
         }
     }
 
+    int X;
     if (x < x2) {
         W = x2 - x + 1;
         X = x;

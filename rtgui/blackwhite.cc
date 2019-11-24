@@ -14,15 +14,22 @@
  *  GNU General Public License for more details
  *
  *  You should have received a copy of the GNU General Public License
- *  along with RawTherapee.  If not, see <http://www.gnu.org/licenses/>.
+ *  along with RawTherapee.  If not, see <https://www.gnu.org/licenses/>.
  */
-#include "blackwhite.h"
-#include "rtimage.h"
-#include "../rtengine/color.h"
 #include <iomanip>
 #include <cmath>
+
+#include "blackwhite.h"
+
+#include "curveeditor.h"
+#include "curveeditorgroup.h"
 #include "guiutils.h"
-#include "edit.h"
+#include "rtimage.h"
+#include "options.h"
+
+#include "../rtengine/color.h"
+#include "../rtengine/procparams.h"
+#include "../rtengine/utils.h"
 
 using namespace rtengine;
 using namespace rtengine::procparams;
@@ -1145,10 +1152,6 @@ void BlackWhite::adjusterChanged(Adjuster* a, double newval)
             listener->panelChanged (EvBWpur, value );
         }
     }
-}
-
-void BlackWhite::adjusterAutoToggled(Adjuster* a, bool newval)
-{
 }
 
 void BlackWhite::updateRGBLabel ()

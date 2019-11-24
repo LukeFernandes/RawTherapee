@@ -15,11 +15,13 @@
 //  GNU General Public License for more details.
 //
 //  You should have received a copy of the GNU General Public License
-//  along with this program.  If not, see <http://www.gnu.org/licenses/>.
+//  along with this program.  If not, see <https://www.gnu.org/licenses/>.
 //
 ////////////////////////////////////////////////////////////////
 
+#include "color.h"
 #include "rtengine.h"
+#include "rawimage.h"
 #include "rawimagesource.h"
 #include "rt_algo.h"
 #include "rt_math.h"
@@ -39,10 +41,11 @@ const float d65_white[3] = { 0.950456, 1, 1.088754 };
 void RawImageSource::cielab (const float (*rgb)[3], float* l, float* a, float *b, const int width, const int height, const int labWidth, const float xyz_cam[3][3])
 {
     static LUTf cbrt(0x14000);
-    static bool cbrtinit = false;
 
     if (!rgb) {
+        static bool cbrtinit = false;
         if(!cbrtinit) {
+        #pragma omp parallel for
             for (int i = 0; i < 0x14000; i++) {
                 double r = i / 65535.0;
                 cbrt[i] = r > Color::eps ? std::cbrt(r) : (Color::kappa * r + 16.0) / 116.0;
@@ -120,6 +123,11 @@ void RawImageSource::xtransborder_interpolate (int border, array2D<float> &red, 
 
     int xtrans[6][6];
     ri->getXtransMatrix(xtrans);
+    const float weight[3][3] = {
+                                {0.25f, 0.5f, 0.25f},
+                                {0.5f,  0.f,  0.5f},
+                                {0.25f, 0.5f, 0.25f}
+                               };
 
     for (int row = 0; row < height; row++)
         for (int col = 0; col < width; col++) {
@@ -129,11 +137,11 @@ void RawImageSource::xtransborder_interpolate (int border, array2D<float> &red, 
 
             float sum[6] = {0.f};
 
-            for (int y = MAX(0, row - 1); y <= MIN(row + 1, height - 1); y++)
-                for (int x = MAX(0, col - 1); x <= MIN(col + 1, width - 1); x++) {
+            for (int y = MAX(0, row - 1), v = row == 0 ? 0 : -1; y <= MIN(row + 1, height - 1); y++, v++)
+                for (int x = MAX(0, col - 1), h = col == 0 ? 0 : -1; x <= MIN(col + 1, width - 1); x++, h++) {
                     int f = fcol(y, x);
-                    sum[f] += rawData[y][x];
-                    sum[f + 3]++;
+                    sum[f] += rawData[y][x] * weight[v + 1][h + 1];
+                    sum[f + 3] += weight[v + 1][h + 1];
                 }
 
             switch(fcol(row, col)) {
@@ -168,9 +176,16 @@ void RawImageSource::xtransborder_interpolate (int border, array2D<float> &red, 
 */
 // override CLIP function to test unclipped output
 #define CLIP(x) (x)
-void RawImageSource::xtrans_interpolate (const int passes, const bool useCieLab)
+void RawImageSource::xtrans_interpolate (const int passes, const bool useCieLab, size_t chunkSize, bool measure)
 {
-    BENCHFUN
+
+    std::unique_ptr<StopWatch> stop;
+
+    if (measure) {
+        std::cout << passes << "-pass Xtrans Demosaicing " << W << "x" << H << " image with " << chunkSize << " tiles per thread" << std::endl;
+        stop.reset(new StopWatch("xtrans demosaic"));
+    }
+
     constexpr int ts = 114;      /* Tile Size */
     constexpr int tsh = ts / 2;  /* half of Tile Size */
 
@@ -178,7 +193,7 @@ void RawImageSource::xtrans_interpolate (const int passes, const bool useCieLab)
     const bool plistenerActive = plistener;
 
     if (plistenerActive) {
-        plistener->setProgressStr (Glib::ustring::compose(M("TP_RAW_DMETHOD_PROGRESSBAR"), "Xtrans"));
+        plistener->setProgressStr (Glib::ustring::compose(M("TP_RAW_DMETHOD_PROGRESSBAR"), M("TP_RAW_XTRANS")));
         plistener->setProgress (progress);
     }
 
@@ -196,12 +211,6 @@ void RawImageSource::xtrans_interpolate (const int passes, const bool useCieLab)
     ushort sgrow = 0, sgcol = 0;
 
     const int height = H, width = W;
-
-//    if (settings->verbose) {
-//        printf("%d-pass X-Trans interpolation using %s conversion...\n", passes, useCieLab ? "lab" : "yuv");
-//    }
-
-    xtransborder_interpolate(6, red, green, blue);
 
     float xyz_cam[3][3];
     {
@@ -284,8 +293,6 @@ void RawImageSource::xtrans_interpolate (const int passes, const bool useCieLab)
 #endif
     {
         int progressCounter = 0;
-        int c;
-        float color[3][6];
 
         float *buffer = (float *) malloc ((ts * ts * (ndir * 4 + 3) + 128) * sizeof(float));
         float (*rgb)[ts][ts][3] = (float(*)[ts][ts][3]) buffer;
@@ -297,7 +304,7 @@ void RawImageSource::xtrans_interpolate (const int passes, const bool useCieLab)
         uint8_t (*homosummax)[ts] = (uint8_t (*)[ts]) homo[ndir - 1]; // we can reuse the homo-buffer because they are not used together
 
 #ifdef _OPENMP
-        #pragma omp for collapse(2) schedule(dynamic) nowait
+        #pragma omp for collapse(2) schedule(dynamic, chunkSize) nowait
 #endif
 
         for (int top = 3; top < height - 19; top += ts - 16)
@@ -514,6 +521,7 @@ void RawImageSource::xtrans_interpolate (const int passes, const bool useCieLab)
 
                     /* Interpolate red and blue values for solitary green pixels:   */
                     int sgstartcol = (left - sgcol + 4) / 3 * 3 + sgcol;
+                    float color[3][6];
 
                     for (int row = (top - sgrow + 4) / 3 * 3 + sgrow; row < mrow - 2; row += 3) {
                         for (int col = sgstartcol, h = fcol(row, col + 1); col < mcol - 2; col += 3, h ^= 2) {
@@ -557,7 +565,7 @@ void RawImageSource::xtrans_interpolate (const int passes, const bool useCieLab)
                             }
 
                         int coloffset = (RightShift[row % 3] == 1 ? 3 : 1);
-                        c = (row - sgrow) % 3 ? ts : 1;
+                        int c = ((row - sgrow) % 3) ? ts : 1;
                         int h = 3 * (c ^ ts ^ 1);
 
                         if(coloffset == 3) {
@@ -622,13 +630,13 @@ void RawImageSource::xtrans_interpolate (const int passes, const bool useCieLab)
                                     if (hex[d] + hex[d + 1]) {
                                         float g = 3 * rix[0][1] - 2 * rix[hex[d]][1] - rix[hex[d + 1]][1];
 
-                                        for (c = 0; c < 4; c += 2) {
+                                        for (int c = 0; c < 4; c += 2) {
                                             rix[0][c] = CLIP((g + 2 * rix[hex[d]][c] + rix[hex[d + 1]][c]) * 0.33333333f);
                                         }
                                     } else {
                                         float g = 2 * rix[0][1] - rix[hex[d]][1] - rix[hex[d + 1]][1];
 
-                                        for (c = 0; c < 4; c += 2) {
+                                        for (int c = 0; c < 4; c += 2) {
                                             rix[0][c] = CLIP((g + rix[hex[d]][c] + rix[hex[d + 1]][c]) * 0.5f);
                                         }
                                     }
@@ -649,10 +657,7 @@ void RawImageSource::xtrans_interpolate (const int passes, const bool useCieLab)
                     // (presumably coming from original AHD) and converts taking
                     // camera matrix into account.  We use this in RT.
                     for (int d = 0; d < ndir; d++) {
-                        float *l = &lab[0][0][0];
-                        float *a = &lab[1][0][0];
-                        float *b = &lab[2][0][0];
-                        cielab(&rgb[d][4][4], l, a, b, ts, mrow - 8, ts - 8, xyz_cam);
+                        cielab(&rgb[d][4][4], &lab[0][0][0], &lab[1][0][0], &lab[2][0][0], ts, mrow - 8, ts - 8, xyz_cam);
                         int f = dir[d & 3];
                         f = f == 1 ? 1 : f - 8;
 
@@ -697,7 +702,7 @@ void RawImageSource::xtrans_interpolate (const int passes, const bool useCieLab)
                                 // which appears less good with specular highlights
                                 vfloat redv, greenv, bluev;
                                 vconvertrgbrgbrgbrgb2rrrrggggbbbb(rgb[d][row][col], redv, greenv, bluev);
-                                vfloat yv = zd2627v * redv + zd6780v * bluev + zd0593v * greenv;
+                                vfloat yv = zd2627v * redv + zd6780v * greenv + zd0593v * bluev;
                                 STVFU(yuv[0][row - 4][col - 4], yv);
                                 STVFU(yuv[1][row - 4][col - 4], (bluev - yv) * zd56433v);
                                 STVFU(yuv[2][row - 4][col - 4], (redv - yv) * zd67815v);
@@ -956,13 +961,14 @@ void RawImageSource::xtrans_interpolate (const int passes, const bool useCieLab)
         free(buffer);
     }
 
+    xtransborder_interpolate(passes > 1 ? 8 : 11, red, green, blue);
 }
 #undef CLIP
 void RawImageSource::fast_xtrans_interpolate (const array2D<float> &rawData, array2D<float> &red, array2D<float> &green, array2D<float> &blue)
 {
 
     if (plistener) {
-        plistener->setProgressStr(Glib::ustring::compose(M("TP_RAW_DMETHOD_PROGRESSBAR"), "fast Xtrans"));
+        plistener->setProgressStr(Glib::ustring::compose(M("TP_RAW_DMETHOD_PROGRESSBAR"), M("TP_RAW_XTRANSFAST")));
         plistener->setProgress(0.0);
     }
 

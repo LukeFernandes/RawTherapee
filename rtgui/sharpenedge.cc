@@ -14,12 +14,17 @@
  *  GNU General Public License for more details.
  *
  *  You should have received a copy of the GNU General Public License
- *  along with RawTherapee.  If not, see <http://www.gnu.org/licenses/>.
+ *  along with RawTherapee.  If not, see <https://www.gnu.org/licenses/>.
  */
-#include "sharpenedge.h"
-#include "guiutils.h"
-#include <sstream>
 #include <cmath>
+#include <sstream>
+
+#include "sharpenedge.h"
+
+#include "guiutils.h"
+#include "options.h"
+
+#include "../rtengine/procparams.h"
 
 using namespace rtengine;
 using namespace rtengine::procparams;
@@ -140,10 +145,6 @@ void SharpenEdge::adjusterChanged(Adjuster* a, double newval)
             listener->panelChanged (EvSharpenEdgeAmount, value );
         }
     }
-}
-
-void SharpenEdge::adjusterAutoToggled(Adjuster* a, bool newval)
-{
 }
 
 void SharpenEdge::setBatchMode(bool batchMode)

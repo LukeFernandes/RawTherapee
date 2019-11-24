@@ -1,14 +1,14 @@
 # Common source files for both CLI and non-CLI execautables
 set(CLISOURCEFILES
     alignedmalloc.cc
-    edit.cc
+    editcallbacks.cc
     main-cli.cc
     multilangmgr.cc
     options.cc
     paramsedited.cc
     pathutils.cc
     threadutils.cc
-    )
+)
 
 set(NONCLISOURCEFILES
     adjuster.cc
@@ -43,25 +43,31 @@ set(NONCLISOURCEFILES
     curveeditorgroup.cc
     darkframe.cc
     defringe.cc
+    dehaze.cc
     diagonalcurveeditorsubgroup.cc
     dirbrowser.cc
     dirpyrdenoise.cc
     dirpyrequalizer.cc
     distortion.cc
     dynamicprofilepanel.cc
-    edit.cc
+    editbuffer.cc
+    editcallbacks.cc
     editorpanel.cc
+    editwidgets.cc
     editwindow.cc
     epd.cc
+    eventmapper.cc
     exiffiltersettings.cc
     exifpanel.cc
     exportpanel.cc
     extprog.cc
+    fattaltonemap.cc
     filebrowser.cc
     filebrowserentry.cc
     filecatalog.cc
     filepanel.cc
     filethumbnailbuttonset.cc
+    filmnegative.cc
     filmsimulation.cc
     filterpanel.cc
     flatcurveeditorsubgroup.cc
@@ -73,7 +79,6 @@ set(NONCLISOURCEFILES
     hsvequalizer.cc
     iccprofilecreator.cc
     icmpanel.cc
-    ilabel.cc
     imagearea.cc
     imageareapanel.cc
     impulsedenoise.cc
@@ -81,12 +86,15 @@ set(NONCLISOURCEFILES
     inspector.cc
     iptcpanel.cc
     labcurve.cc
+    labgrid.cc
     lensgeom.cc
     lensprofile.cc
+    localcontrast.cc
     lockablecolorpicker.cc
     lwbutton.cc
     lwbuttonset.cc
     main.cc
+    metadatapanel.cc
     multilangmgr.cc
     mycurve.cc
     mydiagonalcurve.cc
@@ -97,6 +105,7 @@ set(NONCLISOURCEFILES
     partialpastedlg.cc
     pathutils.cc
     pcvignette.cc
+    pdsharpening.cc
     perspective.cc
     placesbrowser.cc
     popupbutton.cc
@@ -120,6 +129,8 @@ set(NONCLISOURCEFILES
     rgbcurves.cc
     rotate.cc
     rtimage.cc
+    rtscalable.cc
+    rtsurface.cc
     rtwindow.cc
     saveasdlg.cc
     saveformatpanel.cc
@@ -130,6 +141,7 @@ set(NONCLISOURCEFILES
     sharpening.cc
     sharpenmicro.cc
     shcselector.cc
+    softlight.cc
     soundman.cc
     splash.cc
     threadutils.cc
@@ -150,14 +162,7 @@ set(NONCLISOURCEFILES
     xtransprocess.cc
     xtransrawexposure.cc
     zoompanel.cc
-    fattaltonemap.cc
-    localcontrast.cc
-    eventmapper.cc
-    metadatapanel.cc
-    labgrid.cc
-    softlight.cc
-    dehaze.cc
-    )
+)
 
 include_directories(BEFORE "${CMAKE_CURRENT_BINARY_DIR}")
 
@@ -180,7 +185,8 @@ if(WIN32)
         ${GTKMM_INCLUDE_DIRS}
         ${GTK_INCLUDE_DIRS}
         ${LENSFUN_INCLUDE_DIRS}
-		"C:/Progra~1/NVIDIAGPUComputingToolkit/CUDA/v10.0/include"
+	${RSVG_INCLUDE_DIRS}
+        "C:/Progra~1/NVIDIAGPUComputingToolkit/CUDA/v10.0/include"
         )
     link_directories(. "${PROJECT_SOURCE_DIR}/rtexif"
         ${EXTRA_LIBDIR}
@@ -191,7 +197,8 @@ if(WIN32)
         ${GTKMM_LIBRARY_DIRS}
         ${GTK_LIBRARY_DIRS}
         ${LENSFUN_LIBRARY_DIRS}
-		"C:/Progra~1/NVIDIAGPUComputingToolkit/CUDA/v10.0/lib/x64"
+	${RSVG_LIBRARY_DIRS}
+	"C:/Progra~1/NVIDIAGPUComputingToolkit/CUDA/v10.0/lib/x64"
         )
 else()
     include_directories(${EXTRA_INCDIR}
@@ -209,7 +216,8 @@ else()
         ${IPTCDATA_INCLUDE_DIRS}
         ${LCMS_INCLUDE_DIRS}
         ${LENSFUN_INCLUDE_DIRS}
-		"C:/Progra~1/NVIDIAGPUComputingToolkit/CUDA/v10.0/include"
+	${RSVG_INCLUDE_DIRS}
+        "C:/Progra~1/NVIDIAGPUComputingToolkit/CUDA/v10.0/include"
         )
     link_directories(${EXTRA_LIBDIR}
         ${CANBERRA-GTK_LIBRARY_DIRS}
@@ -226,11 +234,13 @@ else()
         ${IPTCDATA_LIBRARY_DIRS}
         ${LCMS_LIBRARY_DIRS}
         ${LENSFUN_LIBRARY_DIRS}
-		"C:/Progra~1/NVIDIAGPUComputingToolkit/CUDA/v10.0/lib/x64"
+	${RSVG_LIBRARY_DIRS}
+        "C:/Progra~1/NVIDIAGPUComputingToolkit/CUDA/v10.0/lib/x64"
         )
 endif()
 
-if(OPENMP_FOUND AND NOT APPLE)
+# Excluding libatomic needed by Clang/FreeBSD, #3636
+if(OPENMP_FOUND AND NOT APPLE AND NOT "${CMAKE_SYSTEM_NAME}" STREQUAL "FreeBSD")
     set(EXTRA_LIB_RTGUI ${EXTRA_LIB_RTGUI} "atomic")
 endif()
 
@@ -244,6 +254,10 @@ add_executable(rth-cli ${EXTRA_SRC_CLI} ${CLISOURCEFILES})
 # Add dependencies to executables targets
 add_dependencies(rth UpdateInfo)
 add_dependencies(rth-cli UpdateInfo)
+
+#Define a target specific definition to use in code
+target_compile_definitions(rth PUBLIC GUIVERSION)
+target_compile_definitions(rth-cli PUBLIC CLIVERSION)
 
 # Set executables targets properties, i.e. output filename and compile flags
 # for "Debug" builds, open a console in all cases for Windows version
@@ -274,7 +288,9 @@ target_link_libraries(rth rtengine
     ${TIFF_LIBRARIES}
     ${ZLIB_LIBRARIES}
     ${LENSFUN_LIBRARIES}
-	"C:/Progra~1/NVIDIAGPUComputingToolkit/CUDA/v10.0/lib/x64/OpenCL.lib"
+    ${RSVG_LIBRARIES}
+    ${TCMALLOC_LIBRARIES}
+    "C:/Progra~1/NVIDIAGPUComputingToolkit/CUDA/v10.0/lib/x64/OpenCL.lib"
     )
 
 target_link_libraries(rth-cli rtengine
@@ -295,7 +311,9 @@ target_link_libraries(rth-cli rtengine
     ${TIFF_LIBRARIES}
     ${ZLIB_LIBRARIES}
     ${LENSFUN_LIBRARIES}
-	"C:/Progra~1/NVIDIAGPUComputingToolkit/CUDA/v10.0/lib/x64/OpenCL.lib"
+    ${RSVG_LIBRARIES}
+    ${TCMALLOC_LIBRARIES}
+    "C:/Progra~1/NVIDIAGPUComputingToolkit/CUDA/v10.0/lib/x64/OpenCL.lib"
     )
 
 # Install executables

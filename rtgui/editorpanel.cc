@@ -15,7 +15,7 @@
  *  GNU General Public License for more details.
  *
  *  You should have received a copy of the GNU General Public License
- *  along with RawTherapee.  If not, see <http://www.gnu.org/licenses/>.
+ *  along with RawTherapee.  If not, see <https://www.gnu.org/licenses/>.
  */
 #include "editorpanel.h"
 
@@ -23,6 +23,8 @@
 
 #include "../rtengine/imagesource.h"
 #include "../rtengine/iccstore.h"
+#include "batchqueue.h"
+#include "batchqueueentry.h"
 #include "soundman.h"
 #include "rtimage.h"
 #include "rtwindow.h"
@@ -32,6 +34,9 @@
 #include "progressconnector.h"
 #include "procparamchangers.h"
 #include "placesbrowser.h"
+#include "pathutils.h"
+#include "thumbnail.h"
+#include "toolpanelcoord.h"
 
 using namespace rtengine::procparams;
 
@@ -484,14 +489,14 @@ EditorPanel::EditorPanel (FilePanel* filePanel)
     histogramPanel = nullptr;
 
     profilep = Gtk::manage (new ProfilePanel ());
-    ppframe = new Gtk::Frame ();
+    ppframe = Gtk::manage(new Gtk::Frame());
     ppframe->set_name ("ProfilePanel");
     ppframe->add (*profilep);
     ppframe->set_label (M ("PROFILEPANEL_LABEL"));
     //leftsubbox->pack_start (*ppframe, Gtk::PACK_SHRINK, 4);
 
     navigator = Gtk::manage (new Navigator ());
-    navigator->previewWindow->set_size_request (-1, 150);
+    navigator->previewWindow->set_size_request (-1, 150 * RTScalable::getScale());
     leftsubbox->pack_start (*navigator, Gtk::PACK_SHRINK, 2);
 
     history = Gtk::manage (new History ());
@@ -627,7 +632,7 @@ EditorPanel::EditorPanel (FilePanel* filePanel)
     vboxright->pack2 (*vsubboxright, true, true);
 
     // Save buttons
-    Gtk::Grid *iops = new Gtk::Grid ();
+    Gtk::Grid *iops = Gtk::manage(new Gtk::Grid());
     iops->set_name ("IopsPanel");
     iops->set_orientation (Gtk::ORIENTATION_HORIZONTAL);
     iops->set_row_spacing (2);
@@ -661,7 +666,7 @@ EditorPanel::EditorPanel (FilePanel* filePanel)
     progressLabel->set_fraction (0.0);
 
     // tbRightPanel_1
-    tbRightPanel_1 = new Gtk::ToggleButton ();
+    tbRightPanel_1 = Gtk::manage(new Gtk::ToggleButton());
     iRightPanel_1_Show = new RTImage ("panel-to-left.png");
     iRightPanel_1_Hide = new RTImage ("panel-to-right.png");
     tbRightPanel_1->set_relief (Gtk::RELIEF_NONE);
@@ -671,7 +676,7 @@ EditorPanel::EditorPanel (FilePanel* filePanel)
     setExpandAlignProperties (tbRightPanel_1, false, false, Gtk::ALIGN_CENTER, Gtk::ALIGN_FILL);
 
     // ShowHideSidePanels
-    tbShowHideSidePanels = new Gtk::ToggleButton ();
+    tbShowHideSidePanels = Gtk::manage(new Gtk::ToggleButton());
     iShowHideSidePanels = new RTImage ("crossed-arrows-out.png");
     iShowHideSidePanels_exit = new RTImage ("crossed-arrows-in.png");
     tbShowHideSidePanels->set_relief (Gtk::RELIEF_NONE);
@@ -883,48 +888,23 @@ EditorPanel::~EditorPanel ()
 
     delete tpc;
 
-    delete ppframe;
     delete leftsubbox;
     delete leftbox;
     delete vsubboxright;
     delete vboxright;
 
     //delete saveAsDialog;
-    if (catalogPane) {
-        delete catalogPane;
-    }
-
-    if (iTopPanel_1_Show) {
-        delete iTopPanel_1_Show;
-    }
-
-    if (iTopPanel_1_Hide) {
-        delete iTopPanel_1_Hide;
-    }
-
-    if (iHistoryShow) {
-        delete iHistoryShow;
-    }
-
-    if (iHistoryHide) {
-        delete iHistoryHide;
-    }
-
-    if (iBeforeLockON) {
-        delete iBeforeLockON;
-    }
-
-    if (iBeforeLockOFF) {
-        delete iBeforeLockOFF;
-    }
-
-    if (iRightPanel_1_Show) {
-        delete iRightPanel_1_Show;
-    }
-
-    if (iRightPanel_1_Hide) {
-        delete iRightPanel_1_Hide;
-    }
+    delete catalogPane;
+    delete iTopPanel_1_Show;
+    delete iTopPanel_1_Hide;
+    delete iHistoryShow;
+    delete iHistoryHide;
+    delete iBeforeLockON;
+    delete iBeforeLockOFF;
+    delete iRightPanel_1_Show;
+    delete iRightPanel_1_Hide;
+    delete iShowHideSidePanels_exit;
+    delete iShowHideSidePanels;
 }
 
 void EditorPanel::leftPaneButtonReleased (GdkEventButton *event)
@@ -1057,14 +1037,14 @@ void EditorPanel::open (Thumbnail* tmb, rtengine::InitialImage* isrc)
     } else {
         Gtk::Allocation alloc;
         iareapanel->imageArea->on_resized (alloc);
+
+        // When passing a photo as an argument to the RawTherapee executable, the user wants
+        // this auto-loaded photo's thumbnail to be selected and visible in the Filmstrip.
+        EditorPanel::syncFileBrowser();
     }
 
     history->resetSnapShotNumber();
     navigator->setInvalid(ipc->getFullWidth(),ipc->getFullHeight());
-
-    // When passing a photo as an argument to the RawTherapee executable, the user wants
-    // this auto-loaded photo's thumbnail to be selected and visible in the Filmstrip.
-    EditorPanel::syncFileBrowser();
 }
 
 void EditorPanel::close ()
@@ -1091,7 +1071,7 @@ void EditorPanel::close ()
         if (iareapanel) {
             iareapanel->imageArea->setPreviewHandler (nullptr);
             iareapanel->imageArea->setImProcCoordinator (nullptr);
-            iareapanel->imageArea->unsubscribe();
+            tpc->editModeSwitchedOff();
         }
 
         rtengine::StagedImageProcessor::destroy (ipc);
@@ -1131,7 +1111,7 @@ Glib::ustring EditorPanel::getShortName ()
     }
 }
 
-Glib::ustring EditorPanel::getFileName ()
+Glib::ustring EditorPanel::getFileName () const
 {
     if (openThm) {
         return openThm->getFileName ();
@@ -1378,7 +1358,7 @@ void EditorPanel::info_toggled ()
         infoString = M ("QINFO_NOEXIF");
     }
 
-    iareapanel->imageArea->setInfoText (infoString);
+    iareapanel->imageArea->setInfoText (std::move(infoString));
     iareapanel->imageArea->infoEnabled (info->get_active ());
 }
 
@@ -1835,7 +1815,7 @@ BatchQueueEntry* EditorPanel::createBatchQueueEntry ()
     isrc->getImageSource()->getFullSize (fullW, fullH, pparams.coarse.rotate == 90 || pparams.coarse.rotate == 270 ? TR_R90 : TR_NONE);
     int prevh = BatchQueue::calcMaxThumbnailHeight();
     int prevw = int ((size_t)fullW * (size_t)prevh / (size_t)fullH);
-    return new BatchQueueEntry (job, pparams, openThm->getFileName(), prevw, prevh, openThm);
+    return new BatchQueueEntry (job, pparams, openThm->getFileName(), prevw, prevh, openThm, options.overwriteOutputFile);
 }
 
 
@@ -1928,6 +1908,7 @@ void EditorPanel::saveAsPressed ()
             BatchQueueEntry* bqe = createBatchQueueEntry ();
             bqe->outFileName = fnameOut;
             bqe->saveFormat = saveAsDialog->getFormat ();
+            bqe->overwriteFile = !saveAsDialog->getAutoSuffix();
             bqe->forceFormatOpts = saveAsDialog->getForceFormatOpts ();
             parent->addBatchQueueJob (bqe, saveAsDialog->getToHeadOfQueue ());
             fnameOK = true;
@@ -2034,9 +2015,9 @@ bool EditorPanel::idle_sendToGimp ( ProgressConnector<rtengine::IImagefloat*> *p
 
     if (img) {
         // get file name base
-        Glib::ustring shortname = removeExtension (Glib::path_get_basename (fname));
-        Glib::ustring dirname = Glib::get_tmp_dir ();
-        Glib::ustring fname = Glib::build_filename (dirname, shortname);
+        const Glib::ustring shortname = removeExtension (Glib::path_get_basename (fname));
+        const Glib::ustring dirname = Glib::get_tmp_dir ();
+        const Glib::ustring lfname = Glib::build_filename (dirname, shortname);
 
         SaveFormat sf;
         sf.format = "tif";
@@ -2045,13 +2026,13 @@ bool EditorPanel::idle_sendToGimp ( ProgressConnector<rtengine::IImagefloat*> *p
         sf.tiffUncompressed = true;
         sf.saveParams = true;
 
-        Glib::ustring fileName = Glib::ustring::compose ("%1.%2", fname, sf.format);
+        Glib::ustring fileName = Glib::ustring::compose ("%1.%2", lfname, sf.format);
 
         // TODO: Just list all file with a suitable name instead of brute force...
         int tries = 1;
 
         while (Glib::file_test (fileName, Glib::FILE_TEST_EXISTS) && tries < 1000) {
-            fileName = Glib::ustring::compose ("%1-%2.%3", fname, tries, sf.format);
+            fileName = Glib::ustring::compose ("%1-%2.%3", lfname, tries, sf.format);
             tries++;
         }
 

@@ -14,24 +14,27 @@
  *  GNU General Public License for more details.
  *
  *  You should have received a copy of the GNU General Public License
- *  along with RawTherapee.  If not, see <http://www.gnu.org/licenses/>.
+ *  along with RawTherapee.  If not, see <https://www.gnu.org/licenses/>.
  */
-#ifndef _FILECATALOG_
-#define _FILECATALOG_
+#pragma once
 
-#include "filebrowser.h"
-#include "exiffiltersettings.h"
-#include <giomm.h>
-#include "fileselectionlistener.h"
 #include <set>
-#include "fileselectionchangelistener.h"
+
+#include <giomm.h>
+
 #include "coarsepanel.h"
-#include "toolbar.h"
-#include "filterpanel.h"
+#include "exiffiltersettings.h"
 #include "exportpanel.h"
-#include "previewloader.h"
+#include "filebrowser.h"
+#include "fileselectionchangelistener.h"
+#include "fileselectionlistener.h"
+#include "filterpanel.h"
 #include "multilangmgr.h"
+#include "previewloader.h"
 #include "threadutils.h"
+#include "toolbar.h"
+
+#include "../rtengine/noncopyable.h"
 
 class FilePanel;
 /*
@@ -44,7 +47,8 @@ class FileCatalog : public Gtk::VBox,
     public PreviewLoaderListener,
     public FilterPanelListener,
     public FileBrowserListener,
-    public ExportPanelListener
+    public ExportPanelListener,
+    public rtengine::NonCopyable
 {
 public:
     typedef sigc::slot<void, const Glib::ustring&> DirSelectionSlot;
@@ -141,7 +145,7 @@ private:
     IdleRegister idle_register;
 
     void addAndOpenFile (const Glib::ustring& fname);
-    void checkAndAddFile (Glib::RefPtr<Gio::File> info);
+    void addFile (const Glib::ustring& fName);
     std::vector<Glib::ustring> getFileList ();
     BrowserFilter getFilter ();
     void trashChanged ();
@@ -204,7 +208,7 @@ public:
 
     void filterApplied() override;
     void openRequested(const std::vector<Thumbnail*>& tbe) override;
-    void deleteRequested(const std::vector<FileBrowserEntry*>& tbe, bool inclBatchProcessed) override;
+    void deleteRequested(const std::vector<FileBrowserEntry*>& tbe, bool inclBatchProcessed, bool onlySelected) override;
     void copyMoveRequested(const std::vector<FileBrowserEntry*>& tbe, bool moveRequested) override;
     void developRequested(const std::vector<FileBrowserEntry*>& tbe, bool fastmode) override;
     void renameRequested(const std::vector<FileBrowserEntry*>& tbe) override;
@@ -286,5 +290,3 @@ inline void FileCatalog::setDirSelector (const FileCatalog::DirSelectionSlot& se
 {
     this->selectDir = selectDir;
 }
-
-#endif

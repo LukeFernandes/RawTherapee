@@ -14,13 +14,16 @@
  *  GNU General Public License for more details.
  *
  *  You should have received a copy of the GNU General Public License
- *  along with RawTherapee.  If not, see <http://www.gnu.org/licenses/>.
+ *  along with RawTherapee.  If not, see <https://www.gnu.org/licenses/>.
  */
 #include "filepanel.h"
 
+#include "batchtoolpanelcoord.h"
+#include "editorpanel.h"
 #include "rtwindow.h"
 #include "inspector.h"
 #include "placesbrowser.h"
+#include "thumbnail.h"
 
 FilePanel::FilePanel () : parent(nullptr), error(0)
 {
@@ -358,7 +361,7 @@ void FilePanel::saveOptions ()
     options.browserToolPanelWidth = winW - get_position();
     options.browserToolPanelHeight = tpcPaned->get_position ();
 
-    if (options.startupDir == STARTUPDIR_LAST && fileCatalog->lastSelectedDir () != "") {
+    if (options.startupDir == STARTUPDIR_LAST && !fileCatalog->lastSelectedDir().empty()) {
         options.startupPath = fileCatalog->lastSelectedDir ();
     }
 

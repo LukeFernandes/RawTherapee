@@ -14,14 +14,19 @@
  *  GNU General Public License for more details.
  *
  *  You should have received a copy of the GNU General Public License
- *  along with RawTherapee.  If not, see <http://www.gnu.org/licenses/>.
+ *  along with RawTherapee.  If not, see <https://www.gnu.org/licenses/>.
  */
+
+#include "bayerpreprocess.h"
+#include "bayerprocess.h"
+
 #include "multilangmgr.h"
 #include "batchtoolpanelcoord.h"
 #include "options.h"
 #include "filepanel.h"
 #include "procparamchangers.h"
 #include "addsetids.h"
+#include "thumbnail.h"
 
 using namespace rtengine::procparams;
 
@@ -152,6 +157,7 @@ void BatchToolPanelCoordinator::initSession ()
             cacorrection->setAdjusterBehavior (false);
             sharpening->setAdjusterBehavior (false, false, false, false, false, false, false);
             prsharpening->setAdjusterBehavior (false, false, false, false, false, false, false);
+            pdSharpening->setAdjusterBehavior (false, false, false);
             sharpenEdge->setAdjusterBehavior (false, false);
             sharpenMicro->setAdjusterBehavior (false, false, false);
             epd->setAdjusterBehavior (false, false, false, false, false);
@@ -172,7 +178,7 @@ void BatchToolPanelCoordinator::initSession ()
             bayerpreprocess->setAdjusterBehavior (false, false);
             rawcacorrection->setAdjusterBehavior (false);
             flatfield->setAdjusterBehavior(false);
-            rawexposure->setAdjusterBehavior (false, false);
+            rawexposure->setAdjusterBehavior (false);
             bayerrawexposure->setAdjusterBehavior (false);
             xtransrawexposure->setAdjusterBehavior (false);
         } else {
@@ -220,7 +226,7 @@ void BatchToolPanelCoordinator::initSession ()
             bayerpreprocess->setAdjusterBehavior (options.baBehav[ADDSET_PREPROCESS_LINEDENOISE], options.baBehav[ADDSET_PREPROCESS_GREENEQUIL]);
             rawcacorrection->setAdjusterBehavior (options.baBehav[ADDSET_RAWCACORR]);
             flatfield->setAdjusterBehavior(options.baBehav[ADDSET_RAWFFCLIPCONTROL]);
-            rawexposure->setAdjusterBehavior (options.baBehav[ADDSET_RAWEXPOS_LINEAR], options.baBehav[ADDSET_RAWEXPOS_PRESER]);
+            rawexposure->setAdjusterBehavior (options.baBehav[ADDSET_RAWEXPOS_LINEAR]);
             bayerrawexposure->setAdjusterBehavior (options.baBehav[ADDSET_RAWEXPOS_BLACKS]);
             xtransrawexposure->setAdjusterBehavior (options.baBehav[ADDSET_RAWEXPOS_BLACKS]);
 
@@ -352,7 +358,6 @@ void BatchToolPanelCoordinator::initSession ()
             if (options.baBehav[ADDSET_DIRPYRDN_GAMMA]) { pparams.dirpyrDenoise.gamma = 0; }
             if (options.baBehav[ADDSET_RAWCACORR]) { pparams.raw.cablue = pparams.raw.cared = 0; }
             if (options.baBehav[ADDSET_RAWEXPOS_LINEAR]) { pparams.raw.expos = 0; }
-            if (options.baBehav[ADDSET_RAWEXPOS_PRESER]) { pparams.raw.preser = 0; }
             if (options.baBehav[ADDSET_RAWEXPOS_BLACKS]) {
                 pparams.raw.bayersensor.black0 = pparams.raw.bayersensor.black1 = pparams.raw.bayersensor.black2 = pparams.raw.bayersensor.black3 =
                 pparams.raw.xtranssensor.blackred = pparams.raw.xtranssensor.blackgreen = pparams.raw.xtranssensor.blackblue = 0;

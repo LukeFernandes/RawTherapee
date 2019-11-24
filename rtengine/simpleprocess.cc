@@ -14,8 +14,12 @@
  *  GNU General Public License for more details.
  *
  *  You should have received a copy of the GNU General Public License
- *  along with RawTherapee.  If not, see <http://www.gnu.org/licenses/>.
+ *  along with RawTherapee.  If not, see <https://www.gnu.org/licenses/>.
  */
+#include "cieimage.h"
+#include "dcp.h"
+#include "imagefloat.h"
+#include "labimage.h"
 #include "rtengine.h"
 #include "colortemp.h"
 #include "imagesource.h"
@@ -24,7 +28,9 @@
 #include "iccstore.h"
 #include "clutstore.h"
 #include "processingjob.h"
-#include <glibmm.h>
+#include "procparams.h"
+#include <glibmm/ustring.h>
+#include <glibmm/thread.h>
 #include "../rtgui/options.h"
 #include "rawimagesource.h"
 #include "../rtgui/multilangmgr.h"
@@ -33,7 +39,6 @@
 
 namespace rtengine
 {
-extern const Settings* settings;
 
 namespace
 {
@@ -165,6 +170,8 @@ private:
             } else {
                 imgsrc->setBorder(std::max(params.raw.bayersensor.border, 2));
             }
+        } else if (imgsrc->getSensorType() == ST_FUJI_XTRANS) {
+            imgsrc->setBorder(params.raw.xtranssensor.border);
         }
         imgsrc->getFullSize (fw, fh, tr);
 
@@ -206,13 +213,21 @@ private:
         imgsrc->setCurrentFrame (params.raw.bayersensor.imageNum);
         imgsrc->preprocess ( params.raw, params.lensProf, params.coarse, params.dirpyrDenoise.enabled);
 
+        // After preprocess, run film negative processing if enabled
+        if ((imgsrc->getSensorType() == ST_BAYER || (imgsrc->getSensorType() == ST_FUJI_XTRANS)) && params.filmNegative.enabled) {
+            imgsrc->filmNegativeProcess (params.filmNegative);
+        }
+
         if (pl) {
             pl->setProgress (0.20);
         }
         bool autoContrast = imgsrc->getSensorType() == ST_BAYER ? params.raw.bayersensor.dualDemosaicAutoContrast : params.raw.xtranssensor.dualDemosaicAutoContrast;
         double contrastThreshold = imgsrc->getSensorType() == ST_BAYER ? params.raw.bayersensor.dualDemosaicContrast : params.raw.xtranssensor.dualDemosaicContrast;
 
-        imgsrc->demosaic (params.raw, autoContrast, contrastThreshold);
+        imgsrc->demosaic (params.raw, autoContrast, contrastThreshold, params.pdsharpening.enabled && pl);
+        if (params.pdsharpening.enabled) {
+            imgsrc->captureSharpening(params.pdsharpening, false, params.pdsharpening.contrast, params.pdsharpening.deconvradius);
+        }
 
 
         if (pl) {
@@ -229,7 +244,6 @@ private:
             bool dehacontlutili = false;
             bool mapcontlutili = false;
             bool useHsl = false;
-//        multi_array2D<float, 3> conversionBuffer(1, 1);
             multi_array2D<float, 4> conversionBuffer (1, 1);
             imgsrc->retinexPrepareBuffers (params.icm, params.retinex, conversionBuffer, dummy);
             imgsrc->retinexPrepareCurves (params.retinex, cdcurve, mapcurve, dehatransmissionCurve, dehagaintransmissionCurve, dehacontlutili, mapcontlutili, useHsl, dummy, dummy );
@@ -335,13 +349,17 @@ private:
                 LUTf gamcurve (65536, 0);
                 float gam, gamthresh, gamslope;
                 ipf.RGB_denoise_infoGamCurve (params.dirpyrDenoise, imgsrc->isRAW(), gamcurve, gam, gamthresh, gamslope);
+#ifdef _OPENMP
                 #pragma omp parallel
+#endif
                 {
                     Imagefloat *origCropPart;//init auto noise
                     origCropPart = new Imagefloat (crW, crH);//allocate memory
                     Imagefloat *provicalc = new Imagefloat ((crW + 1) / 2, (crH + 1) / 2); //for denoise curves
                     int skipP = 1;
+#ifdef _OPENMP
                     #pragma omp for schedule(dynamic) collapse(2) nowait
+#endif
 
                     for (int wcr = 0; wcr < numtiles_W; wcr++) {
                         for (int hcr = 0; hcr < numtiles_H; hcr++) {
@@ -557,13 +575,17 @@ private:
                 coordH[0] = begH;
                 coordH[1] = fh / 2 - crH / 2;
                 coordH[2] = fh - crH - begH;
+#ifdef _OPENMP
                 #pragma omp parallel
+#endif
                 {
                     Imagefloat *origCropPart;//init auto noise
                     origCropPart = new Imagefloat (crW, crH);//allocate memory
                     Imagefloat *provicalc = new Imagefloat ((crW + 1) / 2, (crH + 1) / 2); //for denoise curves
 
+#ifdef _OPENMP
                     #pragma omp for schedule(dynamic) collapse(2) nowait
+#endif
 
                     for (int wcr = 0; wcr <= 2; wcr++) {
                         for (int hcr = 0; hcr <= 2; hcr++) {
@@ -760,7 +782,7 @@ private:
             }
 
             params.toneCurve.autoexp = false;
-            params.toneCurve.curveMode = ToneCurveParams::TcMode::FILMLIKE;
+            params.toneCurve.curveMode = ToneCurveMode::FILMLIKE;
             params.toneCurve.curve2 = { 0 };
             params.toneCurve.brightness = 0;
             params.toneCurve.contrast = 0;
@@ -807,7 +829,9 @@ private:
         if (denoiseParams.enabled  && (noiseLCurve || noiseCCurve )) {
             // we only need image reduced to 1/4 here
             calclum = new Imagefloat ((fw + 1) / 2, (fh + 1) / 2); //for luminance denoise curve
+#ifdef _OPENMP
             #pragma omp parallel for
+#endif
 
             for (int ii = 0; ii < fh; ii += 2) {
                 for (int jj = 0; jj < fw; jj += 2) {
@@ -974,12 +998,12 @@ private:
         }
 
         autor = -9000.f; // This will ask to compute the "auto" values for the B&W tool (have to be inferior to -5000)
-        DCPProfile::ApplyState as;
+        DCPProfileApplyState as;
         DCPProfile *dcpProf = imgsrc->getDCP (params.icm, as);
 
         LUTu histToneCurve;
 
-        ipf.rgbProc (baseImg, labView, nullptr, curve1, curve2, curve, params.toneCurve.saturation, rCurve, gCurve, bCurve, satLimit, satLimitOpacity, ctColorCurve, ctOpacityCurve, opautili, clToningcurve, cl2Toningcurve, customToneCurve1, customToneCurve2, customToneCurvebw1, customToneCurvebw2, rrm, ggm, bbm, autor, autog, autob, expcomp, hlcompr, hlcomprthresh, dcpProf, as, histToneCurve);
+        ipf.rgbProc (baseImg, labView, nullptr, curve1, curve2, curve, params.toneCurve.saturation, rCurve, gCurve, bCurve, satLimit, satLimitOpacity, ctColorCurve, ctOpacityCurve, opautili, clToningcurve, cl2Toningcurve, customToneCurve1, customToneCurve2, customToneCurvebw1, customToneCurvebw2, rrm, ggm, bbm, autor, autog, autob, expcomp, hlcompr, hlcomprthresh, dcpProf, as, histToneCurve, options.chunkSizeRGB, options.measure);
 
         if (settings->verbose) {
             printf ("Output image / Auto B&W coefs:   R=%.2f   G=%.2f   B=%.2f\n", autor, autog, autob);
@@ -1031,7 +1055,9 @@ private:
                         hist16thr[ (int) ((labView->L[i][j]))]++;
                     }
 
+#ifdef _OPENMP
                 #pragma omp critical
+#endif
                 {
                     hist16 += hist16thr;
                 }
@@ -1051,7 +1077,7 @@ private:
         ipf.chromiLuminanceCurve (nullptr, 1, labView, labView, curve1, curve2, satcurve, lhskcurve, clcurve, lumacurve, utili, autili, butili, ccutili, cclutili, clcutili, dummy, dummy);
 
         if ((params.colorappearance.enabled && !params.colorappearance.tonecie) || (!params.colorappearance.enabled)) {
-            ipf.EPDToneMap (labView, 5, 1);
+            ipf.EPDToneMap (labView, 0, 1);
         }
 
 
@@ -1162,7 +1188,7 @@ private:
             float CAMMean = NAN;
 
             float d, dj, yb;
-            ipf.ciecam_02float (cieView, float (adap), 1, 2, labView, &params, customColCurve1, customColCurve2, customColCurve3, dummy, dummy, CAMBrightCurveJ, CAMBrightCurveQ, CAMMean, 5, 1, true, d, dj, yb, 1);
+            ipf.ciecam_02float (cieView, float (adap), 1, 2, labView, &params, customColCurve1, customColCurve2, customColCurve3, dummy, dummy, CAMBrightCurveJ, CAMBrightCurveQ, CAMMean, 0, 1, true, d, dj, yb, 1);
         }
 
         delete cieView;
@@ -1306,7 +1332,7 @@ private:
         } else {
             // use the selected output profile if present, otherwise use LCMS2 profile generate by lab2rgb16 w/ gamma
 
-            if (params.icm.outputProfile != "" && params.icm.outputProfile != ColorManagementParams::NoICMString) {
+            if (!params.icm.outputProfile.empty() && params.icm.outputProfile != ColorManagementParams::NoICMString) {
 
                 // if ICCStore::getInstance()->getProfile send back an object, then ICCStore::getInstance()->getContent will do too
                 cmsHPROFILE jprof = ICCStore::getInstance()->getProfile (params.icm.outputProfile); //get outProfile

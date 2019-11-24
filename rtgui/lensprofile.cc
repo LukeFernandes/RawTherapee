@@ -14,17 +14,24 @@
 *  GNU General Public License for more details.
 *
 *  You should have received a copy of the GNU General Public License
-*  along with RawTherapee.  If not, see <http://www.gnu.org/licenses/>.
+*  along with RawTherapee.  If not, see <https://www.gnu.org/licenses/>.
 */
-#include <glibmm.h>
-#include "lensprofile.h"
-#include "guiutils.h"
-#include "../rtengine/lcp.h"
-#include <sstream>
-#include "rtimage.h"
-#include "../rtengine/rtlensfun.h"
 #include <map>
 #include <set>
+#include <iostream>
+#include <sstream>
+
+#include <glibmm/ustring.h>
+
+#include "lensprofile.h"
+
+#include "guiutils.h"
+#include "rtimage.h"
+#include "options.h"
+
+#include "../rtengine/lcp.h"
+#include "../rtengine/procparams.h"
+#include "../rtengine/rtlensfun.h"
 
 using namespace rtengine;
 using namespace rtengine::procparams;
@@ -580,7 +587,7 @@ void LensProfilePanel::onCorrModeChanged(const Gtk::RadioButton* rbChanged)
 LensProfilePanel::LFDbHelper::LFDbHelper()
 {
 #ifdef _OPENMP
-#pragma omp parallel sections if (!options.rtSettings.verbose)
+#pragma omp parallel sections if (!settings->verbose)
 #endif
     {
 #ifdef _OPENMP
@@ -602,7 +609,7 @@ LensProfilePanel::LFDbHelper::LFDbHelper()
 
 void LensProfilePanel::LFDbHelper::fillLensfunCameras()
 {
-    if (options.rtSettings.verbose) {
+    if (settings->verbose) {
         std::cout << "LENSFUN, scanning cameras:" << std::endl;
     }
 
@@ -612,7 +619,7 @@ void LensProfilePanel::LFDbHelper::fillLensfunCameras()
     for (const auto& c : camlist) {
         camnames[c.getMake()].insert(c.getModel());
 
-        if (options.rtSettings.verbose) {
+        if (settings->verbose) {
             std::cout << "  found: " << c.getDisplayString().c_str() << std::endl;
         }
     }
@@ -632,7 +639,7 @@ void LensProfilePanel::LFDbHelper::fillLensfunCameras()
 
 void LensProfilePanel::LFDbHelper::fillLensfunLenses()
 {
-    if (options.rtSettings.verbose) {
+    if (settings->verbose) {
         std::cout << "LENSFUN, scanning lenses:" << std::endl;
     }
 
@@ -644,7 +651,7 @@ void LensProfilePanel::LFDbHelper::fillLensfunLenses()
         const auto& make = l.getMake();
         lenses[make].insert(name);
 
-        if (options.rtSettings.verbose) {
+        if (settings->verbose) {
             std::cout << "  found: " << l.getDisplayString().c_str() << std::endl;
         }
     }

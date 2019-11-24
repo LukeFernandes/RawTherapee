@@ -14,17 +14,21 @@
  *  GNU General Public License for more details.
  *
  *  You should have received a copy of the GNU General Public License
- *  along with RawTherapee.  If not, see <http://www.gnu.org/licenses/>.
+ *  along with RawTherapee.  If not, see <https://www.gnu.org/licenses/>.
  */
 #include "rawcacorrection.h"
+
 #include "eventmapper.h"
 #include "guiutils.h"
 #include "rtimage.h"
+#include "options.h"
+
+#include "../rtengine/procparams.h"
 
 using namespace rtengine;
 using namespace rtengine::procparams;
 
-RAWCACorr::RAWCACorr () : FoldableToolPanel(this, "rawcacorrection", M("TP_CHROMATABERR_LABEL"))
+RAWCACorr::RAWCACorr () : FoldableToolPanel(this, "rawcacorrection", M("TP_RAWCACORR_LABEL"))
 {
     auto m = ProcEventMapper::getInstance();
     EvPreProcessCAAutoiterations = m->newEvent(DARKFRAME, "HISTORY_MSG_RAWCACORR_AUTOIT");
@@ -138,10 +142,6 @@ void RAWCACorr::adjusterChanged(Adjuster* a, double newval)
             listener->panelChanged (EvPreProcessCABlue,  value );
         }
     }
-}
-
-void RAWCACorr::adjusterAutoToggled(Adjuster* a, bool newval)
-{
 }
 
 void RAWCACorr::checkBoxToggled (CheckBox* c, CheckValue newval)

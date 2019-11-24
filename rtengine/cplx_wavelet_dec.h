@@ -12,14 +12,12 @@
  *  GNU General Public License for more details.
  *
  *  You should have received a copy of the GNU General Public License
- *  along with RawTherapee.  If not, see <http://www.gnu.org/licenses/>.
+ *  along with RawTherapee.  If not, see <https://www.gnu.org/licenses/>.
  *
  *  2010 Ilya Popov <ilia_popov@rambler.ru>
  *  2012 Emil Martinec <ejmartin@uchicago.edu>
  */
-
-#ifndef CPLX_WAVELET_DEC_H_INCLUDED
-#define CPLX_WAVELET_DEC_H_INCLUDED
+#pragma once
 
 #include <cstddef>
 #include <cmath>
@@ -45,7 +43,6 @@ private:
     static const int maxlevels = 10;//should be greater than any conceivable order of decimation
 
     int lvltot, subsamp;
-    int numThreads;
     int m_w, m_h;//dimensions
 
     int wavfilt_len, wavfilt_offset;
@@ -97,7 +94,7 @@ public:
 
 template<typename E>
 wavelet_decomposition::wavelet_decomposition(E * src, int width, int height, int maxlvl, int subsampling, int skipcrop, int numThreads, int Daub4Len)
-    : coeff0(nullptr), memoryAllocationFailed(false), lvltot(0), subsamp(subsampling), numThreads(numThreads), m_w(width), m_h(height)
+    : coeff0(nullptr), memoryAllocationFailed(false), lvltot(0), subsamp(subsampling), m_w(width), m_h(height)
 {
 
     //initialize wavelet filters
@@ -267,5 +264,3 @@ void wavelet_decomposition::reconstruct(E * dst, const float blend)
 }
 
 }
-
-#endif

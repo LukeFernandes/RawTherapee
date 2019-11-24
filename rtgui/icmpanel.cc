@@ -14,24 +14,26 @@
  *  GNU General Public License for more details.
  *
  *  You should have received a copy of the GNU General Public License
- *  along with RawTherapee.  If not, see <http://www.gnu.org/licenses/>.
+ *  along with RawTherapee.  If not, see <https://www.gnu.org/licenses/>.
  */
 #include <iomanip>
-#include "icmpanel.h"
-#include "options.h"
-#include "eventmapper.h"
 
+#include "icmpanel.h"
+
+#include "eventmapper.h"
 #include "guiutils.h"
-#include "../rtengine/iccstore.h"
-#include "../rtengine/dcp.h"
+#include "options.h"
+#include "pathutils.h"
 #include "rtimage.h"
+
+#include "../rtengine/dcp.h"
+#include "../rtengine/iccstore.h"
+#include "../rtengine/procparams.h"
 
 using namespace rtengine;
 using namespace rtengine::procparams;
 
-extern Options options;
-
-ICMPanel::ICMPanel() : FoldableToolPanel(this, "icm", M("TP_ICM_LABEL")), iunchanged(nullptr), icmplistener(nullptr), lastRefFilename(""), camName("")
+ICMPanel::ICMPanel() : FoldableToolPanel(this, "icm", M("TP_ICM_LABEL")), iunchanged(nullptr), icmplistener(nullptr)
 {
     auto m = ProcEventMapper::getInstance();
     EvICMprimariMethod = m->newEvent(GAMMA, "HISTORY_MSG_ICM_OUTPUT_PRIMARIES");
@@ -301,8 +303,6 @@ ICMPanel::ICMPanel() : FoldableToolPanel(this, "icm", M("TP_ICM_LABEL")), iuncha
     ipDialog->set_show_hidden(true);  // ProgramData is hidden on Windows
 #endif
 
-    oldip = "";
-
     wprofnamesconn = wProfNames->signal_changed().connect(sigc::mem_fun(*this, &ICMPanel::wpChanged));
     oprofnamesconn = oProfNames->signal_changed().connect(sigc::mem_fun(*this, &ICMPanel::opChanged));
     orendintentconn = oRendIntent->signal_changed().connect(sigc::mem_fun(*this, &ICMPanel::oiChanged));
@@ -501,7 +501,7 @@ void ICMPanel::read(const ProcParams* pp, const ParamsEdited* pedited)
     if (pp->icm.inputProfile == "(none)") {
         inone->set_active(true);
         updateDCP(pp->icm.dcpIlluminant, "");
-    } else if (pp->icm.inputProfile == "(embedded)" || ((pp->icm.inputProfile == "(camera)" || pp->icm.inputProfile == "") && icamera->get_state() == Gtk::STATE_INSENSITIVE)) {
+    } else if (pp->icm.inputProfile == "(embedded)" || ((pp->icm.inputProfile == "(camera)" || pp->icm.inputProfile.empty()) && icamera->get_state() == Gtk::STATE_INSENSITIVE)) {
         iembedded->set_active(true);
         updateDCP(pp->icm.dcpIlluminant, "");
     } else if ((pp->icm.inputProfile == "(cameraICC)") && icameraICC->get_state() != Gtk::STATE_INSENSITIVE) {
@@ -516,7 +516,7 @@ void ICMPanel::read(const ProcParams* pp, const ParamsEdited* pedited)
         // If neither (camera) nor (cameraICC) are available, as is the case when loading a non-raw, activate (embedded).
         iembedded->set_active(true);
         updateDCP(pp->icm.dcpIlluminant, "(cameraICC)");
-    } else if ((pp->icm.inputProfile == "(camera)" || pp->icm.inputProfile == "") && icamera->get_state() != Gtk::STATE_INSENSITIVE) {
+    } else if ((pp->icm.inputProfile == "(camera)" || pp->icm.inputProfile.empty()) && icamera->get_state() != Gtk::STATE_INSENSITIVE) {
         icamera->set_active(true);
         updateDCP(pp->icm.dcpIlluminant, "");
     } else {
@@ -614,8 +614,6 @@ void ICMPanel::write(ProcParams* pp, ParamsEdited* pedited)
         } else {
             pp->icm.inputProfile = "";    // just a directory
         }
-
-        Glib::ustring p = Glib::path_get_dirname(ipDialog->get_filename());
     }
 
     pp->icm.workingProfile = wProfNames->get_active_text();
@@ -696,10 +694,6 @@ void ICMPanel::adjusterChanged(Adjuster* a, double newval)
         }
 
     }
-}
-
-void ICMPanel::adjusterAutoToggled(Adjuster* a, bool newval)
-{
 }
 
 void ICMPanel::wpChanged()
@@ -950,7 +944,7 @@ void ICMPanel::setRawMeta(bool raw, const rtengine::FramesData* pMeta)
 void ICMPanel::ipSelectionChanged()
 {
 
-    if (ipDialog->get_filename() == "") {
+    if (ipDialog->get_filename().empty()) {
         return;
     }
 

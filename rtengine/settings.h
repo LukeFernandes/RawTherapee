@@ -14,13 +14,11 @@
  *  GNU General Public License for more details.
  *
  *  You should have received a copy of the GNU General Public License
- *  along with RawTherapee.  If not, see <http://www.gnu.org/licenses/>.
+ *  along with RawTherapee.  If not, see <https://www.gnu.org/licenses/>.
  */
-#ifndef _RTSETTINGS_
-#define _RTSETTINGS_
+#pragma once
 
-#include "procparams.h"
-
+#include <glibmm/ustring.h>
 namespace rtengine
 {
 
@@ -39,10 +37,10 @@ public:
     int             leveldnautsimpl;        // STD or EXPERT
 
     Glib::ustring   printerProfile;         ///< ICC profile name used for soft-proofing a printer output
-    RenderingIntent printerIntent;          ///< Colorimetric intent used with the above profile
+    int             printerIntent;          ///< Colorimetric intent used with the above profile
     bool            printerBPC;             ///< Black Point Compensation for the Labimage->Printer->Monitor transform
     Glib::ustring   monitorProfile;         ///< ICC profile name used for the monitor
-    RenderingIntent monitorIntent;          ///< Colorimetric intent used with the above profile
+    int             monitorIntent;          ///< Colorimetric intent used with the above profile
     bool            monitorBPC;             ///< Black Point Compensation for the Labimage->Monitor transform (directly, i.e. not soft-proofing and no WCS in between)
     bool            autoMonitorProfile;     ///< Try to auto-determine the correct monitor color profile
     bool            autocielab;
@@ -98,7 +96,5 @@ public:
       * @param s a pointer to the Settings instance to destroy. */
     static void      destroy(Settings* s);
 };
+extern const Settings* settings;
 }
-
-#endif
-

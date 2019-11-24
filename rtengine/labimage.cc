@@ -14,10 +14,9 @@
  *  GNU General Public License for more details.
  *
  *  You should have received a copy of the GNU General Public License
- *  along with RawTherapee.  If not, see <http://www.gnu.org/licenses/>.
+ *  along with RawTherapee.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-#include <cstring>
 #include <memory>
 
 #include "labimage.h"
@@ -64,7 +63,7 @@ void LabImage::getPipetteData (float &v1, float &v2, float &v3, int posX, int po
     v3 = n ? accumulator_b / float(n) : 0.f;
 }
 
-void LabImage::allocLab(int w, int h)
+void LabImage::allocLab(size_t w, size_t h)
 {
     L = new float*[h];
     a = new float*[h];
@@ -73,19 +72,19 @@ void LabImage::allocLab(int w, int h)
     data = new float [w * h * 3];
     float * index = data;
 
-    for (int i = 0; i < h; i++) {
+    for (size_t i = 0; i < h; i++) {
         L[i] = index + i * w;
     }
 
     index += w * h;
 
-    for (int i = 0; i < h; i++) {
+    for (size_t i = 0; i < h; i++) {
         a[i] = index + i * w;
     }
 
     index += w * h;
 
-    for (int i = 0; i < h; i++) {
+    for (size_t i = 0; i < h; i++) {
         b[i] = index + i * w;
     }
 }

@@ -14,21 +14,21 @@
  *  GNU General Public License for more details.
  *
  *  You should have received a copy of the GNU General Public License
- *  along with RawTherapee.  If not, see <http://www.gnu.org/licenses/>.
+ *  along with RawTherapee.  If not, see <https://www.gnu.org/licenses/>.
  */
-#ifndef _CURVEEDITOR_
-#define _CURVEEDITOR_
+#pragma once
 
-#include "popuptogglebutton.h"
-#include "../rtengine/LUT.h"
 #include "coloredbar.h"
-#include "edit.h"
-#include "mydiagonalcurve.h"
-#include "myflatcurve.h"
+#include "editcallbacks.h"
+
+#include "../rtengine/diagonalcurvetypes.h"
+#include "../rtengine/flatcurvetypes.h"
+#include "../rtengine/LUT.h"
+#include "../rtengine/noncopyable.h"
 
 class CurveEditorGroup;
 class CurveEditorSubGroup;
-
+class PopUpToggleButton;
 
 /*
  *********************** Curve Editor ***********************
@@ -38,7 +38,7 @@ class CurveEditorSubGroup;
 /** @brief This class is an interface between RT and the curve editor group
  * It handles the methods related to a specific curve. It is created by CurveEditorGroup::addCurve
  */
-class CurveEditor : public EditSubscriber
+class CurveEditor : public EditSubscriber, public rtengine::NonCopyable
 {
 
     friend class CurveEditorGroup;
@@ -128,11 +128,11 @@ public:
     sigc::signal<void> signal_curvepoint_release();
 
     void switchOffEditMode () override;
-    bool mouseOver(const int modifierKey) override;
-    bool button1Pressed(const int modifierKey) override;
+    bool mouseOver(int modifierKey) override;
+    bool button1Pressed(int modifierKey) override;
     bool button1Released() override;
-    bool drag1(const int modifierKey) override;
-    CursorShape getCursor(const int objectID) override;
+    bool drag1(int modifierKey) override;
+    CursorShape getCursor(int objectID) const override;
 
 
 };
@@ -143,7 +143,7 @@ public:
  */
 
 
-class DiagonalCurveEditor : public CurveEditor
+class DiagonalCurveEditor final : public CurveEditor
 {
 
     friend class DiagonalCurveEditorSubGroup;
@@ -179,9 +179,8 @@ public:
  */
 
 
-class FlatCurveEditor : public CurveEditor
+class FlatCurveEditor final : public CurveEditor
 {
-
     friend class FlatCurveEditorSubGroup;
 
 protected:
@@ -206,5 +205,3 @@ public:
     // set the reset curve for a given curve type. This is optional; all curve type have a default reset curve
     void setResetCurve(FlatCurveType cType, const std::vector<double> &resetCurve);
 };
-
-#endif

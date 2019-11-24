@@ -15,7 +15,7 @@
  *  GNU General Public License for more details.
  *
  *  You should have received a copy of the GNU General Public License
- *  along with RawTherapee.  If not, see <http://www.gnu.org/licenses/>.
+ *  along with RawTherapee.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 /*
@@ -56,21 +56,18 @@
  *          LUTuc stands for LUT<unsigned char>
  */
 
-#ifndef LUT_H_
-#define LUT_H_
+#pragma once
 
 #include <cstring>
 #include <cstdint>
 #include <cassert>
 
 #ifndef NDEBUG
-#include <glibmm.h>
 #include <fstream>
 #endif
 
 #include "opthelper.h"
 #include "rt_math.h"
-#include "noncopyable.h"
 
 // Bit representations of flags
 enum {
@@ -444,7 +441,7 @@ public:
             }
 
             idx = 0;
-        } else if (idx > maxs) {
+        } else if (index > maxsf) {
             if (clip & LUT_CLIP_ABOVE) {
                 return data[upperBound];
             }
@@ -484,26 +481,6 @@ public:
         T p2 = data[idx + 1] - p1;
         return (p1 + p2 * diff);
     }
-
-#ifndef NDEBUG
-    // Debug facility ; dump the content of the LUT in a file. No control of the filename is done
-    void dump(Glib::ustring fname)
-    {
-        if (size) {
-            Glib::ustring fname_ = fname + ".xyz"; // TopSolid'Design "plot" file format
-            std::ofstream f (fname_.c_str());
-            f << "$" << std::endl;
-
-            for (unsigned int iter = 0; iter < size; iter++) {
-                f << iter << ", " << data[iter] << ", 0." << std::endl;
-            }
-
-            f << "$" << std::endl;
-            f.close ();
-        }
-    }
-#endif
-
 
     operator bool (void) const
     {
@@ -563,7 +540,7 @@ public:
         }
     }
 
-    // compress a LUT<uint32_t> with size y into a LUT<uint32_t> with size x (y>x) by using the passTrough LUT to calculate indexes
+    // compress a LUT<uint32_t> with size y into a LUT<uint32_t> with size x (y>x) by using the passThrough LUT to calculate indexes
     template<typename U = T, typename = typename std::enable_if<std::is_same<U, std::uint32_t>::value>::type>
     void compressTo(LUT<T> &dest, unsigned int numVals, const LUT<float> &passThrough) const
     {
@@ -649,5 +626,3 @@ public:
 
 
 };
-
-#endif /* LUT_H_ */

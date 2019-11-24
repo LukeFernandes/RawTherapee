@@ -16,11 +16,12 @@
 //  GNU General Public License for more details.
 //
 //  You should have received a copy of the GNU General Public License
-//  along with this program.  If not, see <http://www.gnu.org/licenses/>.
+//  along with this program.  If not, see <https://www.gnu.org/licenses/>.
 //
 ////////////////////////////////////////////////////////////////
 
 #include "rtengine.h"
+#include "rawimage.h"
 #include "rawimagesource.h"
 #include "../rtgui/multilangmgr.h"
 //#define BENCHMARK
@@ -93,7 +94,7 @@ void RawImageSource::vng4_demosaic (const array2D<float> &rawData, array2D<float
     const bool plistenerActive = plistener;
 
     if (plistenerActive) {
-        plistener->setProgressStr (Glib::ustring::compose(M("TP_RAW_DMETHOD_PROGRESSBAR"), RAWParams::BayerSensor::getMethodString(RAWParams::BayerSensor::Method::VNG4)));
+        plistener->setProgressStr (Glib::ustring::compose(M("TP_RAW_DMETHOD_PROGRESSBAR"), M("TP_RAW_VNG4")));
         plistener->setProgress (progress);
     }
 
@@ -101,7 +102,7 @@ void RawImageSource::vng4_demosaic (const array2D<float> &rawData, array2D<float
     const int width = W, height = H;
     constexpr unsigned int colors = 4;
 
-    float (*image)[4] = (float (*)[4]) calloc (height * width, sizeof * image);
+    float (*image)[4] = (float (*)[4]) calloc (static_cast<size_t>(height) * width, sizeof * image);
 
     int lcode[16][16][32];
     float mul[16][16][8];
@@ -383,7 +384,7 @@ void RawImageSource::vng4_demosaic (const array2D<float> &rawData, array2D<float
 #endif
         {
             // let the first thread, which is out of work, do the border interpolation
-            border_interpolate2(W, H, 3, rawData, red, green, blue);
+            border_interpolate(W, H, 3, rawData, red, green, blue);
         }
     }
 

@@ -14,16 +14,23 @@
  *  GNU General Public License for more details.
  *
  *  You should have received a copy of the GNU General Public License
- *  along with RawTherapee.  If not, see <http://www.gnu.org/licenses/>.
+ *  along with RawTherapee.  If not, see <https://www.gnu.org/licenses/>.
  */
 #include "options.h"
 #include <cstdio>
 #include <glib/gstdio.h>
+#include <glibmm/keyfile.h>
+#include <iostream>
 #include <sstream>
 #include "multilangmgr.h"
 #include "addsetids.h"
 #include "guiutils.h"
+#include "pathutils.h"
 #include "version.h"
+
+#include "../rtengine/procparams.h"
+#include "../rtengine/rtengine.h"
+#include "../rtengine/utils.h"
 
 #ifdef _OPENMP
 #include <omp.h>
@@ -42,7 +49,7 @@
 
 // User's settings directory, including images' profiles if used
 Glib::ustring Options::rtdir;
-// User's cached datas' directory
+// User's cached data directory
 Glib::ustring Options::cacheBaseDir;
 
 Options options;
@@ -343,6 +350,7 @@ void Options::setDefaults()
     fontSize = 10;
     CPFontFamily = "default";
     CPFontSize = 8;
+    pseudoHiDPISupport = false;
     lastScale = 5;
     lastShowAllExif = false;
     panAccelFactor = 5;
@@ -352,13 +360,21 @@ void Options::setDefaults()
     fbShowDateTime = true;
     fbShowBasicExif = true;
     fbShowExpComp = false;
+#ifdef WIN32
+    // use windows setting for visibility of hidden files/folders
+    SHELLFLAGSTATE sft = { 0 };
+    SHGetSettings(&sft, SSF_SHOWALLOBJECTS);
+    fbShowHidden = sft.fShowAllObjects;
+#else
     fbShowHidden = false;
+#endif
     fbArrangement = 2;                  // was 0
     navRGBUnit = NavigatorUnit::PERCENT;
     navHSVUnit = NavigatorUnit::PERCENT;
     multiUser = true;
     profilePath = "profiles";
     loadSaveProfilePath = "";           // will be corrected in load as otherwise construction fails
+    lastCopyMovePath = "";
     version = "0.0.0.0";                // temporary value; will be correctly set in RTWindow::on_realize
     thumbSize = 160;
     thumbSizeTab = 160;
@@ -402,6 +418,7 @@ void Options::setDefaults()
     favorites.clear();
     parseExtensionsEnabled.clear();
     parsedExtensions.clear();
+    parsedExtensionsSet.clear();
     renameUseTemplates = false;
     renameTemplates.clear();
     thumbnailZoomRatios.clear();
@@ -441,7 +458,12 @@ void Options::setDefaults()
     maxInspectorBuffers = 2; //  a rather conservative value for low specced systems...
     inspectorDelay = 0;
     serializeTiffRead = true;
-
+    measure = false;
+    chunkSizeAMAZE = 2;
+    chunkSizeCA = 2;
+    chunkSizeRCD = 2;
+    chunkSizeRGB = 2;
+    chunkSizeXT = 2;
     FileBrowserToolbarSingleRow = false;
     hideTPVScrollbar = false;
     whiteBalanceSpotSize = 8;
@@ -555,7 +577,7 @@ void Options::setDefaults()
     rtSettings.adobe = "RTv2_Medium"; // put the name of yours profiles (here windows)
     rtSettings.prophoto = "RTv2_Large"; // these names appear in the menu "output profile"
     rtSettings.widegamut = "RTv2_Wide";
-    rtSettings.srgb = "RTv2_sRGB";
+    rtSettings.srgb = "RTv4_sRGB";
     rtSettings.bruce = "RTv2_Bruce";
     rtSettings.beta = "RTv2_Beta";
     rtSettings.best = "RTv2_Best";
@@ -633,10 +655,12 @@ Options* Options::copyFrom(Options* other)
 void Options::filterOutParsedExtensions()
 {
     parsedExtensions.clear();
+    parsedExtensionsSet.clear();
 
     for (unsigned int i = 0; i < parseExtensions.size(); i++)
         if (parseExtensionsEnabled[i]) {
             parsedExtensions.push_back(parseExtensions[i].lowercase());
+            parsedExtensionsSet.emplace(parseExtensions[i].lowercase());
         }
 }
 
@@ -930,9 +954,11 @@ void Options::readFromFile(Glib::ustring fname)
                     fbShowExpComp = keyFile.get_boolean("File Browser", "BrowserShowsExpComp");
                 }
 
+#ifndef WIN32
                 if (keyFile.has_key("File Browser", "BrowserShowsHidden")) {
                     fbShowHidden = keyFile.get_boolean("File Browser", "BrowserShowsHidden");
                 }
+#endif
 
                 if (keyFile.has_key("File Browser", "MaxPreviewHeight")) {
                     maxThumbnailHeight = keyFile.get_integer("File Browser", "MaxPreviewHeight");
@@ -1068,6 +1094,30 @@ void Options::readFromFile(Glib::ustring fname)
 
                 if (keyFile.has_key("Performance", "SerializeTiffRead")) {
                     serializeTiffRead = keyFile.get_boolean("Performance", "SerializeTiffRead");
+                }
+
+                if (keyFile.has_key("Performance", "Measure")) {
+                    measure = keyFile.get_boolean("Performance", "Measure");
+                }
+
+                if (keyFile.has_key("Performance", "ChunkSizeAMAZE")) {
+                    chunkSizeAMAZE = std::min(16, std::max(1, keyFile.get_integer("Performance", "ChunkSizeAMAZE")));
+                }
+
+                if (keyFile.has_key("Performance", "ChunkSizeCA")) {
+                    chunkSizeCA = std::min(16, std::max(1, keyFile.get_integer("Performance", "ChunkSizeCA")));
+                }
+
+                if (keyFile.has_key("Performance", "ChunkSizeRCD")) {
+                    chunkSizeRCD = std::min(16, std::max(1, keyFile.get_integer("Performance", "ChunkSizeRCD")));
+                }
+
+                if (keyFile.has_key("Performance", "ChunkSizeRGB")) {
+                    chunkSizeRGB = std::min(16, std::max(1, keyFile.get_integer("Performance", "ChunkSizeRGB")));
+                }
+
+                if (keyFile.has_key("Performance", "ChunkSizeXT")) {
+                    chunkSizeXT = std::min(16, std::max(1, keyFile.get_integer("Performance", "ChunkSizeXT")));
                 }
 
                 if (keyFile.has_key("Performance", "ThumbnailInspectorMode")) {
@@ -1210,6 +1260,10 @@ void Options::readFromFile(Glib::ustring fname)
 
                 if (keyFile.has_key("GUI", "CPFontSize")) {
                     CPFontSize = keyFile.get_integer("GUI", "CPFontSize");
+                }
+
+                if (keyFile.has_key("GUI", "PseudoHiDPISupport")) {
+                    pseudoHiDPISupport = keyFile.get_boolean("GUI", "PseudoHiDPISupport");
                 }
 
                 if (keyFile.has_key("GUI", "LastPreviewScale")) {
@@ -1474,8 +1528,8 @@ void Options::readFromFile(Glib::ustring fname)
 
                 if (keyFile.has_key("Color Management", "sRGB")) {
                     rtSettings.srgb = keyFile.get_string("Color Management", "sRGB");
-                    if (rtSettings.srgb == "RT_sRGB"  || rtSettings.srgb == "RTv4_sRGB") {
-                        rtSettings.srgb = "RTv2_sRGB";
+                    if (rtSettings.srgb == "RT_sRGB"  || rtSettings.srgb == "RTv2_sRGB") {
+                        rtSettings.srgb = "RTv4_sRGB";
                     }
                 }
 
@@ -1791,6 +1845,7 @@ void Options::readFromFile(Glib::ustring fname)
                 safeDirGet(keyFile, "Dialogs", "LastProfilingReferenceDir", lastProfilingReferenceDir);
                 safeDirGet(keyFile, "Dialogs", "LastLensProfileDir", lastLensProfileDir);
                 safeDirGet(keyFile, "Dialogs", "LastICCProfCreatorDir", lastICCProfCreatorDir);
+                safeDirGet(keyFile, "Dialogs", "LastCopyMovePath", lastCopyMovePath);
 
                 if (keyFile.has_key("Dialogs", "GimpPluginShowInfoDialog")) {
                     gimpPluginShowInfoDialog = keyFile.get_boolean("Dialogs", "GimpPluginShowInfoDialog");
@@ -1887,7 +1942,9 @@ void Options::saveToFile(Glib::ustring fname)
         keyFile.set_boolean("File Browser", "BrowserShowsDate", fbShowDateTime);
         keyFile.set_boolean("File Browser", "BrowserShowsExif", fbShowBasicExif);
         keyFile.set_boolean("File Browser", "BrowserShowsExpComp", fbShowExpComp);
+#ifndef WIN32
         keyFile.set_boolean("File Browser", "BrowserShowsHidden", fbShowHidden);
+#endif
         keyFile.set_integer("File Browser", "ThumbnailSize", thumbSize);
         keyFile.set_integer("File Browser", "ThumbnailSizeTab", thumbSizeTab);
         keyFile.set_integer("File Browser", "ThumbnailSizeQueue", thumbSizeQueue);
@@ -1938,6 +1995,12 @@ void Options::saveToFile(Glib::ustring fname)
         keyFile.set_integer("Performance", "InspectorDelay", inspectorDelay);
         keyFile.set_integer("Performance", "PreviewDemosaicFromSidecar", prevdemo);
         keyFile.set_boolean("Performance", "SerializeTiffRead", serializeTiffRead);
+        keyFile.set_integer("Performance", "Measure", measure);
+        keyFile.set_integer("Performance", "ChunkSizeAMAZE", chunkSizeAMAZE);
+        keyFile.set_integer("Performance", "ChunkSizeRCD", chunkSizeRCD);
+        keyFile.set_integer("Performance", "ChunkSizeRGB", chunkSizeRGB);
+        keyFile.set_integer("Performance", "ChunkSizeXT", chunkSizeXT);
+        keyFile.set_integer("Performance", "ChunkSizeCA", chunkSizeCA);
         keyFile.set_integer("Performance", "ThumbnailInspectorMode", int(rtSettings.thumbnail_inspector_mode));
 
         keyFile.set_string("Output", "Format", saveFormat.format);
@@ -2014,6 +2077,7 @@ void Options::saveToFile(Glib::ustring fname)
         keyFile.set_integer("GUI", "FontSize", fontSize);
         keyFile.set_string("GUI", "CPFontFamily", CPFontFamily);
         keyFile.set_integer("GUI", "CPFontSize", CPFontSize);
+        keyFile.set_boolean("GUI", "PseudoHiDPISupport", pseudoHiDPISupport);
         keyFile.set_integer("GUI", "LastPreviewScale", lastScale);
         keyFile.set_boolean("GUI", "LastShowAllExif", lastShowAllExif);
         keyFile.set_integer("GUI", "PanAccelFactor", panAccelFactor);
@@ -2175,6 +2239,7 @@ void Options::saveToFile(Glib::ustring fname)
         keyFile.set_string("Dialogs", "LastProfilingReferenceDir", lastProfilingReferenceDir);
         keyFile.set_string("Dialogs", "LastLensProfileDir", lastLensProfileDir);
         keyFile.set_string("Dialogs", "LastICCProfCreatorDir", lastICCProfCreatorDir);
+        keyFile.set_string("Dialogs", "LastCopyMovePath", lastCopyMovePath);
         keyFile.set_boolean("Dialogs", "GimpPluginShowInfoDialog", gimpPluginShowInfoDialog);
 
         keyFile.set_string("Lensfun", "DBDirectory", rtSettings.lensfunDbDirectory);
@@ -2410,36 +2475,29 @@ bool Options::is_parse_extention(Glib::ustring fname)
 /*
  * return true if fname ends with one of the retained image file extensions
  */
-bool Options::has_retained_extention(Glib::ustring fname)
+bool Options::has_retained_extention(const Glib::ustring& fname)
 {
+    return parsedExtensionsSet.find(getExtension(fname).lowercase()) != parsedExtensionsSet.end();
+}
 
-    Glib::ustring ext = getExtension(fname).lowercase();
+// Pattern matches "5.1" from "5.1-23-g12345678", when comparing option.version to RTVERSION
+bool Options::is_new_version() {
+    const std::string vs[] = {versionString, version};
+    std::vector<std::string> vMajor;
 
-    if (!ext.empty()) {
-        // there is an extension to the filename
-
-        // look out if it has one of the retained extensions
-        for (unsigned int i = 0; i < parsedExtensions.size(); i++) {
-            if (ext == parsedExtensions[i]) {
-                return true;
-            }
-        }
+    for (const auto& v : vs) {
+        vMajor.emplace_back(v, 0, v.find_first_not_of("0123456789."));
     }
 
-    return false;
+    return vMajor.size() == 2 && vMajor[0] != vMajor[1];
 }
 
 /*
  * return true if ext is an enabled extension
  */
-bool Options::is_extention_enabled(Glib::ustring ext)
+bool Options::is_extention_enabled(const Glib::ustring& ext)
 {
-    for (int j = 0; j < (int)parseExtensions.size(); j++)
-        if (parseExtensions[j].casefold() == ext.casefold()) {
-            return j >= (int)parseExtensionsEnabled.size() || parseExtensionsEnabled[j];
-        }
-
-    return false;
+    return parsedExtensionsSet.find(ext.lowercase()) != parsedExtensionsSet.end();
 }
 
 Glib::ustring Options::getUserProfilePath()

@@ -14,11 +14,18 @@
  *  GNU General Public License for more details.
  *
  *  You should have received a copy of the GNU General Public License
- *  along with RawTherapee.  If not, see <http://www.gnu.org/licenses/>.
+ *  along with RawTherapee.  If not, see <https://www.gnu.org/licenses/>.
  */
-#include "defringe.h"
-#include <iomanip>
 #include <cmath>
+#include <iomanip>
+
+#include "defringe.h"
+#include "curveeditor.h"
+#include "curveeditorgroup.h"
+#include "options.h"
+
+#include "../rtengine/color.h"
+#include "../rtengine/procparams.h"
 
 using namespace rtengine;
 using namespace rtengine::procparams;
@@ -159,10 +166,6 @@ void Defringe::adjusterChanged(Adjuster* a, double newval)
             listener->panelChanged (EvDefringeThreshold, Glib::ustring::format ((int)a->getValue()));
         }
     }
-}
-
-void Defringe::adjusterAutoToggled(Adjuster* a, bool newval)
-{
 }
 
 void Defringe::enabledChanged ()

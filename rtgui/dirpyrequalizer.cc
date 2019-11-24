@@ -12,12 +12,14 @@
  *  GNU General Public License for more details.
  *
  *  You should have received a copy of the GNU General Public License
- *  along with RawTherapee.  If not, see <http://www.gnu.org/licenses/>.
+ *  along with RawTherapee.  If not, see <https://www.gnu.org/licenses/>.
  *
  *  (C) 2010 Emil Martinec <ejmartin@uchicago.edu>
  */
 
 #include "dirpyrequalizer.h"
+
+#include "../rtengine/color.h"
 
 using namespace rtengine;
 using namespace rtengine::procparams;
@@ -99,7 +101,7 @@ DirPyrEqualizer::DirPyrEqualizer () : FoldableToolPanel(this, "dirpyrequalizer",
             ss += Glib::ustring::compose(" (%1)", M("TP_DIRPYREQUALIZER_LUMACOARSEST"));
         }
 
-        multiplier[i] = Gtk::manage ( new Adjuster (ss, 0, 4, 0.01, 1.0) );
+        multiplier[i] = Gtk::manage(new Adjuster(std::move(ss), 0, 4, 0.01, 1.0));
         multiplier[i]->setAdjusterListener(this);
         pack_start(*multiplier[i]);
     }
@@ -371,10 +373,6 @@ void DirPyrEqualizer::adjusterChanged(Adjuster* a, double newval)
                                    );
         }
     }
-}
-
-void DirPyrEqualizer::adjusterAutoToggled(Adjuster* a, bool newval)
-{
 }
 
 void DirPyrEqualizer::enabledChanged ()

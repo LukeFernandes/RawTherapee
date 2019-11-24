@@ -15,20 +15,22 @@
  *  GNU General Public License for more details.
  *
  *  You should have received a copy of the GNU General Public License
- *  along with RawTherapee.  If not, see <http://www.gnu.org/licenses/>.
+ *  along with RawTherapee.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-#include "pdaflinesfilter.h"
-#include "settings.h"
 #include <iostream>
+
 #include "camconst.h"
+#include "pdaflinesfilter.h"
+#include "pixelsmap.h"
+#include "rawimage.h"
+#include "settings.h"
 
-namespace rtengine {
+namespace rtengine
+{
 
-extern const Settings *settings;
-
-
-namespace {
+namespace
+{
 
 class PDAFGreenEqulibrateThreshold: public RawImageSource::GreenEqulibrateThreshold {
     static constexpr float BASE_THRESHOLD = 0.5f;
@@ -165,8 +167,6 @@ private:
 };
 
 } // namespace
-
-
 
 PDAFLinesFilter::PDAFLinesFilter(RawImage *ri):
     ri_(ri),

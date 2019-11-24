@@ -14,22 +14,24 @@
  *  GNU General Public License for more details.
  *
  *  You should have received a copy of the GNU General Public License
- *  along with RawTherapee.  If not, see <http://www.gnu.org/licenses/>.
+ *  along with RawTherapee.  If not, see <https://www.gnu.org/licenses/>.
  */
-#ifndef _HISTOGRAMPANEL_
-#define _HISTOGRAMPANEL_
-
+#pragma once
 
 #include <gtkmm.h>
-#include <glibmm.h>
-#include <cairomm/cairomm.h>
-#include "../rtengine/LUT.h"
-#include "../rtengine/improccoordinator.h"
-#include "guiutils.h"
 
+#include <glibmm/ustring.h>
+
+#include <cairomm/cairomm.h>
+
+#include "guiutils.h"
 #include "pointermotionlistener.h"
 
+#include "../rtengine/LUT.h"
+#include "../rtengine/noncopyable.h"
+
 class HistogramArea;
+
 struct HistogramAreaIdleHelper {
     HistogramArea* harea;
     bool destroyed;
@@ -51,7 +53,7 @@ public:
     double log (double vsize, double val);
 };
 
-class HistogramRGBArea : public Gtk::DrawingArea, public BackBuffer, private HistogramScaling
+class HistogramRGBArea : public Gtk::DrawingArea, public BackBuffer, private HistogramScaling, public rtengine::NonCopyable
 {
 private:
     typedef const double (*TMatrix)[3];
@@ -114,7 +116,7 @@ public:
     virtual void toggleButtonMode() = 0;
 };
 
-class HistogramArea : public Gtk::DrawingArea, public BackBuffer, private HistogramScaling
+class HistogramArea : public Gtk::DrawingArea, public BackBuffer, private HistogramScaling, public rtengine::NonCopyable
 {
 public:
     typedef sigc::signal<void, double> type_signal_factor_changed;
@@ -172,7 +174,7 @@ private:
     void get_preferred_width_for_height_vfunc (int height, int &minimum_width, int &natural_width) const override;
 };
 
-class HistogramPanel : public Gtk::Grid, public PointerMotionListener, public DrawModeListener
+class HistogramPanel : public Gtk::Grid, public PointerMotionListener, public DrawModeListener, public rtengine::NonCopyable
 {
 
 protected:
@@ -251,5 +253,3 @@ public:
     // drawModeListener interface
     void toggleButtonMode () override;
 };
-
-#endif

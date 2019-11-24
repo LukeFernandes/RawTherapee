@@ -28,6 +28,7 @@ Development contributors, in last name alphabetical order:
   Adam Reichold
   Philip Rinn
   Jan Rinze
+  Alberto Romei
   Ben S.
   Andrey Skvortsov
   Fabio Suprani
@@ -38,6 +39,7 @@ Development contributors, in last name alphabetical order:
 Other contributors (profiles, ideas, mockups, testing, forum activity, translations, etc.), in last name alphabetical order:
 
   Marcin Bajor
+  Javier Bartol
   Thorsten Bartolomäus
   Patrik Brunner
   Fernando Carello

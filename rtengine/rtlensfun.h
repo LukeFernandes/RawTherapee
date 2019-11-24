@@ -15,7 +15,7 @@
  *  GNU General Public License for more details.
  *
  *  You should have received a copy of the GNU General Public License
- *  along with RawTherapee.  If not, see <http://www.gnu.org/licenses/>.
+ *  along with RawTherapee.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #pragma once
@@ -23,15 +23,25 @@
 #include <memory>
 #include <vector>
 
-#include <glibmm.h>
+#include <glibmm/ustring.h>
 
 #include <lensfun.h>
 
 #include "lcp.h"
 #include "noncopyable.h"
-#include "procparams.h"
 
-namespace rtengine {
+namespace rtengine
+{
+
+class FramesMetaData;
+
+namespace procparams
+{
+
+struct CoarseTransformParams;
+struct LensProfParams;
+
+}
 
 class LFModifier final :
     public LensCorrection,
@@ -113,7 +123,7 @@ public:
     LFCamera findCamera(const Glib::ustring &make, const Glib::ustring &model) const;
     LFLens findLens(const LFCamera &camera, const Glib::ustring &name) const;
 
-    static std::unique_ptr<LFModifier> findModifier(const LensProfParams &lensProf, const FramesMetaData *idata, int width, int height, const CoarseTransformParams &coarse, int rawRotationDeg);
+    static std::unique_ptr<LFModifier> findModifier(const procparams::LensProfParams &lensProf, const FramesMetaData *idata, int width, int height, const procparams::CoarseTransformParams &coarse, int rawRotationDeg);
 
 private:
     std::unique_ptr<LFModifier> getModifier(const LFCamera &camera, const LFLens &lens,

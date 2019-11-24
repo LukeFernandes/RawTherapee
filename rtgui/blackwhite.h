@@ -14,19 +14,22 @@
  *  GNU General Public License for more details.
  *
  *  You should have received a copy of the GNU General Public License
- *  along with RawTherapee.  If not, see <http://www.gnu.org/licenses/>.
+ *  along with RawTherapee.  If not, see <https://www.gnu.org/licenses/>.
  */
-#ifndef _BLACKWHITE_H_
-#define _BLACKWHITE_H_
+#pragma once
 
 #include <gtkmm.h>
+
 #include "adjuster.h"
-#include "toolpanel.h"
-#include "guiutils.h"
-#include "curveeditor.h"
-#include "curveeditorgroup.h"
-#include "mycurve.h"
 #include "colorprovider.h"
+#include "curvelistener.h"
+#include "guiutils.h"
+#include "toolpanel.h"
+
+class DiagonalCurveEditor;
+class CurveEditorGroup;
+class EditDataProvider;
+class FlatCurveEditor;
 
 class BlackWhite final :
     public ToolParamBlock,
@@ -53,7 +56,6 @@ public:
 
     void updateRGBLabel      ();
     void adjusterChanged     (Adjuster* a, double newval) override;
-    void adjusterAutoToggled (Adjuster* a, bool newval) override;
     void setAdjusterBehavior (bool bwadd, bool bwgadd);
     void trimValues          (rtengine::procparams::ProcParams* pp) override;
     void enabledcc_toggled   ();
@@ -143,5 +145,3 @@ private:
 
     IdleRegister idle_register;
 };
-
-#endif

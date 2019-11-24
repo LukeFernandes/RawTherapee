@@ -16,7 +16,7 @@
  *  GNU General Public License for more details.
  *
  *  You should have received a copy of the GNU General Public License
- *  along with RawTherapee.  If not, see <http://www.gnu.org/licenses/>.
+ *  along with RawTherapee.  If not, see <https://www.gnu.org/licenses/>.
  */
 #include <cstdio>
 #include <iostream>
@@ -29,8 +29,11 @@
 
 #include <glib/gstdio.h>
 #include <glib/gunicode.h>
+#include <glibmm/keyfile.h>
 
 #include "rtexif.h"
+
+#include "../rtengine/procparams.h"
 
 #include "../rtgui/cacheimagedata.h"
 #include "../rtgui/version.h"
@@ -51,13 +54,13 @@ Interpreter stdInterpreter;
 //-----------------------------------------------------------------------------
 
 TagDirectory::TagDirectory ()
-    : attribs (ifdAttribs), order (HOSTORDER), parent (nullptr) {}
+    : attribs (ifdAttribs), order (HOSTORDER), parent (nullptr), parseJPEG(true) {}
 
 TagDirectory::TagDirectory (TagDirectory* p, const TagAttrib* ta, ByteOrder border)
-    : attribs (ta), order (border), parent (p) {}
+    : attribs (ta), order (border), parent (p), parseJPEG(true) {}
 
-TagDirectory::TagDirectory (TagDirectory* p, FILE* f, int base, const TagAttrib* ta, ByteOrder border, bool skipIgnored)
-    : attribs (ta), order (border), parent (p)
+TagDirectory::TagDirectory (TagDirectory* p, FILE* f, int base, const TagAttrib* ta, ByteOrder border, bool skipIgnored, bool parseJpeg)
+    : attribs (ta), order (border), parent (p), parseJPEG(parseJpeg)
 {
 
     int numOfTags = get2 (f, order);
@@ -671,7 +674,7 @@ int TagDirectory::calculateSize ()
     return size;
 }
 
-TagDirectory* TagDirectory::clone (TagDirectory* parent)
+TagDirectory* TagDirectory::clone (TagDirectory* parent) const
 {
 
     TagDirectory* td = new TagDirectory (parent, attribs, order);
@@ -855,7 +858,7 @@ TagDirectoryTable::TagDirectoryTable (TagDirectory* p, FILE* f, int memsize, int
         }
     }
 }
-TagDirectory* TagDirectoryTable::clone (TagDirectory* parent)
+TagDirectory* TagDirectoryTable::clone (TagDirectory* parent) const
 {
 
     TagDirectory* td = new TagDirectoryTable (parent, values, valuesSize, zeroOffset, defaultType, attribs, order);
@@ -977,9 +980,10 @@ Tag::Tag (TagDirectory* p, FILE* f, int base)
         }
     }
 
-    if (tag == 0x002e) { // location of the embedded preview image in raw files of Panasonic cameras
+    if (parent->getParseJpeg() && tag == 0x002e) { // location of the embedded preview image in raw files of Panasonic cameras
         ExifManager eManager(f, nullptr, true);
         const auto fpos = ftell(f);
+
         if (fpos >= 0) {
             eManager.parseJPEG(fpos); // try to parse the exif data from the preview image
 
@@ -1236,7 +1240,7 @@ defsubdirs:
             for (size_t j = 0, i = 0; j < count; j++, i++) {
                 int newpos = base + toInt (j * 4, LONG);
                 fseek (f, newpos, SEEK_SET);
-                directory[i] = new TagDirectory (parent, f, base, attrib->subdirAttribs, order);
+                directory[i] = new TagDirectory (parent, f, base, attrib->subdirAttribs, order, true, parent->getParseJpeg());
             }
 
             // set the terminating NULL
@@ -1371,7 +1375,7 @@ bool Tag::parseMakerNote (FILE* f, int base, ByteOrder bom )
         value = new unsigned char[12];
         fread (value, 1, 12, f);
         directory = new TagDirectory*[2];
-        directory[0] = new TagDirectory (parent, f, base, panasonicAttribs, bom);
+        directory[0] = new TagDirectory (parent, f, base, panasonicAttribs, bom, true, parent->getParseJpeg());
         directory[1] = nullptr;
     } else {
         return false;
@@ -1380,7 +1384,7 @@ bool Tag::parseMakerNote (FILE* f, int base, ByteOrder bom )
     return true;
 }
 
-Tag* Tag::clone (TagDirectory* parent)
+Tag* Tag::clone (TagDirectory* parent) const
 {
 
     Tag* t = new Tag (parent, attrib);
@@ -1395,7 +1399,7 @@ Tag* Tag::clone (TagDirectory* parent)
         t->value = new unsigned char [valuesize];
         memcpy (t->value, value, valuesize);
     } else {
-        value = nullptr;
+        t->value = nullptr;
     }
 
     t->makerNoteKind = makerNoteKind;
@@ -1767,7 +1771,7 @@ std::string Tag::nameToString (int i)
     return buffer;
 }
 
-std::string Tag::valueToString ()
+std::string Tag::valueToString () const
 {
 
     if (attrib && attrib->interpreter) {
@@ -2116,6 +2120,7 @@ void ExifManager::parseCIFF ()
     }
     parseCIFF (rml->ciffLength, root);
     root->sort ();
+    parse(true);
 }
 
 Tag* ExifManager::saveCIFFMNTag (TagDirectory* root, int len, const char* name)
@@ -2773,7 +2778,7 @@ void ExifManager::parseStd (bool skipIgnored) {
     parse(false, skipIgnored);
 }
 
-void ExifManager::parse (bool isRaw, bool skipIgnored)
+void ExifManager::parse (bool isRaw, bool skipIgnored, bool parseJpeg)
 {
     int ifdOffset = IFDOffset;
 
@@ -2802,7 +2807,7 @@ void ExifManager::parse (bool isRaw, bool skipIgnored)
         fseek (f, rml->exifBase + ifdOffset, SEEK_SET);
 
         // first read the IFD directory
-        TagDirectory* root =  new TagDirectory (nullptr, f, rml->exifBase, ifdAttribs, order, skipIgnored);
+        TagDirectory* root =  new TagDirectory (nullptr, f, rml->exifBase, ifdAttribs, order, skipIgnored, parseJpeg);
 
         // fix ISO issue with nikon and panasonic cameras
         Tag* make = root->getTag ("Make");
@@ -3034,6 +3039,12 @@ void ExifManager::parse (bool isRaw, bool skipIgnored)
             }
         }
 
+        if (!root->getTag ("Rating")) {
+            Tag *t = new Tag (root, root->getAttrib("Rating"));
+            t->initInt (0, LONG);
+            root->addTag (t);
+        }
+
         // --- detecting image root IFD based on SubFileType, or if not provided, on PhotometricInterpretation
 
         bool frameRootDetected = false;
@@ -3164,7 +3175,7 @@ void ExifManager::parseJPEG (int offset)
                             rml.reset(new rtengine::RawMetaDataLocation(0));
                         }
                         rml->exifBase = tiffbase;
-                        parse (false);
+                        parse (false, true, false);
                         if (rmlCreated) {
                             rml.reset();
                         }
@@ -3439,7 +3450,7 @@ short int int2_to_signed (short unsigned int i)
  * <focal>-<focal>mm f/<aperture>-<aperture>
  * NB: no space between separator '-'; no space between focal length and 'mm'
  */
-bool extractLensInfo (std::string &fullname, double &minFocal, double &maxFocal, double &maxApertureAtMinFocal, double &maxApertureAtMaxFocal)
+bool extractLensInfo (const std::string &fullname, double &minFocal, double &maxFocal, double &maxApertureAtMinFocal, double &maxApertureAtMaxFocal)
 {
     minFocal = 0.0;
     maxFocal = 0.0;

@@ -14,13 +14,18 @@
  *  GNU General Public License for more details.
  *
  *  You should have received a copy of the GNU General Public License
- *  along with RawTherapee.  If not, see <http://www.gnu.org/licenses/>.
+ *  along with RawTherapee.  If not, see <https://www.gnu.org/licenses/>.
  */
-#include "darkframe.h"
-#include "options.h"
-#include "guiutils.h"
 #include <sstream>
+
+#include "darkframe.h"
+
+#include "guiutils.h"
+#include "options.h"
 #include "rtimage.h"
+
+#include "../rtengine/procparams.h"
+#include "../rtengine/rawimage.h"
 
 using namespace rtengine;
 using namespace rtengine::procparams;
@@ -121,7 +126,7 @@ void DarkFrame::read(const rtengine::procparams::ProcParams* pp, const ParamsEdi
         Glib::ustring fname = Glib::path_get_basename(dfp->GetCurrentImageFilePath());
         Glib::ustring filetype;
 
-        if (fname != "") {
+        if (!fname.empty()) {
             // get image filetype, set filter to the same as current image's filetype
             std::string::size_type idx;
             idx = fname.rfind('.');

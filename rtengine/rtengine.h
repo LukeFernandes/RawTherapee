@@ -14,36 +14,65 @@
  *  GNU General Public License for more details.
  *
  *  You should have received a copy of the GNU General Public License
- *  along with RawTherapee.  If not, see <http://www.gnu.org/licenses/>.
+ *  along with RawTherapee.  If not, see <https://www.gnu.org/licenses/>.
  */
-#ifndef _RTENGINE_
-#define _RTENGINE_
+#pragma once
 
-#include "imageformat.h"
-#include "rt_math.h"
-#include "procparams.h"
-#include "procevents.h"
-#include <lcms2.h>
-#include <string>
-#include <glibmm.h>
+#include <array>
 #include <ctime>
-#include "../rtexif/rtexif.h"
-#include "rawmetadatalocation.h"
+#include <string>
+#include <memory>
+
+#include <glibmm/ustring.h>
+
+#include <lcms2.h>
+
 #include "iimage.h"
-#include "utils.h"
-#include "../rtgui/threadutils.h"
+#include "imageformat.h"
+#include "procevents.h"
+#include "rawmetadatalocation.h"
+#include "rt_math.h"
 #include "settings.h"
-#include "LUT.h"
+
+#include "../rtgui/threadutils.h"
+
 /**
  * @file
  * This file contains the main functionality of the RawTherapee engine.
  *
  */
 
+template<typename T>
+class LUT;
+
+using LUTu = LUT<uint32_t>;
+
 class EditDataProvider;
+namespace rtexif
+{
+
+class TagDirectory;
+
+}
 
 namespace rtengine
 {
+
+enum RenderingIntent : int;
+
+namespace procparams
+{
+
+class ProcParams;
+class IPTCPairs;
+
+struct RAWParams;
+struct ColorManagementParams;
+struct CropParams;
+
+enum class ToneCurveMode : int;
+
+}
 
 class IImage8;
 class IImage16;
@@ -118,6 +147,8 @@ public:
     virtual std::string getLens     (unsigned int frame = 0) const = 0;
     /** @return the orientation of the image */
     virtual std::string getOrientation (unsigned int frame = 0) const = 0;
+    /** @return the rating of the image */
+    virtual int getRating (unsigned int frame = 0) const = 0;
 
     /** @return true if the file is a PixelShift shot (Pentax and Sony bodies) */
     virtual bool getPixelShift () const = 0;
@@ -315,7 +346,7 @@ public:
       * @param hlrecons set to true if HighLight Reconstruction is enabled */
     virtual void autoExpChanged(double brightness, int bright, int contrast, int black, int hlcompr, int hlcomprthresh, bool hlrecons) = 0;
 
-    virtual void autoMatchedToneCurveChanged(procparams::ToneCurveParams::TcMode curveMode, const std::vector<double>& curve) = 0;
+    virtual void autoMatchedToneCurveChanged(procparams::ToneCurveMode curveMode, const std::vector<double>& curve) = 0;
 };
 
 class AutoCamListener
@@ -390,6 +421,13 @@ class AutoContrastListener
 public :
     virtual ~AutoContrastListener() = default;
     virtual void autoContrastChanged (double autoContrast) = 0;
+};
+
+class AutoRadiusListener
+{
+public :
+    virtual ~AutoRadiusListener() = default;
+    virtual void autoRadiusChanged (double autoRadius) = 0;
 };
 
 class WaveletListener
@@ -484,6 +522,7 @@ public:
     virtual bool        getAutoWB   (double& temp, double& green, double equal, double tempBias) = 0;
     virtual void        getCamWB    (double& temp, double& green) = 0;
     virtual void        getSpotWB  (int x, int y, int rectSize, double& temp, double& green) = 0;
+    virtual bool        getFilmNegativeExponents(int xA, int yA, int xB, int yB, std::array<float, 3>& newExps) = 0;
     virtual void        getAutoCrop (double ratio, int &x, int &y, int &w, int &h) = 0;
 
     virtual void        saveInputICCReference (const Glib::ustring& fname, bool apply_wb) = 0;
@@ -499,6 +538,8 @@ public:
     virtual void        setFrameCountListener   (FrameCountListener* l) = 0;
     virtual void        setBayerAutoContrastListener (AutoContrastListener* l) = 0;
     virtual void        setXtransAutoContrastListener (AutoContrastListener* l) = 0;
+    virtual void        setpdSharpenAutoContrastListener (AutoContrastListener* l) = 0;
+    virtual void        setpdSharpenAutoRadiusListener (AutoRadiusListener* l) = 0;
     virtual void        setAutoBWListener       (AutoBWListener* l) = 0;
     virtual void        setAutoWBListener       (AutoWBListener* l) = 0;
     virtual void        setAutoColorTonListener (AutoColorTonListener* l) = 0;
@@ -511,7 +552,7 @@ public:
     virtual void        getMonitorProfile       (Glib::ustring& monitorProfile, RenderingIntent& intent) const = 0;
     virtual void        setSoftProofing         (bool softProof, bool gamutCheck) = 0;
     virtual void        getSoftProofing         (bool &softProof, bool &gamutCheck) = 0;
-    virtual void        setSharpMask            (bool sharpMask) = 0;
+    virtual ProcEvent   setSharpMask            (bool sharpMask) = 0;
 
     virtual ~StagedImageProcessor () {}
 
@@ -529,7 +570,7 @@ public:
   * @param baseDir base directory of RT's installation dir
   * @param userSettingsDir RT's base directory in the user's settings dir
   * @param loadAll if false, don't load the various dependencies (profiles, HALDClut files, ...), they'll be loaded from disk each time they'll be used (launching time improvement) */
-int init (const Settings* s, Glib::ustring baseDir, Glib::ustring userSettingsDir, bool loadAll = true);
+int init (const Settings* s, const Glib::ustring& baseDir, const Glib::ustring& userSettingsDir, bool loadAll = true);
 
 /** Cleanup the RT engine (static variables) */
 void cleanup ();
@@ -597,6 +638,3 @@ void startBatchProcessing (ProcessingJob* job, BatchProcessingListener* bpl);
 
 extern MyMutex* lcmsMutex;
 }
-
-#endif
-

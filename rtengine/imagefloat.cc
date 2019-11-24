@@ -14,19 +14,22 @@
  *  GNU General Public License for more details.
  *
  *  You should have received a copy of the GNU General Public License
- *  along with RawTherapee.  If not, see <http://www.gnu.org/licenses/>.
+ *  along with RawTherapee.  If not, see <https://www.gnu.org/licenses/>.
  */
 #include <tiffio.h>
+
+#include "colortemp.h"
 #include "imagefloat.h"
 #include "image16.h"
 #include "image8.h"
+#include "labimage.h"
 #include <cstring>
 #include "rtengine.h"
-#include "mytime.h"
 #include "iccstore.h"
 #include "alignedbuffer.h"
 #include "rt_math.h"
 #include "color.h"
+#include "procparams.h"
 
 using namespace rtengine;
 
@@ -44,7 +47,7 @@ Imagefloat::~Imagefloat ()
 }
 
 // Call this method to handle floating points input values of different size
-void Imagefloat::setScanline (int row, unsigned char* buffer, int bps, unsigned int numSamples)
+void Imagefloat::setScanline (int row, const unsigned char* buffer, int bps, unsigned int numSamples)
 {
 
     if (data == nullptr) {
@@ -57,7 +60,7 @@ void Imagefloat::setScanline (int row, unsigned char* buffer, int bps, unsigned 
     switch (sampleFormat) {
     case (IIOSF_FLOAT16): {
         int ix = 0;
-        uint16_t* sbuffer = (uint16_t*) buffer;
+        const uint16_t* sbuffer = (const uint16_t*) buffer;
 
         for (int i = 0; i < width; i++) {
             r(row, i) = 65535.f * DNG_HalfToFloat(sbuffer[ix++]);
@@ -70,7 +73,7 @@ void Imagefloat::setScanline (int row, unsigned char* buffer, int bps, unsigned 
     //case (IIOSF_FLOAT24):
     case (IIOSF_FLOAT32): {
         int ix = 0;
-        float* sbuffer = (float*) buffer;
+        const float* sbuffer = (const float*) buffer;
 
         for (int i = 0; i < width; i++) {
             r(row, i) = 65535.f * sbuffer[ix++];
@@ -84,7 +87,7 @@ void Imagefloat::setScanline (int row, unsigned char* buffer, int bps, unsigned 
     case (IIOSF_LOGLUV24):
     case (IIOSF_LOGLUV32): {
         int ix = 0;
-        float* sbuffer = (float*) buffer;
+        const float* sbuffer = (const float*) buffer;
         float xyzvalues[3], rgbvalues[3];
 
         for (int i = 0; i < width; i++) {
@@ -107,8 +110,6 @@ void Imagefloat::setScanline (int row, unsigned char* buffer, int bps, unsigned 
     }
 }
 
-
-namespace rtengine { extern void filmlike_clip(float *r, float *g, float *b); }
 
 void Imagefloat::getScanline (int row, unsigned char* buffer, int bps, bool isFloat) const
 {
@@ -441,11 +442,15 @@ void Imagefloat::calcCroppedHistogram(const ProcParams &params, float scale, LUT
     int x1, x2, y1, y2;
     params.crop.mapToResized(width, height, scale, x1, x2, y1, y2);
 
+#ifdef _OPENMP
     #pragma omp parallel
+#endif
     {
         LUTu histThr(65536);
         histThr.clear();
+#ifdef _OPENMP
         #pragma omp for nowait
+#endif
 
         for (int y = y1; y < y2; y++) {
             for (int x = x1; x < x2; x++) {
@@ -461,7 +466,9 @@ void Imagefloat::calcCroppedHistogram(const ProcParams &params, float scale, LUT
             }
         }
 
+#ifdef _OPENMP
         #pragma omp critical
+#endif
         {
             for(int i = 0; i <= 0xffff; i++) {
                 hist[i] += histThr[i];
@@ -495,7 +502,6 @@ void Imagefloat::ExecCMSTransform(cmsHTRANSFORM hTransform)
                 *(p++) = *(pR++);
                 *(p++) = *(pG++);
                 *(p++) = *(pB++);
-				
             }
 
             cmsDoTransform (hTransform, pBuf.data, pBuf.data, width);

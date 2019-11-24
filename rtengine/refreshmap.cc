@@ -14,7 +14,7 @@
  *  GNU General Public License for more details.
  *
  *  You should have received a copy of the GNU General Public License
- *  along with RawTherapee.  If not, see <http://www.gnu.org/licenses/>.
+ *  along with RawTherapee.  If not, see <https://www.gnu.org/licenses/>.
  */
 #include "refreshmap.h"
 #include "procevents.h"
@@ -83,9 +83,9 @@ int refreshmap[rtengine::NUMOFEVENTS] = {
     RGBCURVE,         // EvSHSHTonalW,
     RGBCURVE,         // EvSHLContrast,
     RETINEX,          // EvSHRadius,
-    ALL,              // EvCTRotate,
-    ALL,              // EvCTHFlip,
-    ALL,              // EvCTVFlip,
+    ALLNORAW,         // EvCTRotate,
+    ALLNORAW,         // EvCTHFlip,
+    ALLNORAW,         // EvCTVFlip,
     TRANSFORM,        // EvROTDegree,
     TRANSFORM,        // EvTransAutoFill,
     TRANSFORM,        // EvDISTAmount,
@@ -151,7 +151,7 @@ int refreshmap[rtengine::NUMOFEVENTS] = {
     DARKFRAME,        // EvPreProcessAutoDF
     DARKFRAME,        // EvPreProcessDFFile
     DARKFRAME,        // EvPreProcessExpCorrLinear
-    DARKFRAME,        // EvPreProcessExpCorrPH
+    0,                // --unused--
     FLATFIELD,        // EvFlatFieldFile,
     FLATFIELD,        // EvFlatFieldAutoSelect,
     FLATFIELD,        // EvFlatFieldBlurRadius,
@@ -519,11 +519,15 @@ int refreshmap[rtengine::NUMOFEVENTS] = {
     HDR,              // EvTMFattalAmount
     ALLNORAW,         // EvWBEnabled
     RGBCURVE,         // EvRGBEnabled
-    LUMINANCECURVE    // EvLEnabled
+    LUMINANCECURVE,   // EvLEnabled
+    DEMOSAIC,         // EvPdShrEnabled
+    CAPTURESHARPEN    // EvPdShrMaskToggled
+
 };
 
 
-namespace rtengine {
+namespace rtengine
+{
 
 RefreshMapper::RefreshMapper():
     next_event_(rtengine::NUMOFEVENTS)

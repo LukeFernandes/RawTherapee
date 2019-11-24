@@ -14,7 +14,7 @@
  *  GNU General Public License for more details.
  *
  *  You should have received a copy of the GNU General Public License
- *  along with RawTherapee.  If not, see <http://www.gnu.org/licenses/>.
+ *  along with RawTherapee.  If not, see <https://www.gnu.org/licenses/>.
  */
 #include "dirbrowser.h"
 
@@ -63,7 +63,7 @@ std::vector<Glib::ustring> listSubDirs (const Glib::RefPtr<Gio::File>& dir, bool
                 subDirs.push_back (file->get_name ());
             } catch (const Glib::Exception& exception) {
 
-                if (options.rtSettings.verbose) {
+                if (rtengine::settings->verbose) {
                     std::cerr << exception.what().c_str() << std::endl;
                 }
 
@@ -72,7 +72,7 @@ std::vector<Glib::ustring> listSubDirs (const Glib::RefPtr<Gio::File>& dir, bool
 
     } catch (const Glib::Exception& exception) {
 
-        if (options.rtSettings.verbose) {
+        if (rtengine::settings->verbose) {
             std::cerr << "Failed to list subdirectories of \"" << dir->get_parse_name() << "\": " << exception.what () << std::endl;
         }
 
@@ -121,13 +121,13 @@ DirBrowser::~DirBrowser()
 void DirBrowser::fillDirTree ()
 {
 
-    openfolder = RTImage::createFromFile ("folder-open-small.png");
-    closedfolder = RTImage::createFromFile ("folder-closed-small.png");
-    icdrom = RTImage::createFromFile ("device-optical.png");
-    ifloppy = RTImage::createFromFile ("device-floppy.png");
-    ihdd = RTImage::createFromFile ("device-hdd.png");
-    iremovable = RTImage::createFromFile ("device-usb.png");
-    inetwork = RTImage::createFromFile ("device-network.png");
+    openfolder = RTImage::createPixbufFromFile ("folder-open-small.png");
+    closedfolder = RTImage::createPixbufFromFile ("folder-closed-small.png");
+    icdrom = RTImage::createPixbufFromFile ("device-optical.png");
+    ifloppy = RTImage::createPixbufFromFile ("device-floppy.png");
+    ihdd = RTImage::createPixbufFromFile ("device-hdd.png");
+    iremovable = RTImage::createPixbufFromFile ("device-usb.png");
+    inetwork = RTImage::createPixbufFromFile ("device-network.png");
 
     //Create the Tree model:
     dirTreeModel = Gtk::TreeStore::create(dtColumns);

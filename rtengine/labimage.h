@@ -14,10 +14,11 @@
  *  GNU General Public License for more details.
  *
  *  You should have received a copy of the GNU General Public License
- *  along with RawTherapee.  If not, see <http://www.gnu.org/licenses/>.
+ *  along with RawTherapee.  If not, see <https://www.gnu.org/licenses/>.
  */
-#ifndef _LABIMAGE_H_
-#define _LABIMAGE_H_
+#pragma once
+
+#include <cstring>
 
 namespace rtengine
 {
@@ -25,7 +26,7 @@ namespace rtengine
 class LabImage
 {
 private:
-    void allocLab(int w, int h);
+    void allocLab(size_t w, size_t h);
 
 public:
     int W, H;
@@ -45,4 +46,3 @@ public:
 };
 
 }
-#endif

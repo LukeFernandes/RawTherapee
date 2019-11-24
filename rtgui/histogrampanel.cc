@@ -14,7 +14,7 @@
  *  GNU General Public License for more details.
  *
  *  You should have received a copy of the GNU General Public License
- *  along with RawTherapee.  If not, see <http://www.gnu.org/licenses/>.
+ *  along with RawTherapee.  If not, see <https://www.gnu.org/licenses/>.
  */
 #include "histogrampanel.h"
 #include "multilangmgr.h"
@@ -24,14 +24,9 @@
 #include <cmath>
 #include "../rtengine/LUT.h"
 #include "rtimage.h"
-#include "../rtengine/improccoordinator.h"
 #include "../rtengine/color.h"
-#include "../rtengine/opthelper.h"
-#include "../rtengine/iccstore.h"
 
 using namespace rtengine;
-
-extern Options options;
 
 
 //
@@ -142,7 +137,7 @@ HistogramPanel::HistogramPanel ()
     showGreen->set_image (showGreen->get_active() ? *greenImage : *greenImage_g);
     showBlue->set_image  (showBlue->get_active()  ? *blueImage  : *blueImage_g);
     showValue->set_image (showValue->get_active() ? *valueImage : *valueImage_g);
-    showChro->set_image  (showChro->get_active()   ? *chroImage : *chroImage_g);
+    showChro->set_image  (showChro->get_active()  ? *chroImage  : *chroImage_g);
     showRAW->set_image   (showRAW->get_active()   ? *rawImage   : *rawImage_g);
     if (options.histogramDrawMode == 0)
         showMode->set_image(*mode0Image);
@@ -151,6 +146,8 @@ HistogramPanel::HistogramPanel ()
     else
         showMode->set_image(*mode2Image);
     showBAR->set_image   (showBAR->get_active()   ? *barImage   : *barImage_g);
+    
+    raw_toggled(); // Make sure the luma/chroma toggles are enabled or disabled
 
     setExpandAlignProperties(showRed  , false, false, Gtk::ALIGN_START, Gtk::ALIGN_CENTER);
     setExpandAlignProperties(showGreen, false, false, Gtk::ALIGN_START, Gtk::ALIGN_CENTER);
@@ -412,18 +409,21 @@ void HistogramRGBArea::get_preferred_height_vfunc (int &minimum_height, int &nat
 
 void HistogramRGBArea::get_preferred_width_vfunc (int &minimum_width, int &natural_width) const
 {
-    minimum_width = 60;
-    natural_width = 200;
+    int s = RTScalable::getScale();
+    minimum_width = 60 * s;
+    natural_width = 200 * s;
 }
 
 void HistogramRGBArea::get_preferred_height_for_width_vfunc (int width, int &minimum_height, int &natural_height) const
 {
     int bHeight = width / 30;
 
-    if (bHeight > 10) {
-        bHeight = 10;
-    } else if (bHeight < 5) {
-        bHeight = 5;
+    int s = RTScalable::getScale();
+
+    if (bHeight > (10 * s)) {
+        bHeight = 10 * s;
+    } else if (bHeight < (5 * s)) {
+        bHeight = 5 * s;
     }
 
     minimum_height = bHeight;
@@ -454,12 +454,13 @@ void HistogramRGBArea::updateBackBuffer (int r, int g, int b, const Glib::ustrin
     int winx, winy, winw, winh;
     window->get_geometry(winx, winy, winw, winh);
 
+    double s = RTScalable::getScale();
+
     // This will create or update the size of the BackBuffer::surface
     setDrawRectangle(Cairo::FORMAT_ARGB32, 0, 0, winw, winh, true);
 
     if (surface)  {
         Cairo::RefPtr<Cairo::Context> cc = Cairo::Context::create(surface);
-        Glib::RefPtr<Gtk::StyleContext> style = get_style_context();
 
         cc->set_source_rgba (0., 0., 0., 0.);
         cc->set_operator (Cairo::OPERATOR_CLEAR);
@@ -467,18 +468,18 @@ void HistogramRGBArea::updateBackBuffer (int r, int g, int b, const Glib::ustrin
         cc->set_operator (Cairo::OPERATOR_OVER);
 
         cc->set_antialias(Cairo::ANTIALIAS_NONE);
-        cc->set_line_width (1.0);
+        cc->set_line_width (1.0 * s);
 
         if ( r != -1 && g != -1 && b != -1 ) {
             if (needRed) {
                 // Red
                 cc->set_source_rgb(1.0, 0.0, 0.0);
                 if (options.histogramDrawMode < 2) {
-                    cc->move_to(r * (winw - 3) / 255.0 + 2, 0); // Rescaling seems needed to fit between boundaries of draw area
-                    cc->line_to(r * (winw - 3) / 255.0 + 2, winh - 0);
+                    cc->move_to(r * (winw - 1.) / 255.0 + 0.5*s, 0); // Rescaling seems needed to fit between boundaries of draw area
+                    cc->line_to(r * (winw - 1.) / 255.0 + 0.5*s, winh - 0);
                 } else {
-                    cc->move_to(HistogramScaling::log (255, r) * (winw - 3) / 255.0 + 2, 0);
-                    cc->line_to(HistogramScaling::log (255, r) * (winw - 3) / 255.0 + 2, winh - 0);
+                    cc->move_to(HistogramScaling::log (255, r) * (winw - 1.*s) / 255.0 + 0.5*s, 0);
+                    cc->line_to(HistogramScaling::log (255, r) * (winw - 1.*s) / 255.0 + 0.5*s, winh - 0);
                 }
                 cc->stroke();
             }
@@ -487,24 +488,24 @@ void HistogramRGBArea::updateBackBuffer (int r, int g, int b, const Glib::ustrin
                 // Green
                 cc->set_source_rgb(0.0, 1.0, 0.0);
                 if (options.histogramDrawMode < 2) {
-                    cc->move_to(g * (winw - 3) / 255.0 + 2, 0);
-                    cc->line_to(g * (winw - 3) / 255.0 + 2, winh - 0);
+                    cc->move_to(g * (winw - 1.) / 255.0 + 0.5*s, 0);
+                    cc->line_to(g * (winw - 1.) / 255.0 + 0.5*s, winh - 0);
                 } else {
-                    cc->move_to(HistogramScaling::log (255, g) * (winw - 3) / 255.0 + 2, 0);
-                    cc->line_to(HistogramScaling::log (255, g) * (winw - 3) / 255.0 + 2, winh - 0);
+                    cc->move_to(HistogramScaling::log (255, g) * (winw - 1.) / 255.0 + 0.5*s, 0);
+                    cc->line_to(HistogramScaling::log (255, g) * (winw - 1.) / 255.0 + 0.5*s, winh - 0);
                 }
                 cc->stroke();
             }
 
             if (needBlue) {
                 // Blue
-                cc->set_source_rgb(0.0, 0.0, 1.0);
+                cc->set_source_rgb(0.0, 0.4, 1.0);
                 if (options.histogramDrawMode < 2) {
-                    cc->move_to(b * (winw - 3) / 255.0 + 2, 0);
-                    cc->line_to(b * (winw - 3) / 255.0 + 2, winh - 0);
+                    cc->move_to(b * (winw - 1.) / 255.0 + 0.5*s, 0);
+                    cc->line_to(b * (winw - 1.) / 255.0 + 0.5*s, winh - 0);
                 } else {
-                    cc->move_to(HistogramScaling::log (255, b) * (winw - 3) / 255.0 + 2, 0);
-                    cc->line_to(HistogramScaling::log (255, b) * (winw - 3) / 255.0 + 2, winh - 0);
+                    cc->move_to(HistogramScaling::log (255, b) * (winw - 1.) / 255.0 + 0.5*s, 0);
+                    cc->line_to(HistogramScaling::log (255, b) * (winw - 1.) / 255.0 + 0.5*s, winh - 0);
                 }
                 cc->stroke();
             }
@@ -517,11 +518,11 @@ void HistogramRGBArea::updateBackBuffer (int r, int g, int b, const Glib::ustrin
                     // Luma
                     cc->set_source_rgb(1.0, 1.0, 1.0);
                     if (options.histogramDrawMode < 2) {
-                        cc->move_to(Lab_L * (winw - 3) / 100.0 + 2, 0);
-                        cc->line_to(Lab_L * (winw - 3) / 100.0 + 2, winh - 0);
+                        cc->move_to(Lab_L * (winw - 3.*s) / 100.0 + 0.5*s, 0);
+                        cc->line_to(Lab_L * (winw - 3.*s) / 100.0 + 0.5*s, winh - 0);
                     } else {
-                        cc->move_to(HistogramScaling::log (100, Lab_L) * (winw - 3) / 100.0 + 2, 0);
-                        cc->line_to(HistogramScaling::log (100, Lab_L) * (winw - 3) / 100.0 + 2, winh - 0);
+                        cc->move_to(HistogramScaling::log (100, Lab_L) * (winw - 1.) / 100.0 + 0.5*s, 0);
+                        cc->line_to(HistogramScaling::log (100, Lab_L) * (winw - 1.) / 100.0 + 0.5*s, winh - 0);
                     }
                     cc->stroke();
                 }
@@ -532,11 +533,11 @@ void HistogramRGBArea::updateBackBuffer (int r, int g, int b, const Glib::ustrin
                     //  float chromaval = sqrt(Lab_a*Lab_a + Lab_b*Lab_b);
                     cc->set_source_rgb(0.9, 0.9, 0.0);
                     if (options.histogramDrawMode < 2) {
-                        cc->move_to(chromaval * (winw - 3) / 100.0 + 2, 0);
-                        cc->line_to(chromaval * (winw - 3) / 100.0 + 2, winh - 0);
+                        cc->move_to(chromaval * (winw - 1.) / 100.0 + 0.5*s, 0);
+                        cc->line_to(chromaval * (winw - 1.) / 100.0 + 0.5*s, winh - 0);
                     } else {
-                        cc->move_to(HistogramScaling::log (100, chromaval) * (winw - 3) / 100.0 + 2, 0);
-                        cc->line_to(HistogramScaling::log (100, chromaval) * (winw - 3) / 100.0 + 2, winh - 0);
+                        cc->move_to(HistogramScaling::log (100, chromaval) * (winw - 1.) / 100.0 + 0.5*s, 0);
+                        cc->line_to(HistogramScaling::log (100, chromaval) * (winw - 1.) / 100.0 + 0.5*s, winh - 0);
                     }
                     cc->stroke();
                 }
@@ -611,7 +612,6 @@ void HistogramRGBArea::on_realize ()
 {
 
     Gtk::DrawingArea::on_realize();
-    Glib::RefPtr<Gdk::Window> window = get_window();
     add_events(Gdk::BUTTON_PRESS_MASK);
 }
 
@@ -647,7 +647,7 @@ bool HistogramRGBArea::on_button_press_event (GdkEventButton* event)
 
 void HistogramRGBArea::factorChanged (double newFactor)
 {
-	factor = newFactor;
+    factor = newFactor;
 }
 
 //
@@ -695,16 +695,17 @@ Gtk::SizeRequestMode HistogramArea::get_request_mode_vfunc () const
 
 void HistogramArea::get_preferred_height_vfunc (int &minimum_height, int &natural_height) const
 {
-
-    minimum_height = 100;
-    natural_height = 200;
+    int s = (int)RTScalable::getScale();
+    minimum_height = 100 * s;
+    natural_height = 200 * s;
 }
 
 void HistogramArea::get_preferred_width_vfunc (int &minimum_width, int &natural_width) const
 {
 
-    minimum_width = 200;
-    natural_width = 400;
+    int s = (int)RTScalable::getScale();
+    minimum_width = 200 * s;
+    natural_width = 400 * s;
 }
 
 void HistogramArea::get_preferred_height_for_width_vfunc (int width, int &minimum_height, int &natural_height) const
@@ -802,6 +803,8 @@ void HistogramArea::updateBackBuffer ()
     Cairo::RefPtr<Cairo::Context> cr = Cairo::Context::create(surface);
     const Glib::RefPtr<Gtk::StyleContext> style = get_style_context();
 
+    double s = RTScalable::getScale();
+
     // Setup drawing
     cr->set_source_rgba (0., 0., 0., 0.);
     cr->set_operator (Cairo::OPERATOR_CLEAR);
@@ -810,9 +813,10 @@ void HistogramArea::updateBackBuffer ()
 
     // Prepare drawing gridlines first
     cr->set_source_rgba (1., 1., 1., 0.25);
-    cr->set_line_width (1.0);
+    cr->set_line_width (1.0 * s);
     cr->set_antialias(Cairo::ANTIALIAS_NONE);
     cr->set_line_join(Cairo::LINE_JOIN_MITER);
+    cr->set_line_cap(Cairo::LINE_CAP_BUTT);
     std::valarray<double> ch_ds (1);
     ch_ds[0] = 4;
     cr->set_dash (ch_ds, 0);
@@ -824,14 +828,14 @@ void HistogramArea::updateBackBuffer ()
     // draw vertical gridlines
     if (options.histogramDrawMode < 2) {
         for (int i = 1; i < nrOfVGridPartitions; i++) {
-            cr->move_to ((pow(2.0,i) - 1) / 255.0 * w + 0.5, 1.5);
-            cr->line_to ((pow(2.0,i) - 1) / 255.0 * w + 0.5, h - 2);
+            cr->move_to ((pow(2.0,i) - 1) / 255.0 * w + 0.5, 0.);
+            cr->line_to ((pow(2.0,i) - 1) / 255.0 * w + 0.5, h);
             cr->stroke ();
         }
     } else {
         for (int i = 1; i < nrOfVGridPartitions; i++) {
-            cr->move_to (HistogramScaling::log (255, pow(2.0,i) - 1) / 255.0 * w + 0.5, 1.5);
-            cr->line_to (HistogramScaling::log (255, pow(2.0,i) - 1) / 255.0 * w + 0.5, h - 2);
+            cr->move_to (HistogramScaling::log (255, pow(2.0,i) - 1) / 255.0 * w + 0.5, 0.);
+            cr->line_to (HistogramScaling::log (255, pow(2.0,i) - 1) / 255.0 * w + 0.5, h);
             cr->stroke ();
         }
     }
@@ -839,14 +843,14 @@ void HistogramArea::updateBackBuffer ()
     // draw horizontal gridlines
     if (options.histogramDrawMode == 0) {
         for (int i = 1; i < nrOfHGridPartitions; i++) {
-            cr->move_to (1.5, i * (double)h / nrOfHGridPartitions + 0.5);
-            cr->line_to (w - 2, i * (double)h / nrOfHGridPartitions + 0.5);
+            cr->move_to (0., i * (double)h / nrOfHGridPartitions + 0.5);
+            cr->line_to (w, i * (double)h / nrOfHGridPartitions + 0.5);
             cr->stroke ();
         }
     } else {
         for (int i = 1; i < nrOfHGridPartitions; i++) {
-            cr->move_to (1.5, h - HistogramScaling::log (h, i * (double)h / nrOfHGridPartitions) + 0.5);
-            cr->line_to (w - 2, h - HistogramScaling::log (h, i * (double)h / nrOfHGridPartitions) + 0.5);
+            cr->move_to (0., h - HistogramScaling::log (h, i * (double)h / nrOfHGridPartitions) + 0.5*s);
+            cr->line_to (w, h - HistogramScaling::log (h, i * (double)h / nrOfHGridPartitions) + 0.5*s);
             cr->stroke ();
         }
     }
@@ -920,7 +924,7 @@ void HistogramArea::updateBackBuffer ()
         }
 
         cr->set_antialias (Cairo::ANTIALIAS_SUBPIXEL);
-        cr->set_line_width (1.0);
+        cr->set_line_width (1.0 * s);
         cr->set_operator (Cairo::OPERATOR_OVER);
 
         int ui = 0, oi = 0;
@@ -955,7 +959,7 @@ void HistogramArea::updateBackBuffer ()
 
         if (needBlue) {
             drawCurve(cr, bhchanged, realhistheight, w, h);
-            cr->set_source_rgb (0.0, 0.0, 1.0);
+            cr->set_source_rgb (0.0, 0.4, 1.0);
             cr->stroke ();
             drawMarks(cr, bhchanged, realhistheight, w, ui, oi);
         }
@@ -975,13 +979,15 @@ void HistogramArea::on_realize ()
 {
 
     Gtk::DrawingArea::on_realize();
-    Glib::RefPtr<Gdk::Window> window = get_window();
     add_events(Gdk::POINTER_MOTION_MASK | Gdk::BUTTON_PRESS_MASK | Gdk::BUTTON_RELEASE_MASK);
 }
 
 void HistogramArea::drawCurve(Cairo::RefPtr<Cairo::Context> &cr,
                               LUTu & data, double scale, int hsize, int vsize)
 {
+    double s = RTScalable::getScale();
+
+    cr->set_line_width(s);
     cr->move_to (0, vsize - 1);
     scale = scale <= 0.f ? 0.001f : scale; // avoid division by zero and negative values
 
@@ -1009,7 +1015,7 @@ void HistogramArea::drawCurve(Cairo::RefPtr<Cairo::Context> &cr,
 void HistogramArea::drawMarks(Cairo::RefPtr<Cairo::Context> &cr,
                               LUTu & data, double scale, int hsize, int & ui, int & oi)
 {
-    int s = 8;
+    int s = 8 * RTScalable::getScale();
 
     if(data[0] > scale) {
         cr->rectangle(0, (ui++)*s, s, s);
@@ -1024,8 +1030,6 @@ void HistogramArea::drawMarks(Cairo::RefPtr<Cairo::Context> &cr,
 
 bool HistogramArea::on_draw(const ::Cairo::RefPtr< Cairo::Context> &cr)
 {
-
-    Glib::RefPtr<Gdk::Window> window = get_window();
 
     if (get_width() != oldwidth || get_height() != oldheight || isDirty ()) {
         updateBackBuffer ();

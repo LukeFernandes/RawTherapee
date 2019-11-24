@@ -12,21 +12,26 @@
  *  GNU General Public License for more details.
  *
  *  You should have received a copy of the GNU General Public License
- *  along with RawTherapee.  If not, see <http://www.gnu.org/licenses/>.
+ *  along with RawTherapee.  If not, see <https://www.gnu.org/licenses/>.
  */
-#ifndef _EDITWINDOW_
-#define _EDITWINDOW_
+#pragma once
 
-#include <gtkmm.h>
-#include "filepanel.h"
-#include "editorpanel.h"
 #include <set>
 
-class EditWindow : public Gtk::Window
+#include <gtkmm.h>
+
+#include "editorpanel.h"
+#include "filepanel.h"
+#include "rtimage.h"
+
+class EditWindow :
+    public Gtk::Window
 {
 
 private:
+    double resolution;
     RTWindow* parent;
+    RTImage appIcon;
 
     Gtk::Notebook* mainNB;
     std::set<Glib::ustring> filesEdited;
@@ -36,6 +41,8 @@ private:
     bool isClosed;
     void toggleFullscreen ();
     void restoreWindow();
+    bool updateResolution();
+    void setAppIcon();
 
 public:
     // Check if the system has more than one display and option is set
@@ -62,5 +69,3 @@ public:
     void set_title_decorated(Glib::ustring fname);
     void on_realize () override;
 };
-
-#endif

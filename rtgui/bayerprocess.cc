@@ -14,17 +14,22 @@
  *  GNU General Public License for more details.
  *
  *  You should have received a copy of the GNU General Public License
- *  along with RawTherapee.  If not, see <http://www.gnu.org/licenses/>.
+ *  along with RawTherapee.  If not, see <https://www.gnu.org/licenses/>.
  */
 #include "bayerprocess.h"
+
 #include "eventmapper.h"
-#include "options.h"
 #include "guiutils.h"
+#include "options.h"
+
+#include "../rtengine/procparams.h"
+#include "../rtengine/utils.h"
+
 using namespace rtengine;
 using namespace rtengine::procparams;
 
 
-BayerProcess::BayerProcess () : FoldableToolPanel(this, "bayerprocess", M("TP_RAW_LABEL"), true)
+BayerProcess::BayerProcess () : FoldableToolPanel(this, "bayerprocess", M("TP_RAW_LABEL"), options.prevdemo != PD_Sidecar)
 {
 
     auto m = ProcEventMapper::getInstance();
@@ -725,12 +730,15 @@ void BayerProcess::FrameCountChanged(int n, int frameNum)
 
             imageNumber->remove_all();
             imageNumber->append("1");
-            for (int i = 2; i <= std::min(n, 4); ++i) {
+            for (int i = 2; i <= std::min(n, 6); ++i) {
                 std::ostringstream entry;
                 entry << i;
                 imageNumber->append(entry.str());
             }
-            imageNumber->set_active(std::min(frameNum, n - 1));
+            if (n == 2) {
+                imageNumber->append(M("TP_RAW_IMAGENUM_SN"));
+            }
+            imageNumber->set_active(std::min(frameNum, n == 2 ? n : n - 1));
             if (n == 1) {
                 imageNumberBox->hide();
             } else {

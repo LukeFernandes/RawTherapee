@@ -14,16 +14,12 @@
  *  GNU General Public License for more details.
  *
  *  You should have received a copy of the GNU General Public License
- *  along with RawTherapee.  If not, see <http://www.gnu.org/licenses/>.
+ *  along with RawTherapee.  If not, see <https://www.gnu.org/licenses/>.
  */
-#ifndef __PROCEVENT__
-#define __PROCEVENT__
+#pragma once
 
 namespace rtengine
 {
-
-
-
 
 // Aligned so the first entry starts on line 30
 enum ProcEventCode {
@@ -70,10 +66,10 @@ enum ProcEventCode {
     EvToneCurveMode1 = 40,
     EvToneCurve2 = 41,
     EvToneCurveMode2 = 42,
-    EvLDNRadius = 43, // obsolete
-    EvLDNEdgeTolerance = 44, // obsolete
-    EvCDNEnabled = 45, // obsolete
-    EvBlendCMSMatrix = 46, // obsolete
+    obsolete_43 = 43, // obsolete
+    obsolete_44 = 44, // obsolete
+    obsolete_45 = 45, // obsolete
+    obsolete_46 = 46, // obsolete
     EvDCPToneCurve = 47,
     EvDCPIlluminant = 48,
     EvSHEnabled = 49,
@@ -93,7 +89,7 @@ enum ProcEventCode {
     EvCrop = 63,
     EvCACorr = 64,
     EvHREnabled = 65,
-    EvHRAmount = 66, //obsolete
+    obsolete_66 = 66, //obsolete
     EvHRMethod = 67,
     EvWProfile = 68,
     EvOProfile = 69,
@@ -138,7 +134,7 @@ enum ProcEventCode {
     EvResizeBoundingBox = 108,
     EvResizeAppliesTo = 109,
     EvLAvoidColorShift = 110,
-    EvLSatLimiter = 111,    // obsolete
+    obsolete_111 = 111,    // obsolete
     EvLRSTProtection = 112,
     EvDemosaicDCBIter = 113,
     EvDemosaicFalseColorIter = 114,
@@ -151,7 +147,7 @@ enum ProcEventCode {
     EvPreProcessAutoDF = 121,
     EvPreProcessDFFile = 122,
     EvPreProcessExpCorrLinear = 123,
-    EvPreProcessExpCorrPH = 124,
+    obsolete_124 = 124, // obsolete
     EvFlatFieldFile = 125,
     EvFlatFieldAutoSelect = 126,
     EvFlatFieldBlurRadius = 127,
@@ -520,7 +516,8 @@ enum ProcEventCode {
     EvWBEnabled = 490,
     EvRGBEnabled = 491,
     EvLEnabled = 492,
-//    EvPixelShiftOneGreen = 493,   can be reused
+    EvPdShrEnabled = 493,
+    EvPdShrMaskToggled = 494,
 
     NUMOFEVENTS
 
@@ -532,20 +529,18 @@ public:
     ProcEvent(): code_(0) {}
     ProcEvent(ProcEventCode code): code_(code) {}
     explicit ProcEvent(int code): code_(code) {}
-    operator int() { return code_; }
+    operator int() const { return code_; }
 
 private:
     int code_;
 };
 
 
-inline bool operator==(ProcEvent a, ProcEvent b) { return int(a) == int(b); }
-inline bool operator==(ProcEvent a, ProcEventCode b) { return int(a) == int(b); }
-inline bool operator==(ProcEventCode a, ProcEvent b) { return int(a) == int(b); }
-inline bool operator!=(ProcEvent a, ProcEvent b) { return int(a) != int(b); }
-inline bool operator!=(ProcEvent a, ProcEventCode b) { return int(a) != int(b); }
-inline bool operator!=(ProcEventCode a, ProcEvent b) { return int(a) != int(b); }
+inline bool operator ==(ProcEvent a, ProcEvent b) { return int(a) == int(b); }
+inline bool operator ==(ProcEvent a, ProcEventCode b) { return int(a) == int(b); }
+inline bool operator ==(ProcEventCode a, ProcEvent b) { return int(a) == int(b); }
+inline bool operator !=(ProcEvent a, ProcEvent b) { return int(a) != int(b); }
+inline bool operator !=(ProcEvent a, ProcEventCode b) { return int(a) != int(b); }
+inline bool operator !=(ProcEventCode a, ProcEvent b) { return int(a) != int(b); }
 
 }
-#endif
-

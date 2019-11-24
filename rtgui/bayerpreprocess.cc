@@ -14,17 +14,21 @@
  *  GNU General Public License for more details.
  *
  *  You should have received a copy of the GNU General Public License
- *  along with RawTherapee.  If not, see <http://www.gnu.org/licenses/>.
+ *  along with RawTherapee.  If not, see <https://www.gnu.org/licenses/>.
  */
-#include "bayerpreprocess.h"
-#include "guiutils.h"
-#include "eventmapper.h"
 #include <sstream>
+
+#include "bayerpreprocess.h"
+#include "eventmapper.h"
+#include "guiutils.h"
+#include "options.h"
+
+#include "../rtengine/procparams.h"
 
 using namespace rtengine;
 using namespace rtengine::procparams;
 
-BayerPreProcess::BayerPreProcess() : FoldableToolPanel(this, "bayerpreprocess", M("TP_PREPROCESS_LABEL"), true)
+BayerPreProcess::BayerPreProcess() : FoldableToolPanel(this, "bayerpreprocess", M("TP_PREPROCESS_LABEL"), options.prevdemo != PD_Sidecar)
 {
     auto m = ProcEventMapper::getInstance();
     EvLineDenoiseDirection = m->newEvent(DARKFRAME, "HISTORY_MSG_PREPROCESS_LINEDENOISE_DIRECTION");
@@ -120,7 +124,7 @@ void BayerPreProcess::write(rtengine::procparams::ProcParams* pp, ParamsEdited* 
     if (pedited) {
         pedited->raw.bayersensor.linenoise = lineDenoise->getEditedState();
         pedited->raw.bayersensor.greenEq = greenEqThreshold->getEditedState();
-        pedited->raw.bayersensor.linenoise = lineDenoiseDirection->get_active_row_number() != 3;
+        pedited->raw.bayersensor.linenoiseDirection = lineDenoiseDirection->get_active_row_number() != 3;
         pedited->raw.bayersensor.pdafLinesFilter = !pdafLinesFilter->get_inconsistent();
     }
 }
@@ -137,10 +141,6 @@ void BayerPreProcess::adjusterChanged(Adjuster* a, double newval)
             listener->panelChanged(EvPreProcessLineDenoise,  value);
         }
     }
-}
-
-void BayerPreProcess::adjusterAutoToggled(Adjuster* a, bool newval)
-{
 }
 
 void BayerPreProcess::setBatchMode(bool batchMode)

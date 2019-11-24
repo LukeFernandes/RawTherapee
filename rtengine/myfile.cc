@@ -14,12 +14,11 @@
  *  GNU General Public License for more details.
  *
  *  You should have received a copy of the GNU General Public License
- *  along with RawTherapee.  If not, see <http://www.gnu.org/licenses/>.
+ *  along with RawTherapee.  If not, see <https://www.gnu.org/licenses/>.
  */
 #include "myfile.h"
 #include <cstdarg>
-#include <glibmm.h>
-
+#include "rtengine.h"
 // get mmap() sorted out
 #ifdef MYFILE_MMAP
 
@@ -107,7 +106,7 @@ IMFILE* fopen (const char* fname)
     void* data = mmap(nullptr, stat_buffer.st_size, PROT_READ, MAP_PRIVATE, fd, 0);
 
     if ( data == MAP_FAILED ) {
-        printf("no mmap\n");
+        printf("no mmap %s\n", fname);
         close(fd);
         return nullptr;
     }

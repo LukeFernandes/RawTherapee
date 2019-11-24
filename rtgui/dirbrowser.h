@@ -14,15 +14,15 @@
  *  GNU General Public License for more details.
  *
  *  You should have received a copy of the GNU General Public License
- *  along with RawTherapee.  If not, see <http://www.gnu.org/licenses/>.
+ *  along with RawTherapee.  If not, see <https://www.gnu.org/licenses/>.
  */
-#ifndef _DIRBROWSER_
-#define _DIRBROWSER_
+#pragma once
 
 #include <gtkmm.h>
 #include <giomm.h>
 
 #include "guiutils.h"
+
 #ifdef WIN32
 #include "windows.h"
 #endif
@@ -110,5 +110,3 @@ inline DirBrowser::DirSelectionSignal DirBrowser::dirSelected () const
 {
     return dirSelectionSignal;
 }
-
-#endif

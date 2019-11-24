@@ -15,7 +15,7 @@
  *  GNU General Public License for more details.
  *
  *  You should have received a copy of the GNU General Public License
- *  along with RawTherapee.  If not, see <http://www.gnu.org/licenses/>.
+ *  along with RawTherapee.  If not, see <https://www.gnu.org/licenses/>.
  */
 #include <png.h>
 #include <glib/gstdio.h>
@@ -26,8 +26,11 @@
 #include <fcntl.h>
 #include <libiptcdata/iptc-jpeg.h>
 #include "rt_math.h"
+#include "procparams.h"
+#include "utils.h"
 #include "../rtgui/options.h"
 #include "../rtgui/version.h"
+#include "../rtexif/rtexif.h"
 
 #ifdef WIN32
 #include <winsock2.h>
@@ -88,7 +91,7 @@ void ImageIO::setMetadata (const rtexif::TagDirectory* eroot)
     }
 
     if (eroot) {
-        rtexif::TagDirectory* td = ((rtexif::TagDirectory*)eroot)->clone (nullptr);
+        rtexif::TagDirectory* td = eroot->clone (nullptr);
 
         // make IPTC and XMP pass through
         td->keepTag(0x83bb);  // IPTC
@@ -103,8 +106,8 @@ void ImageIO::setMetadata (const rtexif::TagDirectory* eroot, const rtengine::pr
 {
 
     // store exif info
-    exifChange.clear();
-    exifChange = exif;
+    exifChange->clear();
+    *exifChange = exif;
 
     if (exifRoot != nullptr) {
         delete exifRoot;
@@ -112,7 +115,7 @@ void ImageIO::setMetadata (const rtexif::TagDirectory* eroot, const rtengine::pr
     }
 
     if (eroot) {
-        exifRoot = ((rtexif::TagDirectory*)eroot)->clone (nullptr);
+        exifRoot = eroot->clone (nullptr);
     }
 
     if (iptc != nullptr) {
@@ -139,7 +142,7 @@ void ImageIO::setMetadata (const rtexif::TagDirectory* eroot, const rtengine::pr
             for (unsigned int j = 0; j < i->second.size(); j++) {
                 IptcDataSet * ds = iptc_dataset_new ();
                 iptc_dataset_set_tag (ds, IPTC_RECORD_APP_2, IPTC_TAG_KEYWORDS);
-                iptc_dataset_set_data (ds, (unsigned char*)i->second.at(j).c_str(), min(static_cast<size_t>(64), i->second.at(j).bytes()), IPTC_DONT_VALIDATE);
+                iptc_dataset_set_data (ds, (const unsigned char*)i->second.at(j).c_str(), min(static_cast<size_t>(64), i->second.at(j).bytes()), IPTC_DONT_VALIDATE);
                 iptc_data_add_dataset (iptc, ds);
                 iptc_dataset_unref (ds);
             }
@@ -149,7 +152,7 @@ void ImageIO::setMetadata (const rtexif::TagDirectory* eroot, const rtengine::pr
             for (unsigned int j = 0; j < i->second.size(); j++) {
                 IptcDataSet * ds = iptc_dataset_new ();
                 iptc_dataset_set_tag (ds, IPTC_RECORD_APP_2, IPTC_TAG_SUPPL_CATEGORY);
-                iptc_dataset_set_data (ds, (unsigned char*)i->second.at(j).c_str(), min(static_cast<size_t>(32), i->second.at(j).bytes()), IPTC_DONT_VALIDATE);
+                iptc_dataset_set_data (ds, (const unsigned char*)i->second.at(j).c_str(), min(static_cast<size_t>(32), i->second.at(j).bytes()), IPTC_DONT_VALIDATE);
                 iptc_data_add_dataset (iptc, ds);
                 iptc_dataset_unref (ds);
             }
@@ -161,7 +164,7 @@ void ImageIO::setMetadata (const rtexif::TagDirectory* eroot, const rtengine::pr
             if (i->first == strTags[j].field && !(i->second.empty())) {
                 IptcDataSet * ds = iptc_dataset_new ();
                 iptc_dataset_set_tag (ds, IPTC_RECORD_APP_2, strTags[j].tag);
-                iptc_dataset_set_data (ds, (unsigned char*)i->second.at(0).c_str(), min(strTags[j].size, i->second.at(0).bytes()), IPTC_DONT_VALIDATE);
+                iptc_dataset_set_data (ds, (const unsigned char*)i->second.at(0).c_str(), min(strTags[j].size, i->second.at(0).bytes()), IPTC_DONT_VALIDATE);
                 iptc_data_add_dataset (iptc, ds);
                 iptc_dataset_unref (ds);
             }
@@ -183,6 +186,22 @@ void ImageIO::setOutputProfile  (const char* pdata, int plen)
     }
 
     profileLength = plen;
+}
+
+ImageIO::ImageIO() :
+    pl(nullptr),
+    embProfile(nullptr),
+    profileData(nullptr),
+    profileLength(0),
+    loadedProfileData(nullptr),
+    loadedProfileDataJpg(false),
+    loadedProfileLength(0),
+    exifChange(new procparams::ExifPairs),
+    iptc(nullptr),
+    exifRoot(nullptr),
+    sampleFormat(IIOSF_UNKNOWN),
+    sampleArrangement(IIOSA_UNKNOWN)
+{
 }
 
 ImageIO::~ImageIO ()
@@ -558,7 +577,11 @@ int ImageIO::loadJPEG (const Glib::ustring &fname)
 
     my_jpeg_stdio_src (&cinfo, file);
 
+#if defined( WIN32 ) && defined( __x86_64__ ) && !defined(__clang__)
+    if ( __builtin_setjmp((reinterpret_cast<rt_jpeg_error_mgr*>(cinfo.src))->error_jmp_buf) == 0 ) {
+#else
     if ( setjmp((reinterpret_cast<rt_jpeg_error_mgr*>(cinfo.src))->error_jmp_buf) == 0 ) {
+#endif
         if (pl) {
             pl->setProgressStr ("PROGRESSBAR_LOADJPEG");
             pl->setProgress (0.0);
@@ -789,7 +812,7 @@ int ImageIO::loadTIFF (const Glib::ustring &fname)
      * TIFFTAG_SMAXSAMPLEVALUE, but for now, we normalize the image to the
      * effective minimum and maximum values
      */
-    if (options.rtSettings.verbose) {
+    if (settings->verbose) {
         printf("Information of \"%s\":\n", fname.c_str());
         uint16 tiffDefaultScale, tiffBaselineExposure, tiffLinearResponseLimit;
         if (TIFFGetField(in, TIFFTAG_DEFAULTSCALE, &tiffDefaultScale)) {
@@ -889,12 +912,12 @@ int ImageIO::loadPPMFromMemory(const char* buffer, int width, int height, bool s
         char swapped[line_length];
 
         for ( int row = 0; row < height; ++row ) {
-            ::rtengine::swab(((char*)buffer) + (row * line_length), swapped, line_length);
+            ::rtengine::swab(((const char*)buffer) + (row * line_length), swapped, line_length);
             setScanline(row, (unsigned char*)&swapped[0], bps);
         }
     } else {
         for ( int row = 0; row < height; ++row ) {
-            setScanline(row, ((unsigned char*)buffer) + (row * line_length), bps);
+            setScanline(row, ((const unsigned char*)buffer) + (row * line_length), bps);
         }
     }
 
@@ -1055,7 +1078,7 @@ int ImageIO::savePNG  (const Glib::ustring &fname, int bps) const
             iptcdata = nullptr;
         }
 
-        int size = rtexif::ExifManager::createPNGMarker(exifRoot, exifChange, width, height, bps, (char*)iptcdata, iptclen, buffer, bufferSize);
+        int size = rtexif::ExifManager::createPNGMarker(exifRoot, *exifChange, width, height, bps, (char*)iptcdata, iptclen, buffer, bufferSize);
 
         if (iptcdata) {
             iptc_data_free_buf (iptc, iptcdata);
@@ -1205,7 +1228,7 @@ int ImageIO::saveJPEG (const Glib::ustring &fname, int quality, int subSamp) con
 
     // assemble and write exif marker
     if (exifRoot) {
-        int size = rtexif::ExifManager::createJPEGMarker (exifRoot, exifChange, cinfo.image_width, cinfo.image_height, buffer);
+        int size = rtexif::ExifManager::createJPEGMarker (exifRoot, *exifChange, cinfo.image_width, cinfo.image_height, buffer);
 
         if (size > 0 && size < 65530) {
             jpeg_write_marker(&cinfo, JPEG_APP0 + 1, buffer, size);
@@ -1361,7 +1384,7 @@ int ImageIO::saveTIFF (const Glib::ustring &fname, int bps, bool isFloat, bool u
 
         // ------------------ Apply list of change -----------------
 
-        for (auto currExifChange : exifChange) {
+        for (auto currExifChange : *exifChange) {
             cl->applyChange (currExifChange.first, currExifChange.second);
         }
 

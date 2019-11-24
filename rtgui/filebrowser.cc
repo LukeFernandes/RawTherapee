@@ -16,22 +16,28 @@
  *  GNU General Public License for more details.
  *
  *  You should have received a copy of the GNU General Public License
- *  along with RawTherapee.  If not, see <http://www.gnu.org/licenses/>.
+ *  along with RawTherapee.  If not, see <https://www.gnu.org/licenses/>.
  */
-#include "filebrowser.h"
+#include <algorithm>
 #include <map>
-#include <glibmm.h>
-#include "options.h"
-#include "multilangmgr.h"
-#include "clipboard.h"
-#include "procparamchangers.h"
+
+#include <glibmm/ustring.h>
+
+#include "filebrowser.h"
+
 #include "batchqueue.h"
-#include "../rtengine/dfmanager.h"
-#include "../rtengine/ffmanager.h"
+#include "clipboard.h"
+#include "multilangmgr.h"
+#include "options.h"
+#include "profilestorecombobox.h"
+#include "procparamchangers.h"
 #include "rtimage.h"
 #include "threadutils.h"
+#include "thumbnail.h"
 
-extern Options options;
+#include "../rtengine/dfmanager.h"
+#include "../rtengine/ffmanager.h"
+#include "../rtengine/procparams.h"
 
 namespace
 {
@@ -587,15 +593,16 @@ void FileBrowser::addEntry_ (FileBrowserEntry* entry)
 {
     entry->selected = false;
     entry->drawable = false;
-    entry->framed = editedFiles.find (entry->filename) != editedFiles.end();
+    entry->framed = editedFiles.find(entry->filename) != editedFiles.end();
 
     // add button set to the thumbbrowserentry
-    entry->addButtonSet (new FileThumbnailButtonSet (entry));
-    entry->getThumbButtonSet()->setRank (entry->thumbnail->getRank());
-    entry->getThumbButtonSet()->setColorLabel (entry->thumbnail->getColorLabel());
-    entry->getThumbButtonSet()->setInTrash (entry->thumbnail->getStage());
-    entry->getThumbButtonSet()->setButtonListener (this);
-    entry->resize (getThumbnailHeight());
+    entry->addButtonSet(new FileThumbnailButtonSet(entry));
+    entry->getThumbButtonSet()->setRank(entry->thumbnail->getRank());
+    entry->getThumbButtonSet()->setColorLabel(entry->thumbnail->getColorLabel());
+    entry->getThumbButtonSet()->setInTrash(entry->thumbnail->getStage());
+    entry->getThumbButtonSet()->setButtonListener(this);
+    entry->resize(getThumbnailHeight());
+    entry->filtered = !checkFilter(entry);
 
     // find place in abc order
     {
@@ -614,9 +621,9 @@ void FileBrowser::addEntry_ (FileBrowserEntry* entry)
             entry
         );
 
-        initEntry (entry);
+        initEntry(entry);
     }
-    redraw ();
+    redraw(entry);
 }
 
 FileBrowserEntry* FileBrowser::delEntry (const Glib::ustring& fname)
@@ -661,6 +668,7 @@ void FileBrowser::close ()
         MYWRITERLOCK(l, entryRW);
 
         selected.clear ();
+        anchor = nullptr;
 
         MYWRITERLOCK_RELEASE(l); // notifySelectionListener will need read access!
 
@@ -748,9 +756,9 @@ void FileBrowser::menuItemActivated (Gtk::MenuItem* m)
     if (m == open) {
         openRequested(mselected);
     } else if (m == remove) {
-        tbl->deleteRequested (mselected, false);
+        tbl->deleteRequested (mselected, false, true);
     } else if (m == removeInclProc) {
-        tbl->deleteRequested (mselected, true);
+        tbl->deleteRequested (mselected, true, true);
     } else if (m == trash) {
         toTrashRequested (mselected);
     } else if (m == untrash) {
@@ -776,16 +784,20 @@ void FileBrowser::menuItemActivated (Gtk::MenuItem* m)
         {
             MYWRITERLOCK(l, entryRW);
 
-            selected.clear ();
+            selected.clear();
 
-            for (size_t i = 0; i < fd.size(); i++)
-                if (checkFilter (fd[i])) {
+            for (size_t i = 0; i < fd.size(); ++i) {
+                if (checkFilter(fd[i])) {
                     fd[i]->selected = true;
-                    selected.push_back (fd[i]);
+                    selected.push_back(fd[i]);
                 }
+            }
+            if (!anchor && !selected.empty()) {
+                anchor = selected[0];
+            }
         }
         queue_draw ();
-        notifySelectionListener ();
+        notifySelectionListener();
     } else if( m == copyTo) {
         tbl->copyMoveRequested (mselected, false);
     }
@@ -828,10 +840,10 @@ void FileBrowser::menuItemActivated (Gtk::MenuItem* m)
                 }
 
                 for (size_t i = 0; i < mselected.size(); i++) {
-                    rtengine::procparams::ProcParams pp = mselected[i]->thumbnail->getProcParams();
-                    pp.raw.dark_frame = fc.get_filename();
-                    pp.raw.df_autoselect = false;
-                    mselected[i]->thumbnail->setProcParams(pp, nullptr, FILEBROWSER, false);
+                    rtengine::procparams::ProcParams lpp = mselected[i]->thumbnail->getProcParams();
+                    lpp.raw.dark_frame = fc.get_filename();
+                    lpp.raw.df_autoselect = false;
+                    mselected[i]->thumbnail->setProcParams(lpp, nullptr, FILEBROWSER, false);
                 }
 
                 if (bppcl) {
@@ -904,10 +916,10 @@ void FileBrowser::menuItemActivated (Gtk::MenuItem* m)
                 }
 
                 for (size_t i = 0; i < mselected.size(); i++) {
-                    rtengine::procparams::ProcParams pp = mselected[i]->thumbnail->getProcParams();
-                    pp.raw.ff_file = fc.get_filename();
-                    pp.raw.ff_AutoSelect = false;
-                    mselected[i]->thumbnail->setProcParams(pp, nullptr, FILEBROWSER, false);
+                    rtengine::procparams::ProcParams lpp = mselected[i]->thumbnail->getProcParams();
+                    lpp.raw.ff_file = fc.get_filename();
+                    lpp.raw.ff_AutoSelect = false;
+                    mselected[i]->thumbnail->setProcParams(lpp, nullptr, FILEBROWSER, false);
                 }
 
                 if (bppcl) {
@@ -1067,17 +1079,17 @@ void FileBrowser::partPasteProfile ()
                 bppcl->beginBatchPParamsChange(mselected.size());
             }
 
-            for (unsigned int i = 0; i < mselected.size(); i++) {
+            for (auto entry : mselected) {
                 // copying read only clipboard PartialProfile to a temporary one, initialized to the thumb's ProcParams
-                mselected[i]->thumbnail->createProcParamsForUpdate(false, false); // this can execute customprofilebuilder to generate param file
+                entry->thumbnail->createProcParamsForUpdate(false, false); // this can execute customprofilebuilder to generate param file
                 const rtengine::procparams::PartialProfile& cbPartProf = clipboard.getPartialProfile();
-                rtengine::procparams::PartialProfile pastedPartProf(&mselected[i]->thumbnail->getProcParams (), nullptr);
+                rtengine::procparams::PartialProfile pastedPartProf(&entry->thumbnail->getProcParams (), nullptr);
 
                 // pushing the selected values of the clipboard PartialProfile to the temporary PartialProfile
                 partialPasteDlg.applyPaste (pastedPartProf.pparams, pastedPartProf.pedited, cbPartProf.pparams, cbPartProf.pedited);
 
                 // applying the temporary PartialProfile to the thumb's ProcParams
-                mselected[i]->thumbnail->setProcParams (*pastedPartProf.pparams, pastedPartProf.pedited, FILEBROWSER);
+                entry->thumbnail->setProcParams (*pastedPartProf.pparams, pastedPartProf.pedited, FILEBROWSER);
                 pastedPartProf.deleteInstance();
             }
 
@@ -1431,12 +1443,12 @@ void FileBrowser::applyFilter (const BrowserFilter& filter)
         }
 
         for (size_t i = 0; i < fd.size(); i++) {
-            if (checkFilter (fd[i])) {
+            if (checkFilter(fd[i])) {
                 numFiltered++;
-            } else if (fd[i]->selected ) {
+            } else if (fd[i]->selected) {
                 fd[i]->selected = false;
-                std::vector<ThumbBrowserEntryBase*>::iterator j = std::find (selected.begin(), selected.end(), fd[i]);
-                selected.erase (j);
+                std::vector<ThumbBrowserEntryBase*>::iterator j = std::find(selected.begin(), selected.end(), fd[i]);
+                selected.erase(j);
 
                 if (lastClicked == fd[i]) {
                     lastClicked = nullptr;
@@ -1444,6 +1456,9 @@ void FileBrowser::applyFilter (const BrowserFilter& filter)
 
                 selchanged = true;
             }
+        }
+        if (selected.empty() || (anchor && std::find(selected.begin(), selected.end(), anchor) == selected.end())) {
+            anchor = nullptr;
         }
     }
 
@@ -1455,12 +1470,12 @@ void FileBrowser::applyFilter (const BrowserFilter& filter)
     redraw ();
 }
 
-bool FileBrowser::checkFilter (ThumbBrowserEntryBase* entryb)   // true -> entry complies filter
+bool FileBrowser::checkFilter (ThumbBrowserEntryBase* entryb) const   // true -> entry complies filter
 {
 
     FileBrowserEntry* entry = static_cast<FileBrowserEntry*>(entryb);
 
-    if (filter.showOriginal && entry->getOriginal() != nullptr) {
+    if (filter.showOriginal && entry->getOriginal()) {
         return false;
     }
 
@@ -1479,44 +1494,22 @@ bool FileBrowser::checkFilter (ThumbBrowserEntryBase* entryb)   // true -> entry
         return false;
     }
 
-    // return false is query is not satisfied
-    if (!filter.queryFileName.empty()) {
+    // return false if query is not satisfied
+    if (!filter.vFilterStrings.empty()) {
         // check if image's FileName contains queryFileName (case insensitive)
         // TODO should we provide case-sensitive search option via preferences?
-        Glib::ustring FileName;
-        FileName = Glib::path_get_basename (entry->thumbnail->getFileName());
-        FileName = FileName.uppercase();
-        //printf("FileBrowser::checkFilter FileName = '%s'; find() result= %i \n",FileName.c_str(), FileName.find(filter.queryFileName.uppercase()));
-
-        Glib::ustring decodedQueryFileName;
-        bool MatchEqual;
-
-        // Determine the match mode - check if the first 2 characters are equal to "!="
-        if (filter.queryFileName.find("!=") == 0) {
-            decodedQueryFileName = filter.queryFileName.substr (2, filter.queryFileName.length() - 2);
-            MatchEqual = false;
-        } else {
-            decodedQueryFileName = filter.queryFileName;
-            MatchEqual = true;
-        }
-
-        // Consider that queryFileName consist of comma separated values (FilterString)
-        // Evaluate if ANY of these FilterString are contained in the filename
-        // This will construct OR filter within the filter.queryFileName
+        std::string FileName = Glib::path_get_basename(entry->thumbnail->getFileName());
+        std::transform(FileName.begin(), FileName.end(), FileName.begin(), ::toupper);
         int iFilenameMatch = 0;
-        std::vector<Glib::ustring> vFilterStrings = Glib::Regex::split_simple(",", decodedQueryFileName.uppercase());
 
-        for(size_t i = 0; i < vFilterStrings.size(); i++) {
-            // ignore empty vFilterStrings. Otherwise filter will always return true if
-            // e.g. filter.queryFileName ends on "," and will stop being a filter
-            if (!vFilterStrings.at(i).empty()) {
-                if (FileName.find(vFilterStrings.at(i)) != Glib::ustring::npos) {
-                    iFilenameMatch++;
-                }
+        for (const auto& filterString : filter.vFilterStrings) {
+            if (FileName.find(filterString) != std::string::npos) {
+                ++iFilenameMatch;
+                break;
             }
         }
 
-        if (MatchEqual) {
+        if (filter.matchEqual) {
             if (iFilenameMatch == 0) { //none of the vFilterStrings found in FileName
                 return false;
             }
@@ -1525,10 +1518,10 @@ bool FileBrowser::checkFilter (ThumbBrowserEntryBase* entryb)   // true -> entry
                 return false;
             }
         }
+    }
 
-        /*experimental Regex support, this is unlikely to be useful to photographers*/
-        //bool matchfound=Glib::Regex::match_simple(filter.queryFileName.uppercase(),FileName);
-        //if (!matchfound) return false;
+    if (!filter.exifFilterEnabled) {
+        return true;
     }
 
     // check exif filter
@@ -1536,17 +1529,12 @@ bool FileBrowser::checkFilter (ThumbBrowserEntryBase* entryb)   // true -> entry
     double tol = 0.01;
     double tol2 = 1e-8;
 
-    if (!filter.exifFilterEnabled) {
-        return true;
-    }
-
-    Glib::ustring camera(cfs->getCamera());
-
-    if (!cfs->exifValid)
-        return (!filter.exifFilter.filterCamera || filter.exifFilter.cameras.count(camera) > 0)
+    if (!cfs->exifValid) {
+        return (!filter.exifFilter.filterCamera || filter.exifFilter.cameras.count(cfs->getCamera()) > 0)
                && (!filter.exifFilter.filterLens || filter.exifFilter.lenses.count(cfs->lens) > 0)
                && (!filter.exifFilter.filterFiletype || filter.exifFilter.filetypes.count(cfs->filetype) > 0)
                && (!filter.exifFilter.filterExpComp || filter.exifFilter.expcomp.count(cfs->expcomp) > 0);
+    }
 
     return
         (!filter.exifFilter.filterShutter || (rtengine::FramesMetaData::shutterFromString(rtengine::FramesMetaData::shutterToString(cfs->shutter)) >= filter.exifFilter.shutterFrom - tol2 && rtengine::FramesMetaData::shutterFromString(rtengine::FramesMetaData::shutterToString(cfs->shutter)) <= filter.exifFilter.shutterTo + tol2))
@@ -1554,7 +1542,7 @@ bool FileBrowser::checkFilter (ThumbBrowserEntryBase* entryb)   // true -> entry
         && (!filter.exifFilter.filterFocalLen || (cfs->focalLen >= filter.exifFilter.focalFrom - tol && cfs->focalLen <= filter.exifFilter.focalTo + tol))
         && (!filter.exifFilter.filterISO     || (cfs->iso >= filter.exifFilter.isoFrom && cfs->iso <= filter.exifFilter.isoTo))
         && (!filter.exifFilter.filterExpComp || filter.exifFilter.expcomp.count(cfs->expcomp) > 0)
-        && (!filter.exifFilter.filterCamera  || filter.exifFilter.cameras.count(camera) > 0)
+        && (!filter.exifFilter.filterCamera  || filter.exifFilter.cameras.count(cfs->getCamera()) > 0)
         && (!filter.exifFilter.filterLens    || filter.exifFilter.lenses.count(cfs->lens) > 0)
         && (!filter.exifFilter.filterFiletype  || filter.exifFilter.filetypes.count(cfs->filetype) > 0);
 }
@@ -1727,62 +1715,60 @@ void FileBrowser::buttonPressed (LWButton* button, int actionCode, void* actionD
     }
 }
 
-void FileBrowser::openNextImage ()
+void FileBrowser::openNextImage()
 {
     MYWRITERLOCK(l, entryRW);
 
     if (!fd.empty() && selected.size() > 0 && !options.tabbedUI) {
-
         for (size_t i = 0; i < fd.size() - 1; i++) {
             if (selected[0]->thumbnail->getFileName() == fd[i]->filename) { // located 1-st image in current selection
                 if (i < fd.size() && tbl) {
                     // find the first not-filtered-out (next) image
                     for (size_t k = i + 1; k < fd.size(); k++) {
                         if (!fd[k]->filtered/*checkFilter (fd[k])*/) {
+
                             // clear current selection
                             for (size_t j = 0; j < selected.size(); j++) {
                                 selected[j]->selected = false;
                             }
 
-                            selected.clear ();
+                            selected.clear();
 
                             // set new selection
                             fd[k]->selected = true;
-                            selected.push_back (fd[k]);
-                            //queue_draw ();
+                            selected.push_back(fd[k]);
+                            //queue_draw();
 
                             MYWRITERLOCK_RELEASE(l);
 
                             // this will require a read access
-                            notifySelectionListener ();
+                            notifySelectionListener();
 
                             MYWRITERLOCK_ACQUIRE(l);
 
-                            // scroll to the selected position
-                            double h1, v1;
-                            getScrollPosition(h1, v1);
+                            // scroll to the selected position, centered horizontally in the container
+                            double x1, y1;
+                            getScrollPosition(x1, y1);
 
-                            double h2 = selected[0]->getStartX();
-                            double v2 = selected[0]->getStartY();
+                            double x2 = selected[0]->getStartX();
+                            double y2 = selected[0]->getStartY();
 
                             Thumbnail* thumb = (static_cast<FileBrowserEntry*>(fd[k]))->thumbnail;
-                            int minWidth = get_width() - fd[k]->getMinimalWidth();
+                            int tw = fd[k]->getMinimalWidth(); // thumb width
+
+                            int ww = get_width(); // window width
 
                             MYWRITERLOCK_RELEASE(l);
 
                             // scroll only when selected[0] is outside of the displayed bounds
-                            if (h2 + minWidth - h1 > get_width()) {
-                                setScrollPosition(h2 - minWidth, v2);
-                            }
-
-                            if (h1 > h2) {
-                                setScrollPosition(h2, v2);
+                            // or less than a thumbnail's width from either edge.
+                            if ((x2 > x1 + ww - 1.5 * tw) || (x2 - tw / 2 < x1)) {
+                                setScrollPosition(x2 - (ww - tw) / 2, y2);
                             }
 
                             // open the selected image
-                            std::vector<Thumbnail*> entries;
-                            entries.push_back (thumb);
-                            tbl->openRequested (entries);
+                            tbl->openRequested({thumb});
+
                             return;
                         }
                     }
@@ -1792,62 +1778,60 @@ void FileBrowser::openNextImage ()
     }
 }
 
-void FileBrowser::openPrevImage ()
+void FileBrowser::openPrevImage()
 {
     MYWRITERLOCK(l, entryRW);
 
     if (!fd.empty() && selected.size() > 0 && !options.tabbedUI) {
-
         for (size_t i = 1; i < fd.size(); i++) {
             if (selected[0]->thumbnail->getFileName() == fd[i]->filename) { // located 1-st image in current selection
                 if (i > 0 && tbl) {
                     // find the first not-filtered-out (previous) image
                     for (ssize_t k = (ssize_t)i - 1; k >= 0; k--) {
                         if (!fd[k]->filtered/*checkFilter (fd[k])*/) {
+
                             // clear current selection
                             for (size_t j = 0; j < selected.size(); j++) {
                                 selected[j]->selected = false;
                             }
 
-                            selected.clear ();
+                            selected.clear();
 
                             // set new selection
                             fd[k]->selected = true;
-                            selected.push_back (fd[k]);
-                            //queue_draw ();
+                            selected.push_back(fd[k]);
+                            //queue_draw();
 
                             MYWRITERLOCK_RELEASE(l);
 
                             // this will require a read access
-                            notifySelectionListener ();
+                            notifySelectionListener();
 
                             MYWRITERLOCK_ACQUIRE(l);
 
-                            // scroll to the selected position
-                            double h1, v1;
-                            getScrollPosition(h1, v1);
+                            // scroll to the selected position, centered horizontally in the container
+                            double x1, y1;
+                            getScrollPosition(x1, y1);
 
-                            double h2 = selected[0]->getStartX();
-                            double v2 = selected[0]->getStartY();
+                            double x2 = selected[0]->getStartX();
+                            double y2 = selected[0]->getStartY();
 
                             Thumbnail* thumb = (static_cast<FileBrowserEntry*>(fd[k]))->thumbnail;
-                            int minWidth = get_width() - fd[k]->getMinimalWidth();
+                            int tw = fd[k]->getMinimalWidth(); // thumb width
+
+                            int ww = get_width(); // window width
 
                             MYWRITERLOCK_RELEASE(l);
 
                             // scroll only when selected[0] is outside of the displayed bounds
-                            if (h2 + minWidth - h1 > get_width()) {
-                                setScrollPosition(h2 - minWidth, v2);
-                            }
-
-                            if (h1 > h2) {
-                                setScrollPosition(h2, v2);
+                            // or less than a thumbnail's width from either edge.
+                            if ((x2 > x1 + ww - 1.5 * tw) || (x2 - tw / 2 < x1)) {
+                                setScrollPosition(x2 - (ww - tw) / 2, y2);
                             }
 
                             // open the selected image
-                            std::vector<Thumbnail*> entries;
-                            entries.push_back (thumb);
-                            tbl->openRequested (entries);
+                            tbl->openRequested({thumb});
+
                             return;
                         }
                     }
@@ -1857,11 +1841,8 @@ void FileBrowser::openPrevImage ()
     }
 }
 
-
-void FileBrowser::selectImage (Glib::ustring fname)
+void FileBrowser::selectImage(const Glib::ustring& fname, bool doScroll)
 {
-
-    // need to clear the filter in filecatalog
     MYWRITERLOCK(l, entryRW);
 
     if (!fd.empty() && !options.tabbedUI) {
@@ -1874,27 +1855,34 @@ void FileBrowser::selectImage (Glib::ustring fname)
                     selected[j]->selected = false;
                 }
 
-                selected.clear ();
+                selected.clear();
 
                 // set new selection
                 fd[i]->selected = true;
-                selected.push_back (fd[i]);
-                queue_draw ();
+                selected.push_back(fd[i]);
+                queue_draw();
 
                 MYWRITERLOCK_RELEASE(l);
 
                 // this will require a read access
-                notifySelectionListener ();
+                notifySelectionListener();
 
                 MYWRITERLOCK_ACQUIRE(l);
 
-                // scroll to the selected position
-                double h = selected[0]->getStartX();
-                double v = selected[0]->getStartY();
+                // scroll to the selected position, centered horizontally in the container
+                double x = selected[0]->getStartX();
+                double y = selected[0]->getStartY();
+
+                int tw = fd[i]->getMinimalWidth(); // thumb width
+
+                int ww = get_width(); // window width
 
                 MYWRITERLOCK_RELEASE(l);
 
-                setScrollPosition(h, v);
+                if (doScroll) {
+                    // Center thumb
+                    setScrollPosition(x - (ww - tw) / 2, y);
+                }
 
                 return;
             }
@@ -1902,11 +1890,11 @@ void FileBrowser::selectImage (Glib::ustring fname)
     }
 }
 
-void FileBrowser::openNextPreviousEditorImage (Glib::ustring fname, eRTNav nextPrevious)
+void FileBrowser::openNextPreviousEditorImage (const Glib::ustring& fname, eRTNav nextPrevious)
 {
 
     // let FileBrowser acquire Editor's perspective
-    selectImage (fname);
+    selectImage (fname, false);
 
     // now switch to the requested image
     if (nextPrevious == NAV_NEXT) {

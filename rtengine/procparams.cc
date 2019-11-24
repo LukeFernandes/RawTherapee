@@ -14,7 +14,7 @@
  *  GNU General Public License for more details.
  *
  *  You should have received a copy of the GNU General Public License
- *  along with RawTherapee.  If not, see <http://www.gnu.org/licenses/>.
+ *  along with RawTherapee.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include <map>
@@ -22,9 +22,14 @@
 #include <locale.h>
 
 #include <glib/gstdio.h>
+#include <glibmm/fileutils.h>
+#include <glibmm/miscutils.h>
+#include <glibmm/keyfile.h>
 
+#include "color.h"
 #include "curves.h"
 #include "procparams.h"
+#include "utils.h"
 
 #include "../rtgui/multilangmgr.h"
 #include "../rtgui/options.h"
@@ -39,11 +44,11 @@ namespace
 
 Glib::ustring expandRelativePath(const Glib::ustring &procparams_fname, const Glib::ustring &prefix, Glib::ustring embedded_fname)
 {
-    if (embedded_fname == "" || !Glib::path_is_absolute(procparams_fname)) {
+    if (embedded_fname.empty() || !Glib::path_is_absolute(procparams_fname)) {
         return embedded_fname;
     }
 
-    if (prefix != "") {
+    if (!prefix.empty()) {
         if (embedded_fname.length() < prefix.length() || embedded_fname.substr(0, prefix.length()) != prefix) {
             return embedded_fname;
         }
@@ -61,11 +66,11 @@ Glib::ustring expandRelativePath(const Glib::ustring &procparams_fname, const Gl
 
 Glib::ustring relativePathIfInside(const Glib::ustring &procparams_fname, bool fnameAbsolute, Glib::ustring embedded_fname)
 {
-    if (fnameAbsolute || embedded_fname == "" || !Glib::path_is_absolute(procparams_fname)) {
+    if (fnameAbsolute || embedded_fname.empty() || !Glib::path_is_absolute(procparams_fname)) {
         return embedded_fname;
     }
 
-    Glib::ustring prefix = "";
+    Glib::ustring prefix;
 
     if (embedded_fname.length() > 5 && embedded_fname.substr(0, 5) == "file:") {
         embedded_fname = embedded_fname.substr(5);
@@ -315,8 +320,8 @@ ToneCurveParams::ToneCurveParams() :
     curve2{
         DCT_Linear
     },
-    curveMode(ToneCurveParams::TcMode::STD),
-    curveMode2(ToneCurveParams::TcMode::STD),
+    curveMode(ToneCurveMode::STD),
+    curveMode2(ToneCurveMode::STD),
     brightness(0),
     black(0),
     contrast(0),
@@ -328,6 +333,29 @@ ToneCurveParams::ToneCurveParams() :
     fromHistMatching(false),
     clampOOG(true)
 {
+}
+
+bool ToneCurveParams::isPanningRelatedChange(const ToneCurveParams& other) const
+{
+    return !
+        (autoexp == other.autoexp
+        && clip == other.clip
+        && hrenabled == other.hrenabled
+        && method == other.method
+        && expcomp == other.expcomp
+        && curve == other.curve
+        && curve2 == other.curve2
+        && curveMode == other.curveMode
+        && curveMode2 == other.curveMode2
+        && brightness == other.brightness
+        && black == other.black
+        && contrast == other.contrast
+        && saturation == other.saturation
+        && shcompr == other.shcompr
+        && hlcompr == other.hlcompr
+        && hlcomprthresh == other.hlcomprthresh
+        && histmatching == other.histmatching
+        && clampOOG == other.clampOOG);
 }
 
 bool ToneCurveParams::operator ==(const ToneCurveParams& other) const
@@ -1079,7 +1107,9 @@ void ColorToningParams::getCurves(ColorGradientCurve& colorCurveLUT, OpacityCurv
 SharpeningParams::SharpeningParams() :
     enabled(false),
     contrast(20.0),
+    autoContrast(false),
     blurradius(0.2),
+    gamma(1.0),
     radius(0.5),
     amount(200),
     threshold(20, 80, 2000, 1200, false),
@@ -1102,9 +1132,11 @@ bool SharpeningParams::operator ==(const SharpeningParams& other) const
         enabled == other.enabled
         && contrast == other.contrast
         && blurradius == other.blurradius
+        && gamma == other.gamma
         && radius == other.radius
         && amount == other.amount
         && threshold == other.threshold
+        && autoContrast == other.autoContrast
         && edgesonly == other.edgesonly
         && edges_radius == other.edges_radius
         && edges_tolerance == other.edges_tolerance
@@ -1118,6 +1150,36 @@ bool SharpeningParams::operator ==(const SharpeningParams& other) const
 }
 
 bool SharpeningParams::operator !=(const SharpeningParams& other) const
+{
+    return !(*this == other);
+}
+
+CaptureSharpeningParams::CaptureSharpeningParams() :
+    enabled(false),
+    autoContrast(true),
+    autoRadius(true),
+    contrast(10.0),
+    deconvradius(0.75),
+    deconvradiusOffset(0.0),
+    deconviter(20),
+    deconvitercheck(true)
+{
+}
+
+bool CaptureSharpeningParams::operator ==(const CaptureSharpeningParams& other) const
+{
+    return
+        enabled == other.enabled
+        && contrast == other.contrast
+        && autoContrast == other.autoContrast
+        && autoRadius == other.autoRadius
+        && deconvradius == other.deconvradius
+        && deconvitercheck == other.deconvitercheck
+        && deconvradiusOffset == other.deconvradiusOffset
+        && deconviter == other.deconviter;
+}
+
+bool CaptureSharpeningParams::operator !=(const CaptureSharpeningParams& other) const
 {
     return !(*this == other);
 }
@@ -1208,6 +1270,21 @@ WBParams::WBParams() :
     equal(1.0),
     tempBias(0.0)
 {
+}
+
+bool WBParams::isPanningRelatedChange(const WBParams& other) const
+{
+    return !
+        (enabled == other.enabled
+        && ((method == "Camera" && other.method == "Camera")
+        ||
+        (method == other.method
+        && temperature == other.temperature
+        && green == other.green
+        && equal == other.equal
+        && tempBias == other.tempBias)
+        )
+        );
 }
 
 bool WBParams::operator ==(const WBParams& other) const
@@ -2447,7 +2524,8 @@ DehazeParams::DehazeParams() :
     enabled(false),
     strength(50),
     showDepthMap(false),
-    depth(25)
+    depth(25),
+    luminance(false)
 {
 }
 
@@ -2457,7 +2535,8 @@ bool DehazeParams::operator ==(const DehazeParams& other) const
         enabled == other.enabled
         && strength == other.strength
         && showDepthMap == other.showDepthMap
-        && depth == other.depth;
+        && depth == other.depth
+        && luminance == other.luminance;
 }
 
 bool DehazeParams::operator !=(const DehazeParams& other) const
@@ -2609,6 +2688,7 @@ RAWParams::XTransSensor::XTransSensor() :
     method(getMethodString(Method::THREE_PASS)),
     dualDemosaicAutoContrast(true),
     dualDemosaicContrast(20),
+    border(7),
     ccSteps(0),
     blackred(0.0),
     blackgreen(0.0),
@@ -2622,6 +2702,7 @@ bool RAWParams::XTransSensor::operator ==(const XTransSensor& other) const
         method == other.method
         && dualDemosaicAutoContrast == other.dualDemosaicAutoContrast
         && dualDemosaicContrast == other.dualDemosaicContrast
+        && border == other.border
         && ccSteps == other.ccSteps
         && blackred == other.blackred
         && blackgreen == other.blackgreen
@@ -2665,7 +2746,6 @@ RAWParams::RAWParams() :
     cared(0.0),
     cablue(0.0),
     expos(1.0),
-    preser(0.0),
     hotPixelFilter(false),
     deadPixelFilter(false),
     hotdeadpix_thresh(100)
@@ -2691,7 +2771,6 @@ bool RAWParams::operator ==(const RAWParams& other) const
         && cared == other.cared
         && cablue == other.cablue
         && expos == other.expos
-        && preser == other.preser
         && hotPixelFilter == other.hotPixelFilter
         && deadPixelFilter == other.deadPixelFilter
         && hotdeadpix_thresh == other.hotdeadpix_thresh;
@@ -2734,6 +2813,27 @@ bool MetaDataParams::operator!=(const MetaDataParams &other) const
     return !(*this == other);
 }
 
+FilmNegativeParams::FilmNegativeParams() :
+    enabled(false),
+    redRatio(1.36),
+    greenExp(1.5),
+    blueRatio(0.86)
+{
+}
+
+bool FilmNegativeParams::operator ==(const FilmNegativeParams& other) const
+{
+    return
+        enabled == other.enabled
+        && redRatio   == other.redRatio
+        && greenExp == other.greenExp
+        && blueRatio  == other.blueRatio;
+}
+
+bool FilmNegativeParams::operator !=(const FilmNegativeParams& other) const
+{
+    return !(*this == other);
+}
 
 ProcParams::ProcParams()
 {
@@ -2742,23 +2842,23 @@ ProcParams::ProcParams()
 
 void ProcParams::setDefaults()
 {
-    toneCurve = ToneCurveParams();
+    toneCurve = {};
 
-    labCurve = LCurveParams();
+    labCurve = {};
 
-    rgbCurves = RGBCurvesParams();
+    rgbCurves = {};
 
-    localContrast = LocalContrastParams();
+    localContrast = {};
 
-    colorToning = ColorToningParams();
+    colorToning = {};
 
-    sharpenEdge = SharpenEdgeParams();
+    sharpenEdge = {};
 
-    sharpenMicro = SharpenMicroParams();
+    sharpenMicro = {};
 
-    sharpening = SharpeningParams();
+    sharpening = {};
 
-    prsharpening = SharpeningParams();
+    prsharpening = {};
     prsharpening.contrast = 15.0;
     prsharpening.method = "rld";
     prsharpening.deconvamount = 100;
@@ -2766,73 +2866,78 @@ void ProcParams::setDefaults()
     prsharpening.deconviter = 100;
     prsharpening.deconvdamping = 0;
 
-    vibrance = VibranceParams();
+    pdsharpening = {};
 
-    wb = WBParams();
+    vibrance = {};
 
-    colorappearance = ColorAppearanceParams();
+    wb = {};
 
-    defringe = DefringeParams();
+    colorappearance = {};
 
-    impulseDenoise = ImpulseDenoiseParams();
+    defringe = {};
 
-    dirpyrDenoise = DirPyrDenoiseParams();
+    impulseDenoise = {};
 
-    epd = EPDParams();
+    dirpyrDenoise = {};
 
-    fattal = FattalToneMappingParams();
+    epd = {};
 
-    sh = SHParams();
+    fattal = {};
 
-    crop = CropParams();
+    sh = {};
 
-    coarse = CoarseTransformParams();
+    crop = {};
 
-    commonTrans = CommonTransformParams();
+    coarse = {};
 
-    rotate = RotateParams();
+    commonTrans = {};
 
-    distortion = DistortionParams();
+    rotate = {};
 
-    lensProf = LensProfParams();
+    distortion = {};
 
-    perspective = PerspectiveParams();
+    lensProf = {};
 
-    gradient = GradientParams();
+    perspective = {};
 
-    pcvignette = PCVignetteParams();
+    gradient = {};
 
-    vignetting = VignettingParams();
+    pcvignette = {};
 
-    chmixer = ChannelMixerParams();
+    vignetting = {};
 
-    blackwhite = BlackWhiteParams();
+    chmixer = {};
 
-    cacorrection = CACorrParams();
+    blackwhite = {};
 
-    resize = ResizeParams();
+    cacorrection = {};
 
-    icm = ColorManagementParams();
+    resize = {};
 
-    wavelet = WaveletParams();
+    icm = {};
 
-    dirpyrequalizer = DirPyrEqualizerParams();
+    wavelet = {};
 
-    hsvequalizer = HSVEqualizerParams();
+    dirpyrequalizer = {};
 
-    filmSimulation = FilmSimulationParams();
+    hsvequalizer = {};
 
-    softlight = SoftLightParams();
+    filmSimulation = {};
 
-    dehaze = DehazeParams();
+    softlight = {};
 
-    raw = RAWParams();
+    dehaze = {};
 
-    metadata = MetaDataParams();
+    raw = {};
+
+    metadata = {};
     exif.clear();
     iptc.clear();
 
-    rank = 0;
+    // -1 means that there's no pp3 data with rank yet. In this case, the
+    // embedded Rating metadata should take precedence. -1 should never be
+    // written to pp3 on disk.
+    rank = -1;
     colorlabel = 0;
     inTrash = false;
 
@@ -2877,13 +2982,13 @@ int ProcParams::save(const Glib::ustring& fname, const Glib::ustring& fname2, bo
         saveToKeyfile(!pedited || pedited->toneCurve.hrenabled, "HLRecovery", "Enabled", toneCurve.hrenabled, keyFile);
         saveToKeyfile(!pedited || pedited->toneCurve.method, "HLRecovery", "Method", toneCurve.method, keyFile);
 
-        const std::map<ToneCurveParams::TcMode, const char*> tc_mapping = {
-            {ToneCurveParams::TcMode::STD, "Standard"},
-            {ToneCurveParams::TcMode::FILMLIKE, "FilmLike"},
-            {ToneCurveParams::TcMode::SATANDVALBLENDING, "SatAndValueBlending"},
-            {ToneCurveParams::TcMode::WEIGHTEDSTD, "WeightedStd"},
-            {ToneCurveParams::TcMode::LUMINANCE, "Luminance"},
-            {ToneCurveParams::TcMode::PERCEPTUAL, "Perceptual"}
+        const std::map<ToneCurveMode, const char*> tc_mapping = {
+            {ToneCurveMode::STD, "Standard"},
+            {ToneCurveMode::FILMLIKE, "FilmLike"},
+            {ToneCurveMode::SATANDVALBLENDING, "SatAndValueBlending"},
+            {ToneCurveMode::WEIGHTEDSTD, "WeightedStd"},
+            {ToneCurveMode::LUMINANCE, "Luminance"},
+            {ToneCurveMode::PERCEPTUAL, "Perceptual"}
         };
 
         saveToKeyfile(!pedited || pedited->toneCurve.curveMode, "Exposure", "CurveMode", tc_mapping, toneCurve.curveMode, keyFile);
@@ -3142,6 +3247,7 @@ int ProcParams::save(const Glib::ustring& fname, const Glib::ustring& fname2, bo
         saveToKeyfile(!pedited || pedited->dehaze.strength, "Dehaze", "Strength", dehaze.strength, keyFile);        
         saveToKeyfile(!pedited || pedited->dehaze.showDepthMap, "Dehaze", "ShowDepthMap", dehaze.showDepthMap, keyFile);        
         saveToKeyfile(!pedited || pedited->dehaze.depth, "Dehaze", "Depth", dehaze.depth, keyFile);        
+        saveToKeyfile(!pedited || pedited->dehaze.depth, "Dehaze", "Luminance", dehaze.luminance, keyFile);
 
 // Directional pyramid denoising
         saveToKeyfile(!pedited || pedited->dirpyrDenoise.enabled, "Directional Pyramid Denoising", "Enabled", dirpyrDenoise.enabled, keyFile);
@@ -3271,6 +3377,16 @@ int ProcParams::save(const Glib::ustring& fname, const Glib::ustring& fname2, bo
         saveToKeyfile(!pedited || pedited->resize.width, "Resize", "Width", resize.width, keyFile);
         saveToKeyfile(!pedited || pedited->resize.height, "Resize", "Height", resize.height, keyFile);
         saveToKeyfile(!pedited || pedited->resize.allowUpscaling, "Resize", "AllowUpscaling", resize.allowUpscaling, keyFile);
+
+// Post demosaic sharpening
+        saveToKeyfile(!pedited || pedited->pdsharpening.enabled, "PostDemosaicSharpening", "Enabled", pdsharpening.enabled, keyFile);
+        saveToKeyfile(!pedited || pedited->pdsharpening.contrast, "PostDemosaicSharpening", "Contrast", pdsharpening.contrast, keyFile);
+        saveToKeyfile(!pedited || pedited->pdsharpening.autoContrast, "PostDemosaicSharpening", "AutoContrast", pdsharpening.autoContrast, keyFile);
+        saveToKeyfile(!pedited || pedited->pdsharpening.autoRadius, "PostDemosaicSharpening", "AutoRadius", pdsharpening.autoRadius, keyFile);
+        saveToKeyfile(!pedited || pedited->pdsharpening.deconvradius, "PostDemosaicSharpening", "DeconvRadius", pdsharpening.deconvradius, keyFile);
+        saveToKeyfile(!pedited || pedited->pdsharpening.deconvradiusOffset, "PostDemosaicSharpening", "DeconvRadiusOffset", pdsharpening.deconvradiusOffset, keyFile);
+        saveToKeyfile(!pedited || pedited->pdsharpening.deconvitercheck, "PostDemosaicSharpening", "DeconvIterCheck", pdsharpening.deconvitercheck, keyFile);
+        saveToKeyfile(!pedited || pedited->pdsharpening.deconviter, "PostDemosaicSharpening", "DeconvIterations", pdsharpening.deconviter, keyFile);
 
 // Post resize sharpening
         saveToKeyfile(!pedited || pedited->prsharpening.enabled, "PostResizeSharpening", "Enabled", prsharpening.enabled, keyFile);
@@ -3554,6 +3670,7 @@ int ProcParams::save(const Glib::ustring& fname, const Glib::ustring& fname2, bo
         saveToKeyfile(!pedited || pedited->raw.xtranssensor.method, "RAW X-Trans", "Method", raw.xtranssensor.method, keyFile);
         saveToKeyfile(!pedited || pedited->raw.xtranssensor.dualDemosaicAutoContrast, "RAW X-Trans", "DualDemosaicAutoContrast", raw.xtranssensor.dualDemosaicAutoContrast, keyFile);
         saveToKeyfile(!pedited || pedited->raw.xtranssensor.dualDemosaicContrast, "RAW X-Trans", "DualDemosaicContrast", raw.xtranssensor.dualDemosaicContrast, keyFile);
+        saveToKeyfile(!pedited || pedited->raw.xtranssensor.border, "RAW X-Trans", "Border", raw.xtranssensor.border, keyFile);
         saveToKeyfile(!pedited || pedited->raw.xtranssensor.ccSteps, "RAW X-Trans", "CcSteps", raw.xtranssensor.ccSteps, keyFile);
         saveToKeyfile(!pedited || pedited->raw.xtranssensor.exBlackRed, "RAW X-Trans", "PreBlackRed", raw.xtranssensor.blackred, keyFile);
         saveToKeyfile(!pedited || pedited->raw.xtranssensor.exBlackGreen, "RAW X-Trans", "PreBlackGreen", raw.xtranssensor.blackgreen, keyFile);
@@ -3561,10 +3678,15 @@ int ProcParams::save(const Glib::ustring& fname, const Glib::ustring& fname2, bo
 
 // Raw exposition
         saveToKeyfile(!pedited || pedited->raw.exPos, "RAW", "PreExposure", raw.expos, keyFile);
-        saveToKeyfile(!pedited || pedited->raw.exPreser, "RAW", "PrePreserv", raw.preser, keyFile);
 
 // MetaData
         saveToKeyfile(!pedited || pedited->metadata.mode, "MetaData", "Mode", metadata.mode, keyFile);
+
+// Film negative
+        saveToKeyfile(!pedited || pedited->filmNegative.enabled, "Film Negative", "Enabled", filmNegative.enabled, keyFile);
+        saveToKeyfile(!pedited || pedited->filmNegative.redRatio, "Film Negative", "RedRatio", filmNegative.redRatio, keyFile);
+        saveToKeyfile(!pedited || pedited->filmNegative.greenExp, "Film Negative", "GreenExponent", filmNegative.greenExp, keyFile);
+        saveToKeyfile(!pedited || pedited->filmNegative.blueRatio, "Film Negative", "BlueRatio", filmNegative.blueRatio, keyFile);
 
 // EXIF change list
         if (!pedited || pedited->exif) {
@@ -3662,13 +3784,13 @@ int ProcParams::load(const Glib::ustring& fname, ParamsEdited* pedited)
                 toneCurve.shcompr = 100; // older pp3 files can have values above 100.
             }
 
-            const std::map<std::string, ToneCurveParams::TcMode> tc_mapping = {
-                {"Standard", ToneCurveParams::TcMode::STD},
-                {"FilmLike", ToneCurveParams::TcMode::FILMLIKE},
-                {"SatAndValueBlending", ToneCurveParams::TcMode::SATANDVALBLENDING},
-                {"WeightedStd", ToneCurveParams::TcMode::WEIGHTEDSTD},
-                {"Luminance", ToneCurveParams::TcMode::LUMINANCE},
-                {"Perceptual", ToneCurveParams::TcMode::PERCEPTUAL}
+            const std::map<std::string, ToneCurveMode> tc_mapping = {
+                {"Standard", ToneCurveMode::STD},
+                {"FilmLike", ToneCurveMode::FILMLIKE},
+                {"SatAndValueBlending", ToneCurveMode::SATANDVALBLENDING},
+                {"WeightedStd", ToneCurveMode::WEIGHTEDSTD},
+                {"Luminance", ToneCurveMode::LUMINANCE},
+                {"Perceptual", ToneCurveMode::PERCEPTUAL}
             };
 
             assignFromKeyfile(keyFile, "Exposure", "CurveMode", pedited, tc_mapping, toneCurve.curveMode, pedited->toneCurve.curveMode);
@@ -3965,7 +4087,7 @@ int ProcParams::load(const Glib::ustring& fname, ParamsEdited* pedited)
             if (ppVersion >= 346) {
                 assignFromKeyfile(keyFile, "SharpenMicro", "Uniformity", pedited, sharpenMicro.uniformity, pedited->sharpenMicro.uniformity);
             } else {
-                double temp;
+                double temp = 50.0;
                 assignFromKeyfile(keyFile, "SharpenMicro", "Uniformity", pedited, temp, pedited->sharpenMicro.uniformity);
                 sharpenMicro.uniformity = temp / 10;
             }
@@ -4344,6 +4466,17 @@ int ProcParams::load(const Glib::ustring& fname, ParamsEdited* pedited)
                     pedited->resize.allowUpscaling = true;
                 }
             }
+        }
+
+        if (keyFile.has_group("PostDemosaicSharpening")) {
+            assignFromKeyfile(keyFile, "PostDemosaicSharpening", "Enabled", pedited, pdsharpening.enabled, pedited->pdsharpening.enabled);
+            assignFromKeyfile(keyFile, "PostDemosaicSharpening", "Contrast", pedited, pdsharpening.contrast, pedited->pdsharpening.contrast);
+            assignFromKeyfile(keyFile, "PostDemosaicSharpening", "AutoContrast", pedited, pdsharpening.autoContrast, pedited->pdsharpening.autoContrast);
+            assignFromKeyfile(keyFile, "PostDemosaicSharpening", "AutoRadius", pedited, pdsharpening.autoRadius, pedited->pdsharpening.autoRadius);
+            assignFromKeyfile(keyFile, "PostDemosaicSharpening", "DeconvRadius", pedited, pdsharpening.deconvradius, pedited->pdsharpening.deconvradius);
+            assignFromKeyfile(keyFile, "PostDemosaicSharpening", "DeconvRadiusOffset", pedited, pdsharpening.deconvradiusOffset, pedited->pdsharpening.deconvradiusOffset);
+            assignFromKeyfile(keyFile, "PostDemosaicSharpening", "DeconvIterCheck", pedited, pdsharpening.deconvitercheck, pedited->pdsharpening.deconvitercheck);
+            assignFromKeyfile(keyFile, "PostDemosaicSharpening", "DeconvIterations", pedited, pdsharpening.deconviter, pedited->pdsharpening.deconviter);
         }
 
         if (keyFile.has_group("PostResizeSharpening")) {
@@ -4756,6 +4889,7 @@ int ProcParams::load(const Glib::ustring& fname, ParamsEdited* pedited)
             assignFromKeyfile(keyFile, "Dehaze", "Strength", pedited, dehaze.strength, pedited->dehaze.strength);
             assignFromKeyfile(keyFile, "Dehaze", "ShowDepthMap", pedited, dehaze.showDepthMap, pedited->dehaze.showDepthMap);
             assignFromKeyfile(keyFile, "Dehaze", "Depth", pedited, dehaze.depth, pedited->dehaze.depth);
+            assignFromKeyfile(keyFile, "Dehaze", "Luminance", pedited, dehaze.luminance, pedited->dehaze.luminance);
         }
         
         if (keyFile.has_group("Film Simulation")) {
@@ -4991,7 +5125,6 @@ int ProcParams::load(const Glib::ustring& fname, ParamsEdited* pedited)
             assignFromKeyfile(keyFile, "RAW", "DeadPixelFilter", pedited, raw.deadPixelFilter, pedited->raw.deadPixelFilter);
             assignFromKeyfile(keyFile, "RAW", "HotDeadPixelThresh", pedited, raw.hotdeadpix_thresh, pedited->raw.hotdeadpix_thresh);
             assignFromKeyfile(keyFile, "RAW", "PreExposure", pedited, raw.expos, pedited->raw.exPos);
-            assignFromKeyfile(keyFile, "RAW", "PrePreserv", pedited, raw.preser, pedited->raw.exPreser);
 
             if (ppVersion < 320) {
                 assignFromKeyfile(keyFile, "RAW", "Method", pedited, raw.bayersensor.method, pedited->raw.bayersensor.method);
@@ -5103,10 +5236,18 @@ int ProcParams::load(const Glib::ustring& fname, ParamsEdited* pedited)
                 }
             }
             assignFromKeyfile(keyFile, "RAW X-Trans", "DualDemosaicContrast", pedited, raw.xtranssensor.dualDemosaicContrast, pedited->raw.xtranssensor.dualDemosaicContrast);
+            assignFromKeyfile(keyFile, "RAW X-Trans", "Border", pedited, raw.xtranssensor.border, pedited->raw.xtranssensor.border);
             assignFromKeyfile(keyFile, "RAW X-Trans", "CcSteps", pedited, raw.xtranssensor.ccSteps, pedited->raw.xtranssensor.ccSteps);
             assignFromKeyfile(keyFile, "RAW X-Trans", "PreBlackRed", pedited, raw.xtranssensor.blackred, pedited->raw.xtranssensor.exBlackRed);
             assignFromKeyfile(keyFile, "RAW X-Trans", "PreBlackGreen", pedited, raw.xtranssensor.blackgreen, pedited->raw.xtranssensor.exBlackGreen);
             assignFromKeyfile(keyFile, "RAW X-Trans", "PreBlackBlue", pedited, raw.xtranssensor.blackblue, pedited->raw.xtranssensor.exBlackBlue);
+        }
+
+        if (keyFile.has_group("Film Negative")) {
+            assignFromKeyfile(keyFile, "Film Negative", "Enabled", pedited, filmNegative.enabled, pedited->filmNegative.enabled);
+            assignFromKeyfile(keyFile, "Film Negative", "RedRatio", pedited, filmNegative.redRatio, pedited->filmNegative.redRatio);
+            assignFromKeyfile(keyFile, "Film Negative", "GreenExponent", pedited, filmNegative.greenExp, pedited->filmNegative.greenExp);
+            assignFromKeyfile(keyFile, "Film Negative", "BlueRatio", pedited, filmNegative.blueRatio, pedited->filmNegative.blueRatio);
         }
 
         if (keyFile.has_group("MetaData")) {
@@ -5231,7 +5372,8 @@ bool ProcParams::operator ==(const ProcParams& other) const
         && metadata == other.metadata
         && exif == other.exif
         && iptc == other.iptc
-        && dehaze == other.dehaze;
+        && dehaze == other.dehaze
+        && filmNegative == other.filmNegative;
 }
 
 bool ProcParams::operator !=(const ProcParams& other) const

@@ -14,10 +14,13 @@
  *  GNU General Public License for more details.
  *
  *  You should have received a copy of the GNU General Public License
- *  along with RawTherapee.  If not, see <http://www.gnu.org/licenses/>.
+ *  along with RawTherapee.  If not, see <https://www.gnu.org/licenses/>.
  */
 #include "shadowshighlights.h"
+
 #include "eventmapper.h"
+
+#include "../rtengine/procparams.h"
 
 using namespace rtengine;
 using namespace rtengine::procparams;
@@ -167,10 +170,6 @@ void ShadowsHighlights::adjusterChanged (Adjuster* a, double newval)
             listener->panelChanged (EvSHRadius, costr);
         }
     }
-}
-
-void ShadowsHighlights::adjusterAutoToggled(Adjuster* a, bool newval)
-{
 }
 
 void ShadowsHighlights::enabledChanged ()

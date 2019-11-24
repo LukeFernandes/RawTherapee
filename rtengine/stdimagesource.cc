@@ -14,21 +14,24 @@
  *  GNU General Public License for more details.
  *
  *  You should have received a copy of the GNU General Public License
- *  along with RawTherapee.  If not, see <http://www.gnu.org/licenses/>.
+ *  along with RawTherapee.  If not, see <https://www.gnu.org/licenses/>.
  */
 #include "stdimagesource.h"
-#include "mytime.h"
-#include "iccstore.h"
-#include "imageio.h"
-#include "curves.h"
+
 #include "color.h"
+#include "iccstore.h"
+#include "image8.h"
+#include "image16.h"
+#include "imagefloat.h"
+#include "imageio.h"
+#include "mytime.h"
+#include "procparams.h"
+#include "utils.h"
 
 #undef THREAD_PRIORITY_NORMAL
 
 namespace rtengine
 {
-
-extern const Settings* settings;
 
 template<class T> void freeArray (T** a, int H)
 {
@@ -222,7 +225,7 @@ void StdImageSource::colorSpaceConversion (Imagefloat* im, const ColorManagement
     cmsHPROFILE in = nullptr;
     cmsHPROFILE out = ICCStore::getInstance()->workingSpace (cmp.workingProfile);
 
-    if (cmp.inputProfile == "(embedded)" || cmp.inputProfile == "" || cmp.inputProfile == "(camera)" || cmp.inputProfile == "(cameraICC)") {
+    if (cmp.inputProfile == "(embedded)" || cmp.inputProfile.empty() || cmp.inputProfile == "(camera)" || cmp.inputProfile == "(cameraICC)") {
         if (embedded) {
             in = embedded;
         } else {
@@ -337,6 +340,11 @@ ColorTemp StdImageSource::getSpotWB (std::vector<Coord2D> &red, std::vector<Coor
 
     return ColorTemp (reds / rn * img_r, greens / gn * img_g, blues / bn * img_b, equal);
 }
+
+void StdImageSource::flushRGB() {
+    img->allocate(0, 0);
+};
+
 
 }
 

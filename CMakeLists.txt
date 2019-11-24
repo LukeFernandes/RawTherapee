@@ -1,8 +1,8 @@
+cmake_minimum_required(VERSION 3.5)
+
+# Compiler id for Apple Clang
 if(APPLE)
-    cmake_minimum_required(VERSION 3.3)
     cmake_policy(SET CMP0025 NEW)
-else()
-    cmake_minimum_required(VERSION 2.8.8)
 endif()
 
 
@@ -91,6 +91,7 @@ set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} ${PROC_FLAGS}")
 
 # Stop compilation on typos such as std:swap (missing colon will be detected as unused label):
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Werror=unused-label")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Werror=delete-incomplete")
 
 #for comparison of gpu and CPU
    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -ffloat-store")
@@ -141,6 +142,9 @@ option(TRACE_MYRWMUTEX "Trace custom R/W Mutex (Debug builds only); redirecting 
 option(AUTO_GDK_FLUSH "Use gdk_flush on all gdk_thread_leave other than the GUI thread; set it ON if you experience X Server warning/errors" OFF)
 #option(TARGET32BIT "Build for 32-bit architecture when ON, otherwise 64-bit. Default is OFF" OFF)
 
+option(ENABLE_TCMALLOC "Use the tcmalloc library if available" OFF)
+set(TCMALLOC_LIB_DIR "" CACHE PATH "Custom path for the tcmalloc library")
+
 # Set installation directories:
 if(WIN32 OR APPLE)
     if(BUILD_BUNDLE)
@@ -169,7 +173,7 @@ endif()
 if(NOT DEFINED DATADIR)
     if(BUILD_BUNDLE)
         if(APPLE)
-            set(DATADIR "../Resources")
+            set(DATADIR "../../Resources")
         else()
             set(DATADIR .)
         endif()
@@ -181,7 +185,7 @@ endif()
 if(NOT DEFINED LIBDIR)
     if(BUILD_BUNDLE)
         if(APPLE)
-            set(LIBDIR "../Frameworks")
+            set(LIBDIR "../../Frameworks")
         else()
             set(LIBDIR .)
         endif()
@@ -261,6 +265,10 @@ if(APPLE)
     if("${CODESIGNID}")
         set(CODESIGNID "${CODESIGNID}" CACHE STRING "Codesigning Identity")
     endif()
+    if("${NOTARY}")
+        set(NOTARY "${NOTARY}" CACHE STRING "Notarization Identity")
+    endif()
+
 endif()
 
 # Enforce absolute paths for non-bundle builds:
@@ -294,13 +302,24 @@ endif()
 
 # Check for libraries:
 find_package(PkgConfig)
+
 if(WIN32)
-pkg_check_modules (GTK     REQUIRED gtk+-3.0>=3.22.24)
-pkg_check_modules (GTKMM   REQUIRED gtkmm-3.0>=3.22)
+    pkg_check_modules (GTK     REQUIRED gtk+-3.0>=3.22.24)
+    pkg_check_modules (GTKMM   REQUIRED gtkmm-3.0>=3.22)
 else()
-pkg_check_modules (GTK     REQUIRED gtk+-3.0>=3.16)
-pkg_check_modules (GTKMM   REQUIRED gtkmm-3.0>=3.16)
+    pkg_check_modules (GTK     REQUIRED gtk+-3.0>=3.16)
+    pkg_check_modules (GTKMM   REQUIRED gtkmm-3.0>=3.16)
 endif()
+
+if(GTK_VERSION VERSION_GREATER "3.24.1" AND GTK_VERSION VERSION_LESS "3.24.7")
+    if(GTK_VERSION VERSION_EQUAL "3.24.5")
+        set(CERTAINTY "known to")
+    else()
+        set(CERTAINTY "likely to")
+    endif()
+    message(WARNING "\nWarning! You are using GTK+ version " ${GTK_VERSION} " which is " ${CERTAINTY} " have an issue where combobox menu scroll-arrows are missing when a Gtk::ComboBox list does not fit vertically on the screen. As a result, users of your build will not be able to select items in the following comboboxes: Processing Profiles, Film Simulation, and the camera and lens profiles in Profiled Lens Correction.\nIt is recommended that you either downgrade GTK+ to <= 3.24.1 or upgrade to >= 3.24.7.")
+endif()
+
 pkg_check_modules (GLIB2   REQUIRED glib-2.0>=2.44)
 pkg_check_modules (GLIBMM  REQUIRED glibmm-2.4>=2.44)
 pkg_check_modules (CAIROMM REQUIRED cairomm-1.0)
@@ -310,6 +329,7 @@ pkg_check_modules (GTHREAD REQUIRED gthread-2.0>=2.44)
 pkg_check_modules (GOBJECT REQUIRED gobject-2.0>=2.44)
 pkg_check_modules (SIGC    REQUIRED sigc++-2.0>=2.3.1)
 pkg_check_modules (LENSFUN REQUIRED lensfun>=0.2)
+pkg_check_modules (RSVG    REQUIRED librsvg-2.0>=2.40)
 
 if(WIN32)
     add_definitions(-DWIN32)
@@ -335,7 +355,6 @@ if(WITH_SYSTEM_KLT)
     find_package(KLT REQUIRED)
 endif()
 
-
 # Check for libcanberra-gtk3 (sound events on Linux):
 if(UNIX AND(NOT APPLE))
     pkg_check_modules(CANBERRA-GTK REQUIRED libcanberra-gtk3)
@@ -352,8 +371,12 @@ if(WITH_LTO)
     string(REGEX REPLACE ".* ([0-9.]+)\n.*" "\\1" BINUTILS_VERSION_DETECTED "${BINUTILS_VERSION_DETECTED}")
     if("${BINUTILS_VERSION_DETECTED}" VERSION_LESS "${BINUTILS_VERSION_MININUM}")
         if(APPLE)
-            set(CMAKE_AR "/opt/local/bin/ar")
-            set(CMAKE_RANLIB "/opt/local/bin/ranlib")
+            if(!CMAKE_AR)
+                set(CMAKE_AR "/opt/local/bin/ar")
+            endif()
+            if(!CMAKE_RANLIB)
+                set(CMAKE_RANLIB "/opt/local/bin/ranlib")
+            endif()
         else()
             set(CMAKE_AR "/usr/bin/gcc-ar")
             set(CMAKE_RANLIB "/usr/bin/gcc-ranlib")
@@ -378,7 +401,7 @@ if(WITH_PROF)
     set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -pg")
 endif()
 
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wuninitialized -Wno-deprecated-declarations -Wno-unused-result")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wuninitialized -Wcast-qual -Wno-deprecated-declarations -Wno-unused-result")
 if(OPTION_OMP)
     find_package(OpenMP)
     if(OPENMP_FOUND)
@@ -413,7 +436,6 @@ int main()
         endif()
     endif()
 endif()
-
 
 # Find out whether we are building out of source:
 get_filename_component(ABS_SOURCE_DIR "${PROJECT_SOURCE_DIR}" ABSOLUTE)
@@ -521,7 +543,7 @@ if(WIN32)
 endif()
 
 if(UNIX)
-    install(FILES rawtherapee.appdata.xml DESTINATION "${APPDATADIR}")
+    install(FILES com.rawtherapee.RawTherapee.appdata.xml DESTINATION "${APPDATADIR}")
 endif()
 
 # check whether the used version of lensfun has lfDatabase::LoadDirectory
@@ -550,6 +572,23 @@ int main()
     bool b = db->LoadDirectory(0);
     return 0;
 }" LENSFUN_HAS_LOAD_DIRECTORY)
+
+set(TCMALLOC_LIB_DIR)
+if(ENABLE_TCMALLOC)
+    if(TCMALLOC_LIB_DIR)
+        find_library(TCMALLOC_LIBRARIES tcmalloc PATHS ${TCMALLOC_LIB_DIR} NO_DEFAULT_PATH)
+    else()
+        find_library(TCMALLOC_LIBRARIES tcmalloc)
+    endif()
+    if(TCMALLOC_LIBRARIES)
+        message(STATUS "using tcmalloc library in ${TCMALLOC_LIBRARIES}")
+    else()
+        set(TCMALLOC_LIBRARIES "" CACHE INTERNAL "" FORCE)
+        message(STATUS "tcmalloc not found")
+    endif()
+else()
+    set(TCMALLOC_LIBRARIES "" CACHE INTERNAL "" FORCE)
+endif()
 
 
 add_subdirectory(rtexif)

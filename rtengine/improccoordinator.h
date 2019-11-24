@@ -14,20 +14,28 @@
  *  GNU General Public License for more details.
  *
  *  You should have received a copy of the GNU General Public License
- *  along with RawTherapee.  If not, see <http://www.gnu.org/licenses/>.
+ *  along with RawTherapee.  If not, see <https://www.gnu.org/licenses/>.
  */
-#ifndef _IMPROCCOORDINATOR_H_
-#define _IMPROCCOORDINATOR_H_
+#pragma once
 
-#include "rtengine.h"
-#include "improcfun.h"
-#include "image8.h"
-#include "image16.h"
-#include "imagesource.h"
-#include "procevents.h"
+#include <memory>
+
+#include "array2D.h"
+#include "colortemp.h"
+#include "curves.h"
 #include "dcrop.h"
+#include "imagesource.h"
+#include "improcfun.h"
 #include "LUT.h"
+#include "procevents.h"
+#include "rtengine.h"
+
 #include "../rtgui/threadutils.h"
+
+namespace Glib
+{
+class Thread;
+}
 
 namespace rtengine
 {
@@ -70,14 +78,12 @@ protected:
     double lastAwbEqual;
     double lastAwbTempBias;
 
-    ImProcFunctions ipf;
-
     Glib::ustring monitorProfile;
     RenderingIntent monitorIntent;
     bool softProof;
     bool gamutCheck;
     bool sharpMask;
-
+    bool sharpMaskChanged;
     int scale;
     bool highDetailPreprocessComputed;
     bool highDetailRawComputed;
@@ -161,6 +167,8 @@ protected:
     FlatFieldAutoClipListener *flatFieldAutoClipListener;
     AutoContrastListener *bayerAutoContrastListener;
     AutoContrastListener *xtransAutoContrastListener;
+    AutoContrastListener *pdSharpenAutoContrastListener;
+    AutoRadiusListener *pdSharpenAutoRadiusListener;
     FrameCountListener *frameCountListener;
     ImageTypeListener *imageTypeListener;
 
@@ -178,14 +186,13 @@ protected:
 
     MyMutex minit;  // to gain mutually exclusive access to ... to what exactly?
 
-    void progress (Glib::ustring str, int pr);
     void reallocAll ();
     void updateLRGBHistograms ();
     void setScale (int prevscale);
     void updatePreviewImage (int todo, bool panningRelatedChange);
 
     MyMutex mProcessing;
-    ProcParams params;
+    const std::unique_ptr<ProcParams> params;
 
     // for optimization purpose, the output profile, output rendering intent and
     // output BPC will trigger a regeneration of the profile on parameter change only
@@ -200,7 +207,7 @@ protected:
     MyMutex paramsUpdateMutex;
     int  changeSinceLast;
     bool updaterRunning;
-    ProcParams nextParams;
+    const std::unique_ptr<ProcParams> nextParams;
     bool destroying;
     bool utili;
     bool autili;
@@ -217,16 +224,16 @@ protected:
     bool highQualityComputed;
     cmsHTRANSFORM customTransformIn;
     cmsHTRANSFORM customTransformOut;
+
+    ImProcFunctions ipf;
+
 public:
 
     ImProcCoordinator ();
     ~ImProcCoordinator () override;
     void assign     (ImageSource* imgsrc);
 
-    void        getParams (procparams::ProcParams* dst) override
-    {
-        *dst = params;
-    }
+    void        getParams (procparams::ProcParams* dst) override;
 
     void        startProcessing (int changeCode) override;
     ProcParams* beginUpdateParams () override;
@@ -269,6 +276,7 @@ public:
     bool getAutoWB   (double& temp, double& green, double equal, double tempBias) override;
     void getCamWB    (double& temp, double& green) override;
     void getSpotWB   (int x, int y, int rectSize, double& temp, double& green) override;
+    bool getFilmNegativeExponents(int xA, int yA, int xB, int yB, std::array<float, 3>& newExps) override;
     void getAutoCrop (double ratio, int &x, int &y, int &w, int &h) override;
     bool getHighQualComputed() override;
     void setHighQualComputed() override;
@@ -276,7 +284,7 @@ public:
     void getMonitorProfile (Glib::ustring& profile, RenderingIntent& intent) const override;
     void setSoftProofing   (bool softProof, bool gamutCheck) override;
     void getSoftProofing   (bool &softProof, bool &gamutCheck) override;
-    void setSharpMask      (bool sharpMask) override;
+    ProcEvent setSharpMask (bool sharpMask) override;
     bool updateTryLock () override
     {
         return updaterThreadStart.trylock();
@@ -362,6 +370,16 @@ public:
         xtransAutoContrastListener = acl;
     }
 
+    void setpdSharpenAutoRadiusListener  (AutoRadiusListener* acl) override
+    {
+        pdSharpenAutoRadiusListener = acl;
+    }
+
+    void setpdSharpenAutoContrastListener  (AutoContrastListener* acl) override
+    {
+        pdSharpenAutoContrastListener = acl;
+    }
+
     void setImageTypeListener  (ImageTypeListener* itl) override
     {
         imageTypeListener = itl;
@@ -395,5 +413,5 @@ public:
     } denoiseInfoStore;
 
 };
+
 }
-#endif

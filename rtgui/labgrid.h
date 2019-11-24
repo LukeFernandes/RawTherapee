@@ -15,7 +15,7 @@
  *  GNU General Public License for more details.
  *
  *  You should have received a copy of the GNU General Public License
- *  along with RawTherapee.  If not, see <http://www.gnu.org/licenses/>.
+ *  along with RawTherapee.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 // adapted from the "color correction" module of Darktable. Original copyright follows
@@ -33,7 +33,7 @@
     GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
-    along with darktable.  If not, see <http://www.gnu.org/licenses/>.
+    along with darktable.  If not, see <https://www.gnu.org/licenses/>.
 */
 
 #pragma once
@@ -43,28 +43,28 @@
 #include "toolpanel.h"
 
 
-class LabGridArea: public Gtk::DrawingArea, public BackBuffer {
+class LabGridArea final : public Gtk::DrawingArea, public BackBuffer {
 private:
     rtengine::ProcEvent evt;
     Glib::ustring evtMsg;
     
     enum State { NONE, HIGH, LOW };
     State litPoint;
-    float low_a;
-    float high_a;
-    float low_b;
-    float high_b;
+    double low_a;
+    double high_a;
+    double low_b;
+    double high_b;
 
-    float defaultLow_a;
-    float defaultHigh_a;
-    float defaultLow_b;
-    float defaultHigh_b;
+    double defaultLow_a;
+    double defaultHigh_a;
+    double defaultLow_b;
+    double defaultHigh_b;
 
     ToolPanelListener *listener;
     bool edited;
     bool isDragged;
     sigc::connection delayconn;
-    static const int inset = 2;
+    static const int inset = 5;
 
     bool low_enabled;
 

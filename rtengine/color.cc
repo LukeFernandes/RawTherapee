@@ -14,23 +14,24 @@
 *  GNU General Public License for more details.
 *
 *  You should have received a copy of the GNU General Public License
-*  along with RawTherapee.  If not, see <http://www.gnu.org/licenses/>.
+*  along with RawTherapee.  If not, see <https://www.gnu.org/licenses/>.
 */
 
 #include "rtengine.h"
 #include "color.h"
 #include "iccmatrices.h"
-#include "mytime.h"
-#include "sleef.c"
+#include "sleef.h"
 #include "opthelper.h"
 #include "iccstore.h"
+
+#ifdef _DEBUG
+#include "mytime.h"
+#endif
 
 using namespace std;
 
 namespace rtengine
 {
-
-extern const Settings* settings;
 
 cmsToneCurve* Color::linearGammaTRC;
 LUTf Color::cachef;
@@ -1771,10 +1772,10 @@ void Color::RGB2Lab(float *R, float *G, float *B, float *L, float *a, float *b, 
 {
 
 #ifdef __SSE2__
-    vfloat minvalfv = F2V(0.f);
-    vfloat maxvalfv = F2V(MAXVALF);
-    vfloat c500v = F2V(500.f);
-    vfloat c200v = F2V(200.f);
+    const vfloat minvalfv = ZEROV;
+    const vfloat maxvalfv = F2V(MAXVALF);
+    const vfloat c500v = F2V(500.f);
+    const vfloat c200v = F2V(200.f);
 #endif
     int i = 0;
     
@@ -1787,9 +1788,7 @@ void Color::RGB2Lab(float *R, float *G, float *B, float *L, float *a, float *b, 
         const vfloat yv = F2V(wp[1][0]) * rv + F2V(wp[1][1]) * gv + F2V(wp[1][2]) * bv;
         const vfloat zv = F2V(wp[2][0]) * rv + F2V(wp[2][1]) * gv + F2V(wp[2][2]) * bv;
 
-        vmask maxMask = vmaskf_gt(vmaxf(xv, vmaxf(yv, zv)), maxvalfv);
-        vmask minMask = vmaskf_lt(vminf(xv, vminf(yv, zv)), minvalfv);
-        if (_mm_movemask_ps((vfloat)maxMask) || _mm_movemask_ps((vfloat)minMask)) {
+        if (_mm_movemask_ps((vfloat)vorm(vmaskf_gt(vmaxf(xv, vmaxf(yv, zv)), maxvalfv), vmaskf_lt(vminf(xv, vminf(yv, zv)), minvalfv)))) {
             // take slower code path for all 4 pixels if one of the values is > MAXVALF. Still faster than non SSE2 version
             for(int k = 0; k < 4; ++k) {
                 float x = xv[k];
@@ -1837,21 +1836,21 @@ void Color::RGB2L(float *R, float *G, float *B, float *L, const float wp[3][3], 
 {
 
 #ifdef __SSE2__
-    vfloat minvalfv = F2V(0.f);
-    vfloat maxvalfv = F2V(MAXVALF);
+    const vfloat maxvalfv = F2V(MAXVALF);
+    const vfloat rmv = F2V(wp[1][0]);
+    const vfloat gmv = F2V(wp[1][1]);
+    const vfloat bmv = F2V(wp[1][2]);
 #endif
     int i = 0;
     
 #ifdef __SSE2__
-    for(;i < width - 3; i+=4) {
+    for(; i < width - 3; i+=4) {
         const vfloat rv = LVFU(R[i]);
         const vfloat gv = LVFU(G[i]);
         const vfloat bv = LVFU(B[i]);
-        const vfloat yv = F2V(wp[1][0]) * rv + F2V(wp[1][1]) * gv + F2V(wp[1][2]) * bv;
+        const vfloat yv = rmv * rv + gmv * gv + bmv * bv;
 
-        vmask maxMask = vmaskf_gt(yv, maxvalfv);
-        vmask minMask = vmaskf_lt(yv, minvalfv);
-        if (_mm_movemask_ps((vfloat)vorm(maxMask, minMask))) {
+        if (_mm_movemask_ps((vfloat)vorm(vmaskf_gt(yv, maxvalfv), vmaskf_lt(yv, ZEROV)))) {
             // take slower code path for all 4 pixels if one of the values is > MAXVALF. Still faster than non SSE2 version
             for(int k = 0; k < 4; ++k) {
                 float y = yv[k];
@@ -1862,13 +1861,58 @@ void Color::RGB2L(float *R, float *G, float *B, float *L, const float wp[3][3], 
         }
     }
 #endif
-    for(;i < width; ++i) {
+    for(; i < width; ++i) {
         const float rv = R[i];
         const float gv = G[i];
         const float bv = B[i];
         float y = wp[1][0] * rv + wp[1][1] * gv + wp[1][2] * bv;
 
         L[i] = computeXYZ2LabY(y);
+    }
+}
+
+void Color::Lab2RGBLimit(float *L, float *a, float *b, float *R, float *G, float *B, const float wp[3][3], float limit, float afactor, float bfactor, int width)
+{
+
+    int i = 0;
+
+#ifdef __SSE2__
+    const vfloat wpv[3][3] = {
+                              {F2V(wp[0][0]), F2V(wp[0][1]), F2V(wp[0][2])},
+                              {F2V(wp[1][0]), F2V(wp[1][1]), F2V(wp[1][2])},
+                              {F2V(wp[2][0]), F2V(wp[2][1]), F2V(wp[2][2])}
+                             };
+    const vfloat limitv = F2V(limit);
+    const vfloat afactorv = F2V(afactor);
+    const vfloat bfactorv = F2V(bfactor);
+
+    for(;i < width - 3; i+=4) {
+        const vfloat Lv = LVFU(L[i]);
+        vfloat av = LVFU(a[i]);
+        vfloat bv = LVFU(b[i]);
+
+        const vmask mask = vmaskf_gt(SQRV(av) + SQRV(bv), limitv);
+        av = vself(mask, av * afactorv, av);
+        bv = vself(mask, bv * bfactorv, bv);
+        vfloat Xv, Yv, Zv;
+        Lab2XYZ(Lv, av, bv, Xv, Yv, Zv);
+        vfloat Rv, Gv, Bv;
+        xyz2rgb(Xv, Yv, Zv, Rv, Gv, Bv, wpv);
+        STVFU(R[i], Rv);
+        STVFU(G[i], Gv);
+        STVFU(B[i], Bv);
+    }
+#endif
+    for(;i < width; ++i) {
+        float X, Y, Z;
+        float av = a[i];
+        float bv = b[i];
+        if (SQR(av) + SQR(bv) > limit) {
+            av *= afactor;
+            bv *= bfactor;
+        }
+        Lab2XYZ(L[i], av, bv, X, Y, Z);
+        xyz2rgb(X, Y, Z, R[i], G[i], B[i], wp);
     }
 }
 
@@ -1973,45 +2017,6 @@ void Color::Lch2Luv(float c, float h, float &u, float &v)
     v = c * sincosval.y;
 }
 
-// NOT TESTED
-void Color::XYZ2Luv (float X, float Y, float Z, float &L, float &u, float &v)
-{
-
-    X /= 65535.f;
-    Y /= 65535.f;
-    Z /= 65535.f;
-
-    if (Y > float(eps)) {
-        L = 116.f * std::cbrt(Y) - 16.f;
-    } else {
-        L = float(kappa) * Y;
-    }
-
-    u = 13.f * L * float(u0);
-    v = 13.f * L * float(v0);
-}
-
-// NOT TESTED
-void Color::Luv2XYZ (float L, float u, float v, float &X, float &Y, float &Z)
-{
-    if (L > float(epskap)) {
-        float t = (L + 16.f) / 116.f;
-        Y = t * t * t;
-    } else {
-        Y = L / float(kappa);
-    }
-
-    float a = ((52.f * L) / (u + 13.f * L * float(u0)) - 1.f) / 3.f;
-    float d = Y * (((39 * L) / (v + 13 * float(v0))) - 5.f);
-    float b = -5.f * Y;
-    X = (d - b) / (a + 1.f / 3.f);
-
-    Z = X * a + b;
-
-    X *= 65535.f;
-    Y *= 65535.f;
-    Z *= 65535.f;
-}
 
 /*
  * Gamut mapping algorithm

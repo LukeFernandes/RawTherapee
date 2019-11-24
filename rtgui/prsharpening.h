@@ -14,17 +14,21 @@
  *  GNU General Public License for more details.
  *
  *  You should have received a copy of the GNU General Public License
- *  along with RawTherapee.  If not, see <http://www.gnu.org/licenses/>.
+ *  along with RawTherapee.  If not, see <https://www.gnu.org/licenses/>.
  */
-#ifndef _PRSHARPENING_H_
-#define _PRSHARPENING_H_
+#pragma once
 
 #include <gtkmm.h>
+
 #include "adjuster.h"
 #include "thresholdadjuster.h"
 #include "toolpanel.h"
 
-class PrSharpening : public ToolParamBlock, public ThresholdAdjusterListener, public AdjusterListener, public FoldableToolPanel
+class PrSharpening final :
+    public ToolParamBlock,
+    public ThresholdAdjusterListener,
+    public AdjusterListener,
+    public FoldableToolPanel
 {
 
 protected:
@@ -65,7 +69,6 @@ public:
     void setBatchMode   (bool batchMode) override;
 
     void adjusterChanged (Adjuster* a, double newval) override;
-    void adjusterAutoToggled(Adjuster* a, bool newval) override;
     void enabledChanged  () override;
     void edgesonly_toggled ();
     void halocontrol_toggled ();
@@ -80,5 +83,3 @@ public:
     void setAdjusterBehavior (bool contrastadd, bool radiusadd, bool amountadd, bool dampingadd, bool iteradd, bool edgetoladd, bool haloctrladd);
     void trimValues          (rtengine::procparams::ProcParams* pp) override;
 };
-
-#endif

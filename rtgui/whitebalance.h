@@ -14,17 +14,19 @@
  *  GNU General Public License for more details.
  *
  *  You should have received a copy of the GNU General Public License
- *  along with RawTherapee.  If not, see <http://www.gnu.org/licenses/>.
+ *  along with RawTherapee.  If not, see <https://www.gnu.org/licenses/>.
  */
-#ifndef _WB_H_
-#define _WB_H_
+#pragma once
 
 #include <gtkmm.h>
-#include "toolpanel.h"
+
 #include "adjuster.h"
 #include "guiutils.h"
+#include "toolpanel.h"
 #include "wbprovider.h"
+
 #include "../rtengine/procparams.h"
+#include "../rtengine/utils.h"
 
 class SpotWBListener
 {
@@ -33,7 +35,7 @@ public:
     virtual void spotWBRequested(int size) = 0;
 };
 
-class WhiteBalance : public ToolParamBlock, public AdjusterListener, public FoldableToolPanel, public rtengine::AutoWBListener
+class WhiteBalance final : public ToolParamBlock, public AdjusterListener, public FoldableToolPanel, public rtengine::AutoWBListener
 {
 
     enum WB_LabelType {
@@ -107,7 +109,6 @@ public:
     void spotPressed ();
     void spotSizeChanged ();
     void adjusterChanged(Adjuster* a, double newval) override;
-    void adjusterAutoToggled(Adjuster* a, bool newval) override;
     int  getSize ();
     void setWBProvider (WBProvider* p)
     {
@@ -124,5 +125,3 @@ public:
     void trimValues          (rtengine::procparams::ProcParams* pp) override;
     void enabledChanged() override;
 };
-
-#endif

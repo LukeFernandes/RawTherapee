@@ -15,7 +15,7 @@
  *  GNU General Public License for more details.
  *
  *  You should have received a copy of the GNU General Public License
- *  along with RawTherapee.  If not, see <http://www.gnu.org/licenses/>.
+ *  along with RawTherapee.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 /**
@@ -50,30 +50,33 @@
  * $Id: tmo_fattal02.cpp,v 1.3 2008/11/04 23:43:08 rafm Exp $
  */
 
-
 #ifdef _OPENMP
 #include <omp.h>
 #endif
+
+#include <algorithm>
 #include <cstdio>
 #include <iostream>
 #include <iterator>
-#include <vector>
-#include <algorithm>
 #include <limits>
+#include <vector>
 
-#include <math.h>
 #include <assert.h>
 #include <fftw3.h>
+#include <math.h>
 
 #include "array2D.h"
-#include "improcfun.h"
-#include "settings.h"
+#include "color.h"
 #include "iccstore.h"
-#include "StopWatch.h"
-#include "sleef.c"
+#include "imagefloat.h"
+#include "improcfun.h"
 #include "opthelper.h"
-#include "rt_algo.h"
+#include "procparams.h"
 #include "rescale.h"
+#include "rt_algo.h"
+#include "settings.h"
+#include "sleef.h"
+#include "StopWatch.h"
 
 namespace rtengine
 {
@@ -82,7 +85,6 @@ namespace rtengine
  * RT code
  ******************************************************************************/
 
-extern const Settings *settings;
 extern MyMutex *fftwMutex;
 
 using namespace std;
@@ -187,7 +189,9 @@ void gaussianBlur (const Array2Df& I, Array2Df& L, bool multithread)
     Array2Df T (width, height);
 
     //--- X blur
+#ifdef _OPENMP
     #pragma omp parallel for shared(I, T) if(multithread)
+#endif
 
     for ( int y = 0 ; y < height ; y++ ) {
         for ( int x = 1 ; x < width - 1 ; x++ ) {
@@ -202,7 +206,9 @@ void gaussianBlur (const Array2Df& I, Array2Df& L, bool multithread)
     }
 
     //--- Y blur
+#ifdef _OPENMP
     #pragma omp parallel for if(multithread)
+#endif
 
     for ( int x = 0 ; x < width - 7 ; x += 8 ) {
         for ( int y = 1 ; y < height - 1 ; y++ ) {
@@ -279,7 +285,9 @@ float calculateGradients (Array2Df* H, Array2Df* G, int k, bool multithread)
     const float divider = pow ( 2.0f, k + 1 );
     double avgGrad = 0.0; // use double precision for large summations
 
+#ifdef _OPENMP
     #pragma omp parallel for reduction(+:avgGrad) if(multithread)
+#endif
 
     for ( int y = 0 ; y < height ; y++ ) {
         int n = (y == 0 ? 0 : y - 1);
@@ -354,7 +362,9 @@ void calculateFiMatrix (Array2Df* FI, Array2Df* gradients[],
 
     fi[nlevels - 1] = new Array2Df (width, height);
 
+#ifdef _OPENMP
     #pragma omp parallel for shared(fi) if(multithread)
+#endif
     for ( int k = 0 ; k < width * height ; k++ ) {
         (*fi[nlevels - 1]) (k) = 1.0f;
     }
@@ -366,7 +376,9 @@ void calculateFiMatrix (Array2Df* FI, Array2Df* gradients[],
         // only apply gradients to levels>=detail_level but at least to the coarsest
         if ((k >= detail_level || k == nlevels - 1) && beta != 1.f)  {
             //DEBUG_STR << "calculateFiMatrix: apply gradient to level " << k << endl;
+#ifdef _OPENMP
             #pragma omp parallel for shared(fi,avgGrad) if(multithread)
+#endif
             for ( int y = 0; y < height; y++ ) {
                 for ( int x = 0; x < width; x++ ) {
                     float grad = ((*gradients[k]) (x, y) < 1e-4f) ? 1e-4 : (*gradients[k]) (x, y);
@@ -455,7 +467,9 @@ void tmo_fattal02 (size_t width,
     // float minLum = Y (0, 0);
     float maxLum = Y (0, 0);
 
+#ifdef _OPENMP
     #pragma omp parallel for reduction(max:maxLum) if(multithread)
+#endif
 
     for ( int i = 0 ; i < size ; i++ ) {
         maxLum = std::max (maxLum, Y (i));
@@ -463,14 +477,18 @@ void tmo_fattal02 (size_t width,
 
     Array2Df* H = new Array2Df (width, height);
     float temp = 100.f / maxLum;
-    float eps = 1e-4f;
+#ifdef _OPENMP
     #pragma omp parallel if(multithread)
-    {
-#ifdef __SSE2__
-        vfloat epsv = F2V (eps);
-        vfloat tempv = F2V (temp);
 #endif
+    {
+        const float eps = 1e-4f;
+#ifdef __SSE2__
+        const vfloat epsv = F2V(eps);
+        const vfloat tempv = F2V(temp);
+#endif
+#ifdef _OPENMP
         #pragma omp for schedule(dynamic,16)
+#endif
 
         for (size_t i = 0 ; i < height ; ++i) {
             size_t j = 0;
@@ -573,7 +591,9 @@ void tmo_fattal02 (size_t width,
     // boundary conditions, so we need to adjust the assembly of the right hand
     // side accordingly (basically fft solver assumes U(-1) = U(1), whereas zero
     // Neumann conditions assume U(-1)=U(0)), see also divergence calculation
+#ifdef _OPENMP
     #pragma omp parallel for if(multithread)
+#endif
 
     for ( size_t y = 0 ; y < height ; y++ ) {
         // sets index+1 based on the boundary assumption H(N+1)=H(N-1)
@@ -591,7 +611,9 @@ void tmo_fattal02 (size_t width,
     delete H;
 
     // calculate divergence
+#ifdef _OPENMP
     #pragma omp parallel for if(multithread)
+#endif
 
     for ( size_t y = 0; y < height; ++y ) {
         for ( size_t x = 0; x < width; ++x ) {
@@ -626,12 +648,16 @@ void tmo_fattal02 (size_t width,
     delete Gx;
     delete FI;
 
+#ifdef _OPENMP
     #pragma omp parallel if(multithread)
+#endif
     {
 #ifdef __SSE2__
         vfloat gammav = F2V (gamma);
 #endif
+#ifdef _OPENMP
         #pragma omp for schedule(dynamic,16)
+#endif
 
         for (size_t i = 0 ; i < height ; i++) {
             size_t j = 0;
@@ -706,7 +732,9 @@ void transform_ev2normal (Array2Df *A, Array2Df *T, bool multithread)
 
     // the discrete cosine transform is not exactly the transform needed
     // need to scale input values to get the right transformation
+#ifdef _OPENMP
     #pragma omp parallel for if(multithread)
+#endif
 
     for (int y = 1 ; y < height - 1 ; y++ )
         for (int x = 1 ; x < width - 1 ; x++ ) {
@@ -757,7 +785,9 @@ void transform_normal2ev (Array2Df *A, Array2Df *T, bool multithread)
 
     // need to scale the output matrix to get the right transform
     float factor = (1.0f / ((height - 1) * (width - 1)));
+#ifdef _OPENMP
     #pragma omp parallel for if(multithread)
+#endif
 
     for (int y = 0 ; y < height ; y++ )
         for (int x = 0 ; x < width ; x++ ) {
@@ -876,7 +906,9 @@ void solve_pde_fft (Array2Df *F, Array2Df *U, Array2Df *buf, bool multithread)/*
     std::vector<double> l1 = get_lambda (height);
     std::vector<double> l2 = get_lambda (width);
 
+#ifdef _OPENMP
     #pragma omp parallel for if(multithread)
+#endif
 
     for (int y = 0 ; y < height ; y++ ) {
         for (int x = 0 ; x < width ; x++ ) {
@@ -895,17 +927,21 @@ void solve_pde_fft (Array2Df *F, Array2Df *U, Array2Df *buf, bool multithread)/*
     // a solution which has no positive values: U_new(x,y)=U(x,y)-max
     // (not really needed but good for numerics as we later take exp(U))
     //DEBUG_STR << "solve_pde_fft: removing constant from solution" << std::endl;
-    float max = 0.f;
-    #pragma omp parallel for reduction(max:max) if(multithread)
+    float maxVal = 0.f;
+#ifdef _OPENMP
+    #pragma omp parallel for reduction(max:maxVal) if(multithread)
+#endif
 
     for (int i = 0; i < width * height; i++) {
-        max = std::max (max, (*U) (i));
+        maxVal = std::max(maxVal, (*U)(i));
     }
 
+#ifdef _OPENMP
     #pragma omp parallel for if(multithread)
+#endif
 
     for (int i = 0; i < width * height; i++) {
-        (*U) (i) -= max;
+        (*U) (i) -= maxVal;
     }
 }
 
@@ -1058,7 +1094,7 @@ void ImProcFunctions::ToneMapFattal02 (Imagefloat *rgb)
 
     float oldMedian;
     const float percentile = float(LIM(params->fattal.anchor, 1, 100)) / 100.f;
-    findMinMaxPercentile (Yr.data(), Yr.getRows() * Yr.getCols(), percentile, oldMedian, percentile, oldMedian, multiThread);
+    findMinMaxPercentile (Yr.data(), static_cast<size_t>(Yr.getRows()) * Yr.getCols(), percentile, oldMedian, percentile, oldMedian, multiThread);
     // median filter on the deep shadows, to avoid boosting noise
     // because w2 >= w and h2 >= h, we can use the L buffer as temporary buffer for Median_Denoise()
     int w2 = find_fast_dim (w) + 1;
@@ -1100,7 +1136,7 @@ void ImProcFunctions::ToneMapFattal02 (Imagefloat *rgb)
     const float wr = float(w2) / float(w);
 
     float newMedian;
-    findMinMaxPercentile (L.data(), L.getRows() * L.getCols(), percentile, newMedian, percentile, newMedian, multiThread);
+    findMinMaxPercentile (L.data(), static_cast<size_t>(L.getRows()) * L.getCols(), percentile, newMedian, percentile, newMedian, multiThread);
     const float scale = (oldMedian == 0.f || newMedian == 0.f) ? 65535.f : (oldMedian / newMedian); // avoid Nan
 
 #ifdef _OPENMP

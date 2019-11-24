@@ -14,16 +14,14 @@
  *  GNU General Public License for more details.
  *
  *  You should have received a copy of the GNU General Public License
- *  along with RawTherapee.  If not, see <http://www.gnu.org/licenses/>.
+ *  along with RawTherapee.  If not, see <https://www.gnu.org/licenses/>.
  */
-#ifndef _FILEBROWSERENTRY_
-#define _FILEBROWSERENTRY_
+#pragma once
 
 #include <atomic>
+#include <memory>
 
 #include <gtkmm.h>
-
-#include "../rtengine/rtengine.h"
 
 #include "crophandler.h"
 #include "editenums.h"
@@ -31,11 +29,14 @@
 #include "imageareatoollistener.h"
 #include "thumbbrowserentrybase.h"
 #include "thumbimageupdater.h"
-#include "thumbnail.h"
 #include "thumbnaillistener.h"
 
+#include "../rtengine/noncopyable.h"
+#include "../rtengine/rtengine.h"
 
 class FileBrowserEntry;
+class Thumbnail;
+
 struct FileBrowserEntryIdleHelper {
     FileBrowserEntry* fbentry;
     bool destroyed;
@@ -45,7 +46,8 @@ struct FileBrowserEntryIdleHelper {
 class FileThumbnailButtonSet;
 class FileBrowserEntry : public ThumbBrowserEntryBase,
     public ThumbnailListener,
-    public ThumbImageUpdateListener
+    public ThumbImageUpdateListener,
+    public rtengine::NonCopyable
 {
 
     double scale;
@@ -55,7 +57,7 @@ class FileBrowserEntry : public ThumbBrowserEntryBase,
     int press_x, press_y, action_x, action_y;
     double rot_deg;
     bool landscape;
-    rtengine::procparams::CropParams cropParams;
+    const std::unique_ptr<rtengine::procparams::CropParams> cropParams;
     CropGUIListener* cropgl;
     FileBrowserEntryIdleHelper* feih;
 
@@ -92,9 +94,9 @@ public:
     void refreshQuickThumbnailImage () override;
     void calcThumbnailSize () override;
 
-    std::vector<Glib::RefPtr<Gdk::Pixbuf> > getIconsOnImageArea () override;
-    std::vector<Glib::RefPtr<Gdk::Pixbuf> > getSpecificityIconsOnImageArea () override;
-    void getIconSize (int& w, int& h) override;
+    std::vector<Glib::RefPtr<Gdk::Pixbuf>> getIconsOnImageArea () override;
+    std::vector<Glib::RefPtr<Gdk::Pixbuf>> getSpecificityIconsOnImageArea () override;
+    void getIconSize (int& w, int& h) const override;
 
     // thumbnaillistener interface
     void procParamsChanged (Thumbnail* thm, int whoChangedIt) override;
@@ -106,5 +108,3 @@ public:
     bool    pressNotify   (int button, int type, int bstate, int x, int y) override;
     bool    releaseNotify (int button, int type, int bstate, int x, int y) override;
 };
-
-#endif

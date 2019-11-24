@@ -14,16 +14,21 @@
  *  GNU General Public License for more details.
  *
  *  You should have received a copy of the GNU General Public License
- *  along with RawTherapee.  If not, see <http://www.gnu.org/licenses/>.
+ *  along with RawTherapee.  If not, see <https://www.gnu.org/licenses/>.
  */
-#include "preprocess.h"
-#include "guiutils.h"
 #include <sstream>
+
+#include "preprocess.h"
+
+#include "guiutils.h"
+#include "options.h"
+
+#include "../rtengine/procparams.h"
 
 using namespace rtengine;
 using namespace rtengine::procparams;
 
-PreProcess::PreProcess () : FoldableToolPanel(this, "preprocess", M("TP_PREPROCESS_LABEL"), true)
+PreProcess::PreProcess () : FoldableToolPanel(this, "preprocess", M("TP_PREPROCESS_LABEL"), options.prevdemo != PD_Sidecar)
 {
 
     Gtk::HBox* hotdeadPixel = Gtk::manage( new Gtk::HBox () );
@@ -94,10 +99,6 @@ void PreProcess::adjusterChanged(Adjuster* a, double newval)
             listener->panelChanged (EvPreProcessHotDeadThresh, a->getTextValue() );
         }
     }
-}
-
-void PreProcess::adjusterAutoToggled(Adjuster* a, bool newval)
-{
 }
 
 void PreProcess::hotPixelChanged ()

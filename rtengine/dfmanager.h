@@ -14,17 +14,23 @@
  *  GNU General Public License for more details.
  *
  *  You should have received a copy of the GNU General Public License
- *  along with RawTherapee.  If not, see <http://www.gnu.org/licenses/>.
+ *  along with RawTherapee.  If not, see <https://www.gnu.org/licenses/>.
  */
-#include <string>
-#include <glibmm/ustring.h>
-#include <map>
+#pragma once
+
 #include <cmath>
-#include "rawimage.h"
+#include <list>
+#include <map>
+#include <string>
+
+#include <glibmm/ustring.h>
+
+#include "pixelsmap.h"
 
 namespace rtengine
 {
 
+class RawImage;
 class dfInfo
 {
 public:
@@ -43,13 +49,7 @@ public:
 
     dfInfo( const dfInfo &o)
         : pathname(o.pathname), maker(o.maker), model(o.model), iso(o.iso), shutter(o.shutter), timestamp(o.timestamp), ri(nullptr) {}
-    ~dfInfo()
-    {
-        if( ri ) {
-            delete ri;
-        }
-    }
-
+    ~dfInfo();
 
     dfInfo &operator =(const dfInfo &o);
     bool operator <(const dfInfo &e2) const;
@@ -77,7 +77,7 @@ protected:
 class DFManager
 {
 public:
-    void init( Glib::ustring pathname );
+    void init(const Glib::ustring &pathname);
     Glib::ustring getPathname()
     {
         return currentPath;
