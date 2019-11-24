@@ -71,8 +71,8 @@ typedef struct {
    cl_mem Y_ = NULL;
    cl_mem div_ = NULL;
    cl_mem dampfac_ = NULL;
-   
 
+   
     std::vector<kernel_with_tag> kernels;
     std::vector<buffer_with_tag> buffers;
    OpenCL_helper();

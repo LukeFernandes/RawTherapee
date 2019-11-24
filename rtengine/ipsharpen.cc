@@ -154,19 +154,9 @@ void dcdamping (float** aI, float** aO, float damping, int W, int H)
     }
 }
 
-void OpenCL_max(float* lum, float** luminance, float** tmp, JaggedArray<float> tmpA, OpenCL_helper* helper, int W, int H)
+  void OpenCL_max(float* lum, JaggedArray<float> &tmpA, OpenCL_helper* helper, int W, int H, cl_mem lum_mem_obj, cl_mem ret_mem_obj,  size_t _global_item_size, float* _read_storage)
 {
-    clock_t diff, diff2;
-    clock_t start = clock();
-    
-    //turn array of arrays into 2D array
-      for (int i = 0; i < H; i++)
-	{
-	  for (int j = 0; j < W; j++)
-	    {
-	      lum[i*W + j] = luminance[i][j];
-	    }
-	}
+
       cl_kernel mykernel;
       kernel_tag maxtag = maxkernel;
       //this kernel is for maximising luminance
@@ -174,71 +164,35 @@ void OpenCL_max(float* lum, float** luminance, float** tmp, JaggedArray<float> t
  
       cl_int error_code = NULL;
       //create the OpenCL memory objects that coresspond to the input luminance and the return value
-      cl_mem lum_mem_obj; 
-      cl_mem ret_mem_obj;     
-      
-      if (helper->luminance_ != NULL)  //already created
-      {
-	lum_mem_obj = helper->luminance_;
-	fprintf(stderr, "OpenCL Old memory reused for mem\n");  fflush(stderr);
-      }
-     else
-      {
-        lum_mem_obj = clCreateBuffer(helper->context, CL_MEM_READ_ONLY, W*H*sizeof(float), NULL, &error_code);
-	helper->luminance_ = lum_mem_obj;
-        fprintf(stderr, "1L New buffer created and stored; OpenCL Error code (0 is success):%d\n", error_code); fflush(stderr);
-      }
 	
     error_code = clEnqueueWriteBuffer(helper->command_queue, lum_mem_obj, CL_TRUE, 0, W*H*sizeof(float), lum, 0, NULL, NULL);
     fprintf(stderr, "OpenCL Error code (0 is success):%d\n", error_code); fflush(stderr);
-
-   if ( helper->tmpI_ != NULL)   // element not found
-      {
-	ret_mem_obj  = helper->tmpI_;
-	fprintf(stderr, "OpenCLgauss Old memory return object reused for ret\n"); fflush(stderr);
-      }
-      else
-      {
-        ret_mem_obj = clCreateBuffer(helper->context, CL_MEM_WRITE_ONLY, W*H*sizeof(float), NULL, &error_code);
-	helper->tmpI_ = ret_mem_obj;
-        fprintf(stderr, "2R New buffer created and stored; OpenCL Error code (0 is success):%d\n", error_code); fflush(stderr);
-      }
       
-      error_code = clSetKernelArg(mykernel, 
-0, sizeof(cl_mem), (void *)&lum_mem_obj);
+      error_code = clSetKernelArg(mykernel, 0, sizeof(cl_mem), (void *)&lum_mem_obj);
       fprintf(stderr, "OpenCL Error code (0 is success):%d\n", error_code);  fflush(stderr);
       error_code = clSetKernelArg(mykernel, 1, sizeof(cl_mem), (void *)&ret_mem_obj);
       fprintf(stderr, "OpenCL Error code (0 is success):%d\n", error_code);  fflush(stderr);
       size_t global_item_size = H*W; 
-      size_t local_item_size = 64;
-      start = clock();
+    
       error_code = clEnqueueNDRangeKernel(helper->command_queue, mykernel, 1, NULL, &global_item_size, NULL, 0, NULL, NULL);
-      diff2 = clock() - start;
+      
       fprintf(stderr, "OpenCL Error code (0 is success):%d\n", error_code);
       fflush(stderr);
 
-       float *C = (float*)malloc(W*H*sizeof(float));
-       error_code = clEnqueueReadBuffer(helper->command_queue, ret_mem_obj, CL_TRUE, 0, W*H*sizeof(float), C, 0, NULL, NULL);
+       error_code = clEnqueueReadBuffer(helper->command_queue, ret_mem_obj, CL_TRUE, 0, W*H*sizeof(float), _read_storage, 0, NULL, NULL);
        fprintf(stderr, "OpenCL Error code (0 is success):%d\n", error_code);
        fflush(stderr);
  
-            // Display the result to the screen
-	    //for(int i = 0; i < W*H; i++)
-               //fprintf(stderr, "%f  ", C[i]);
-	    // fflush(stderr);
+       //turn 2D array into jagged array
 
-	      //turn 2D array into jagged array
-
-               for (int i = 0; i < H; i++)
+       for (int i = 0; i < H; i++)
+	   {
+	    for (int j = 0; j < W; j++)
 	       {
-	        for (int j = 0; j < W; j++)
-	         {
-		   tmpA[i][j] = C[i*W + j];
-	         }
-             	}
+		 tmpA[i][j] = _read_storage[i*W + j];
+	       }
+           }
 
-	       int msec = diff * 1000 / CLOCKS_PER_SEC;
-	       int msec2 = diff2 * 1000 / CLOCKS_PER_SEC;  
 }
 
 }
@@ -256,7 +210,7 @@ void ImProcFunctions::deconvsharpening (float** luminance, float** tmp, int W, i
         return;
     }
 BENCHFUN
-    JaggedArray<float> tmpI(W, H);
+  JaggedArray<float> tmpI(W, H); //What are these for?
     JaggedArray<float> tmpI2(W, H);
      JaggedArray<float> tmpI3(W, H);
     
@@ -264,7 +218,12 @@ BENCHFUN
     clock_t start = clock();
 #ifdef _OPENMP
     #pragma omp parallel for
-#endif    
+#endif
+    for (int i = 0; i < H; i++) {
+        for(int j = 0; j < W; j++) {
+	  tmpI2[i][j] = max(luminance[i][j], 0.f); //use duplicate for comparison on CPU
+        }
+    }
         OpenCL_helper* helper;
     
       //set up OpenCL if not already set up
@@ -276,24 +235,20 @@ BENCHFUN
 	   helper = this->helper;     
       }
 
-      for (int i = 0; i < H; i++) {
-        for(int j = 0; j < W; j++) {
-	  tmpI2[i][j] = max(luminance[i][j], 0.f); //create duplicate for comparison
-        }
-    }
+      
     diff = clock() - start;
 
       //turn array of arrays into 2D array
       float* lum = (float*) malloc(W*H*sizeof(float));
       OpenCL_helper::ArrayofArrays_to_1d_array(lum, luminance, W, H);
   
-      OpenCL_helper* helper;
+       cl_int error_code = NULL;
       cl_kernel mykernel;
       kernel_tag maxtag = maxkernel;
       //this kernel is for maximising luminance
       mykernel = helper->reuse_or_create_kernel(maxkernel, "opencl_max.cl", "opencl_max");         
  
-      cl_int error_code = NULL;
+      //cl_int error_code = NULL;
       cl_mem lum_mem_obj; 
       cl_mem ret_mem_obj;     
       
@@ -308,9 +263,9 @@ BENCHFUN
 	helper->luminance_ = lum_mem_obj;
         fprintf(stderr, "1L New buffer created and stored; OpenCL Error code (0 is success):%d\n", error_code); fflush(stderr);
       }
-	
-    error_code = clEnqueueWriteBuffer(helper->command_queue, lum_mem_obj, CL_TRUE, 0, W*H*sizeof(float), lum, 0, NULL, NULL);
-    fprintf(stderr, "OpenCL Error code (0 is success):%d\n", error_code); fflush(stderr);
+
+    /* error_code = clEnqueueWriteBuffer(helper->command_queue, lum_mem_obj, CL_TRUE, 0, W*H*sizeof(float), lum, 0, NULL, NULL);
+       fprintf(stderr, "OpenCL Error code (0 is success):%d\n", error_code); fflush(stderr); */
 
    if ( helper->tmpI_ != NULL)   // element not found
       {
@@ -323,11 +278,19 @@ BENCHFUN
 	helper->tmpI_ = ret_mem_obj;
         fprintf(stderr, "2R New buffer created and stored; OpenCL Error code (0 is success):%d\n", error_code); fflush(stderr);
       }
+
+      size_t global_item_size = H*W; 
+      size_t local_item_size = 64;
+
       
-      error_code = clSetKernelArg(mykernel, 0, sizeof(cl_mem), (void *)&lum_mem_obj);
+      float *read_storage = (float*)malloc(W*H*sizeof(float));
+
+      OpenCL_max(lum,  tmpI,  helper,  W,  H,  lum_mem_obj,  ret_mem_obj,  global_item_size, read_storage);
+       
+      /* error_code = clSetKernelArg(mykernel, 0, sizeof(cl_mem), (void *)&lum_mem_obj);
       fprintf(stderr, "OpenCL Error code (0 is success):%d\n", error_code);  fflush(stderr);
       error_code = clSetKernelArg(mykernel, 1, sizeof(cl_mem), (void *)&ret_mem_obj);
-      fprintf(stderr, "OpenCL Error code (0 is success):%d\n", error_code);  fflush(stderr);
+      fprintf(stderr, "OpenCL Error code (0 is success):%d\n", error_code);  fflush(stderr); 
       size_t global_item_size = H*W; 
       size_t local_item_size = 64;
       start = clock();
@@ -354,15 +317,15 @@ BENCHFUN
 	         {
 		   tmpI[i][j] = C[i*W + j];
 	         }
-             	}
+		 } */
 
-	       int msec = diff * 1000 / CLOCKS_PER_SEC;
-	       int msec2 = diff2 * 1000 / CLOCKS_PER_SEC;
-	       fprintf(stderr, "OpenCL Pixel 0,0 is %f\n", tmpI[0][0]);
-	       fprintf(stderr, "Pixel 0,0 is %f\n", tmpI2[0][0]);
-	       fflush(stderr);
-               fprintf(stderr, "CPU time: %d\n", msec);
-	       fprintf(stderr, "GPU time: %d\n", msec2);
+    int msec = diff * 1000 / CLOCKS_PER_SEC;
+    int msec2 = diff2 * 1000 / CLOCKS_PER_SEC;
+    fprintf(stderr, "OpenCL Pixel 0,0 is %f\n", tmpI[0][0]);
+    fprintf(stderr, "Pixel 0,0 is %f\n", tmpI2[0][0]);
+    fflush(stderr);
+    fprintf(stderr, "CPU time: %d\n", msec);
+    fprintf(stderr, "GPU time: %d\n", msec2);
 	  
     // calculate contrast based blend factors to reduce sharpening in regions with low contrast
     JaggedArray<float> blend(W, H);
@@ -404,7 +367,7 @@ BENCHFUN
 		      fprintf(stderr, "OpenCL Error code (0 is success):%d\n", error_code);  fflush(stderr);
 
 		      error_code = clEnqueueNDRangeKernel(helper->command_queue, intp_kernel, 1, NULL, &global_item_size, &local_item_size, 0, NULL, NULL); fflush(stderr);
-		      error_code = clEnqueueReadBuffer(helper->command_queue, ret_mem_obj, CL_TRUE, 0, W*H*sizeof(float), C, 0, NULL, NULL); fflush(stderr);
+		      error_code = clEnqueueReadBuffer(helper->command_queue, ret_mem_obj, CL_TRUE, 0, W*H*sizeof(float), read_storage, 0, NULL, NULL); fflush(stderr);
 		      
 		        //turn 2D array into jagged array
 
@@ -412,7 +375,7 @@ BENCHFUN
 	       {
 	        for (int j = 0; j < W; j++)
 	         {
-		   tmpI3[i][j] = C[i*W + j];
+		   tmpI3[i][j] = read_storage[i*W + j];
 	         }
              	}
 		      
