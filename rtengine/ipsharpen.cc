@@ -229,7 +229,9 @@ BENCHFUN
 	  tmpI2[i][j] = max(luminance[i][j], 0.f); //use duplicate for comparison on CPU
         }
     }
-
+    
+    /*OpenCL section */
+    
         OpenCL_helper* helper;
     
       //set up OpenCL if not already set up
@@ -242,23 +244,23 @@ BENCHFUN
       }
 
       
-    diff = clock() - start;
+      diff = clock() - start;
 
-      //turn array of arrays into 2D array
+      //turn array of arrays into 1d array
       float* lum = (float*) malloc(W*H*sizeof(float));
       OpenCL_helper::ArrayofArrays_to_1d_array(lum, luminance, W, H);
   
-       cl_int error_code = NULL;
-      cl_kernel mykernel;
-      kernel_tag maxtag = maxkernel;
-      //this kernel is for maximising luminance
-      mykernel = helper->reuse_or_create_kernel(maxkernel, "opencl_max.cl", "opencl_max");         
- 
-      //cl_int error_code = NULL;
-      cl_mem lum_mem_obj; 
-      cl_mem ret_mem_obj;     
+      cl_int error_code = NULL;
+      cl_kernel mykernel; // provides a handle to the kernel we are going to create on GPU
+      kernel_tag maxtag = maxkernel; //this is for keeping track of the different kernels we use
       
-      if (helper->luminance_ != NULL)  //already created
+      mykernel = helper->reuse_or_create_kernel(maxkernel, "opencl_max.cl", "opencl_max"); //this kernel is just using the fmax intrinsic        
+      cl_mem lum_mem_obj; 
+      cl_mem ret_mem_obj;
+
+      helper->reuse_or_create_kernel(lum_mem_obj, W, H, CL_MEM_READ_ONLY);
+      
+      /*if (helper->luminance_ != NULL)  //if there is already a luminance already created
       {
 	lum_mem_obj = helper->luminance_;
 	fprintf(stderr, "OpenCL Old memory reused for mem\n");  fflush(stderr);
@@ -268,7 +270,7 @@ BENCHFUN
         lum_mem_obj = clCreateBuffer(helper->context, CL_MEM_READ_ONLY, W*H*sizeof(float), NULL, &error_code);
 	helper->luminance_ = lum_mem_obj;
         fprintf(stderr, "1L New buffer created and stored; OpenCL Error code (0 is success):%d\n", error_code); fflush(stderr);
-      }
+	} */
 
     /* error_code = clEnqueueWriteBuffer(helper->command_queue, lum_mem_obj, CL_TRUE, 0, W*H*sizeof(float), lum, 0, NULL, NULL);
        fprintf(stderr, "OpenCL Error code (0 is success):%d\n", error_code); fflush(stderr); */
@@ -292,51 +294,19 @@ BENCHFUN
       float *read_storage = (float*)malloc(W*H*sizeof(float));
 
       OpenCL_max(lum,  tmpI,  helper,  W,  H,  lum_mem_obj,  ret_mem_obj,  global_item_size, read_storage);
-       
-      /* error_code = clSetKernelArg(mykernel, 0, sizeof(cl_mem), (void *)&lum_mem_obj);
-      fprintf(stderr, "OpenCL Error code (0 is success):%d\n", error_code);  fflush(stderr);
-      error_code = clSetKernelArg(mykernel, 1, sizeof(cl_mem), (void *)&ret_mem_obj);
-      fprintf(stderr, "OpenCL Error code (0 is success):%d\n", error_code);  fflush(stderr); 
-      size_t global_item_size = H*W; 
-      size_t local_item_size = 64;
-      start = clock();
-      error_code = clEnqueueNDRangeKernel(helper->command_queue, mykernel, 1, NULL, &global_item_size, NULL, 0, NULL, NULL);
-      diff2 = clock() - start;
-      fprintf(stderr, "OpenCL Error code (0 is success):%d\n", error_code);
-      fflush(stderr);
-
-       float *C = (float*)malloc(W*H*sizeof(float));
-       error_code = clEnqueueReadBuffer(helper->command_queue, ret_mem_obj, CL_TRUE, 0, W*H*sizeof(float), C, 0, NULL, NULL);
-       fprintf(stderr, "OpenCL Error code (0 is success):%d\n", error_code);
-       fflush(stderr);
- 
-            // Display the result to the screen
-	    //for(int i = 0; i < W*H; i++)
-               //fprintf(stderr, "%f  ", C[i]);
-	    // fflush(stderr);
-
-	      //turn 2D array into jagged array
-
-               for (int i = 0; i < H; i++)
-	       {
-	        for (int j = 0; j < W; j++)
-	         {
-		   tmpI[i][j] = C[i*W + j];
-	         }
-		 } */
 
     int msec = diff * 1000 / CLOCKS_PER_SEC;
     int msec2 = diff2 * 1000 / CLOCKS_PER_SEC;
-    fprintf(stderr, "OpenCL Pixel 0,0 is %f\n", tmpI[0][0]);
-    fprintf(stderr, "Pixel 0,0 is %f\n", tmpI2[0][0]);
+    fprintf(stderr, "OpenCL Pixel 5,49 is %f\n", tmpI[5][49]);
+    fprintf(stderr, "Pixel 5,49 is %f\n", tmpI2[5][49]);
     fflush(stderr);
     fprintf(stderr, "CPU time: %d\n", msec);
     fprintf(stderr, "GPU time: %d\n", msec2);
 	  
     // calculate contrast based blend factors to reduce sharpening in regions with low contrast
-    JaggedArray<float> blend(W, H);
+    JaggedArray<float> blend_jagged_array(W, H);
     float contrast = sharpenParam.contrast / 100.f;
-    buildBlendMask(luminance, blend, W, H, contrast, 1.f);
+    buildBlendMask(luminance, blend_jagged_array, W, H, contrast, 1.f);
 
     JaggedArray<float>* blurbuffer = nullptr;
     fprintf(stderr, "Checkpoint Dynamo reached\n"); fflush(stderr);
@@ -358,7 +328,7 @@ BENCHFUN
 		  if (helper->luminance_ != NULL)
 		      {
 		              
-		      helper->JaggedArray_to_1d_array(blend1d, &blend, W, H);
+		      helper->JaggedArray_to_1d_array(blend1d, &blend_jagged_array, W, H);
 		      helper->JaggedArray_to_1d_array(blur1d, &blur, W, H);
 
 		      error_code = clEnqueueWriteBuffer(helper->command_queue, blend_mem_obj, CL_TRUE, 0, W*H*sizeof(float), blend1d, 0, NULL, NULL);
@@ -405,7 +375,7 @@ BENCHFUN
 	   for (int i = 0; i < H; ++i) {
                 for (int j = 0; j < W; ++j) {
 		  
-                    blur[i][j] = intp(blend[i][j], luminance[i][j], std::max(blur[i][j], 0.0f));
+                    blur[i][j] = intp(blend_jagged_array[i][j], luminance[i][j], std::max(blur[i][j], 0.0f));
                 }
             }
 	   		   
@@ -452,7 +422,7 @@ BENCHFUN
             if (!needdamp) {
                 // apply gaussian blur and divide luminance by result of gaussian blur
 
-                gaussianBlur(tmpI, tmp, W, H, sigma, false, GAUSS_DIV, luminance); //yours before merge res: gaussianBlur(tmpI, tmp, W, H, sigma, nullptr, GAUSS_DIV, luminance);  
+	      gaussianBlur(tmpI, tmp, W, H, sigma, false, nullptr, GAUSS_DIV, luminance); //yours before merge res: gaussianBlur(tmpI, tmp, W, H, sigma, nullptr, GAUSS_DIV, luminance);  
 		fprintf(stderr, "No. %d: Post div CPU tmp/DST %d,%d is %f \n", k, sampleI, sampleJ, tmp[sampleI][sampleJ]);
 		fflush(stderr);
             } else {
@@ -462,7 +432,7 @@ BENCHFUN
 		fprintf(stderr, "No. %d: CPU damping result %d,%d is %f \n", k, sampleI, sampleJ, tmp[sampleI][sampleJ]);
             }
 
-            gaussianBlur(tmp, tmpI, W, H, sigma, false, GAUSS_MULT); //yours before merge res: gaussianBlur(tmp, tmpI, W, H, sigma, nullptr, GAUSS_MULT); 
+            gaussianBlur(tmp, tmpI, W, H, sigma, false, nullptr, GAUSS_MULT); //yours before merge res: gaussianBlur(tmp, tmpI, W, H, sigma, nullptr, GAUSS_MULT); 
 	    fprintf(stderr, "No. %d: Post mult CPU tmpI/src %d,%d is %f \n", k, sampleI, sampleJ, tmpI[sampleI][sampleJ]);
 
         } // end for
@@ -472,7 +442,7 @@ BENCHFUN
     
 	      fprintf(stderr, "Checkpoint Cato \n"); fflush(stderr);
                 // apply gaussian blur and divide luminance by result of gaussian blur 
-	     OpenCLgaussianBlur(helper, sharpenParam.deconviter, gputmpI, gputmp, W, H, sigma, nullptr, GAUSS_DIV, luminance, damping);
+	      OpenCLgaussianBlur(helper, sharpenParam.deconviter, gputmpI, gputmp, W, H, sigma, false, nullptr, GAUSS_DIV, luminance, damping);
 	      fprintf(stderr, "gpu post iterations is %f,%f \n ", gputmpI[sampleI][sampleJ]); fflush(stderr);
 	      fprintf(stderr, "gpu post iterations is %f,%f \n ", tmpI[sampleI][sampleJ]); fflush(stderr);
     
@@ -482,7 +452,7 @@ BENCHFUN
 
         for (int i = 0; i < H; ++i) {
             for (int j = 0; j < W; ++j) {
-	      luminance[i][j] = intp(blend[i][j] * amount, max(tmpI[i][j], 0.0f), luminance[i][j]);
+	      luminance[i][j] = intp(blend_jagged_array[i][j] * amount, max(tmpI[i][j], 0.0f), luminance[i][j]);
             }
         }
 
@@ -493,7 +463,7 @@ BENCHFUN
 #endif
             for (int i = 0; i < H; ++i) {
                 for (int j = 0; j < W; ++j) {
-                    luminance[i][j] = intp(blend[i][j], luminance[i][j], max(blur[i][j], 0.0f));
+                    luminance[i][j] = intp(blend_jagged_array[i][j], luminance[i][j], max(blur[i][j], 0.0f));
                 }
             }
         }

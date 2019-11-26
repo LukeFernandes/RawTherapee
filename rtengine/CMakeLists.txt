@@ -14,7 +14,6 @@ include_directories(${EXTRA_INCDIR}
     "C:/Progra~1/NVIDIAGPUComputingToolkit/CUDA/v10.0/include"
     )
 
-)
 
 link_directories("${PROJECT_SOURCE_DIR}/rtexif"
     ${EXPAT_LIBRARY_DIRS}
@@ -31,7 +30,6 @@ link_directories("${PROJECT_SOURCE_DIR}/rtexif"
     "C:/Progra~1/NVIDIAGPUComputingToolkit/CUDA/v10.0/lib/x64"
     )
     
-)
 
 set(CAMCONSTSFILE "camconst.json")
 
@@ -192,7 +190,6 @@ target_link_libraries(rtengine rtexif
     "C:/Progra~1/NVIDIAGPUComputingToolkit/CUDA/v10.0/lib/x64/OpenCL.lib"
     )
     
-)
 
 
 install(FILES ${CAMCONSTSFILE} DESTINATION "${DATADIR}" PERMISSIONS OWNER_WRITE OWNER_READ GROUP_READ WORLD_READ)

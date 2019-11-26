@@ -60,8 +60,13 @@ OpenCL_helper::OpenCL_helper() {
             char *source_str;
             size_t source_size;
 	    cl_int error_code = NULL;
+	    char full_kernel_filename[80];
+	    strcpy(full_kernel_filename, "C:\\code\\repo-rt\\clkernels\\");
+	    strcat(full_kernel_filename, kernel_filename);
+	    fprintf(stderr, full_kernel_filename);
+	    size_t a = strlen(full_kernel_filename);
 
-            fp = fopen(kernel_filename, "r");
+            fp = fopen(full_kernel_filename, "r");
                 if (!fp) {
 	        fprintf(stderr, "Failed to load kernel.\n");
          	fflush(stderr);

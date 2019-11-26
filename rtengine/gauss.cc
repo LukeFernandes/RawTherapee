@@ -650,7 +650,7 @@ template<class T> void div_lastcolumn_and_lastrow(T* srcmapped, T* dstmapped, T*
 
 	dstmapped[(H-1)*W + (W-1)] = rtengine::max(divbuff[H - 1][W - 1] / (srcmapped[(H-1)*W + (W-1)] > 0.f ? srcmapped[(H-1)*W + (W-1)] : 1.f), 0.f);
 
-
+}
 
 
 template<class T> void gauss7x7div (T** RESTRICT src, T** RESTRICT dst, T** RESTRICT divBuffer, const int W, const int H, float sigma)
@@ -2428,7 +2428,7 @@ template<class T> void gaussianBlurImpl(OpenCL_helper* helper, int iterations, T
 }
 }
 
-void gaussianBlur(float** src, float** dst, const int W, const int H, const double sigma, bool useBoxBlur, eGaussType gausstype, float** buffer2)
+void gaussianBlur(float** src, float** dst, const int W, const int H, const double sigma, bool useBoxBlur, float *buffer, eGaussType gausstype, float** buffer2)
 {
   gaussianBlurImpl<float>(NULL, NULL, src, dst, W, H, sigma, useBoxBlur, buffer, gausstype, buffer2);
 }
