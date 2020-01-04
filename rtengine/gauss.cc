@@ -195,53 +195,31 @@ template<class T> void calculateYvVFactors( const T sigma, T &b1, T &b2, T &b3, 
 
      //create src and dst on GPU
      cl_mem src_mem_obj = clCreateBuffer(helper->context, CL_MEM_READ_ONLY, (W-2)*(H-2)*sizeof(float), NULL, &error_code);
-     fprintf(stderr, "OpenCL Error code (0 is success):%d\n", error_code);  fflush(stderr);
-        cl_mem oldsrc_mem_obj = clCreateBuffer(helper->context, CL_MEM_READ_ONLY, W*H*sizeof(float), NULL, &error_code);
-	fprintf(stderr, "OpenCL Error code (0 is success):%d\n", error_code);  fflush(stderr);
-	cl_mem olddst_mem_obj = clCreateBuffer(helper->context, CL_MEM_WRITE_ONLY, W*H*sizeof(float), NULL, &error_code);
-	fprintf(stderr, "OpenCL Error code (0 is success):%d\n", error_code);  fflush(stderr);
+     cl_mem oldsrc_mem_obj = clCreateBuffer(helper->context, CL_MEM_READ_ONLY, W*H*sizeof(float), NULL, &error_code);
+     cl_mem olddst_mem_obj = clCreateBuffer(helper->context, CL_MEM_WRITE_ONLY, W*H*sizeof(float), NULL, &error_code);
      cl_mem ret_mem_obj = clCreateBuffer(helper->context, CL_MEM_READ_WRITE, (W-2)*(H-2)*sizeof(float), NULL, &error_code);
-     fprintf(stderr, "OpenCL Error code (0 is success):%d\n", error_code);  fflush(stderr);
      /* QUICK HACK  helper->blur_ = ret_mem_obj; */
-      cl_mem X_mem_obj = clCreateBuffer(helper->context, CL_MEM_READ_ONLY,(W-2)*(H-2)*sizeof(int), NULL, &error_code);
-      fprintf(stderr, "OpenCL Error code (0 is success):%d\n", error_code);  fflush(stderr);
-         cl_mem Y_mem_obj = clCreateBuffer(helper->context, CL_MEM_READ_ONLY, (W-2)*(H-2)*sizeof(int), NULL, &error_code);
-	 fprintf(stderr, "OpenCL Error code (0 is success):%d\n", error_code);  fflush(stderr);
+     cl_mem X_mem_obj = clCreateBuffer(helper->context, CL_MEM_READ_ONLY,(W-2)*(H-2)*sizeof(int), NULL, &error_code);
+     cl_mem Y_mem_obj = clCreateBuffer(helper->context, CL_MEM_READ_ONLY, (W-2)*(H-2)*sizeof(int), NULL, &error_code);
      error_code = clEnqueueWriteBuffer(helper->command_queue, src_mem_obj, CL_TRUE, 0, (W-2)*(H-2)*sizeof(float), newsrc, 0, NULL, NULL);
-     fprintf(stderr, "OpenCL Error code (0 is success):%d\n", error_code);  fflush(stderr);
-          error_code = clEnqueueWriteBuffer(helper->command_queue, oldsrc_mem_obj, CL_TRUE, 0, W*H*sizeof(float), oldsrc, 0, NULL, NULL);
-	  fprintf(stderr, "OpenCL Error code (0 is success):%d\n", error_code);  fflush(stderr);
-	   error_code = clEnqueueWriteBuffer(helper->command_queue, olddst_mem_obj, CL_TRUE, 0, W*H*sizeof(float), olddst, 0, NULL, NULL);
-	   fprintf(stderr, "OpenCL Error code (0 is success):%d\n", error_code);  fflush(stderr);
+     error_code = clEnqueueWriteBuffer(helper->command_queue, oldsrc_mem_obj, CL_TRUE, 0, W*H*sizeof(float), oldsrc, 0, NULL, NULL);
+     error_code = clEnqueueWriteBuffer(helper->command_queue, olddst_mem_obj, CL_TRUE, 0, W*H*sizeof(float), olddst, 0, NULL, NULL);
      error_code = clEnqueueWriteBuffer(helper->command_queue, ret_mem_obj, CL_TRUE, 0, (W-2)*(H-2)*sizeof(float), newdst, 0, NULL, NULL);
-     fprintf(stderr, "OpenCL Error code (0 is success):%d\n", error_code);  fflush(stderr);
-       error_code = clEnqueueWriteBuffer(helper->command_queue, X_mem_obj, CL_TRUE, 0, (W-2)*(H-2)*sizeof(int), X, 0, NULL, NULL);
-       fprintf(stderr, "OpenCL Error code (0 is success):%d\n", error_code);  fflush(stderr);
-          error_code = clEnqueueWriteBuffer(helper->command_queue, Y_mem_obj, CL_TRUE, 0, (W-2)*(H-2)*sizeof(int), Y, 0, NULL, NULL);
-	  fprintf(stderr, "OpenCL Error code (0 is success):%d\n", error_code);  fflush(stderr);
+     error_code = clEnqueueWriteBuffer(helper->command_queue, X_mem_obj, CL_TRUE, 0, (W-2)*(H-2)*sizeof(int), X, 0, NULL, NULL);
+     error_code = clEnqueueWriteBuffer(helper->command_queue, Y_mem_obj, CL_TRUE, 0, (W-2)*(H-2)*sizeof(int), Y, 0, NULL, NULL);
 
      double c0double = c0; double c1double = c1; double c2double = c2;
 
      error_code = clSetKernelArg(mykernel, 0, sizeof(cl_mem), (void *)&ret_mem_obj);
-     fprintf(stderr, "OpenCL Error code (0 is success):%d\n", error_code);  fflush(stderr);
      error_code = clSetKernelArg(mykernel, 1, sizeof(cl_mem), (void *)&oldsrc_mem_obj);
-     fprintf(stderr, "OpenCL Error code (0 is success):%d\n", error_code);  fflush(stderr);
      error_code = clSetKernelArg(mykernel, 2, sizeof(cl_mem), (void *)&X_mem_obj);
-     fprintf(stderr, "OpenCL Error code (0 is success):%d\n", error_code);  fflush(stderr);
      error_code = clSetKernelArg(mykernel, 3, sizeof(cl_mem), (void *)&Y_mem_obj);
-     fprintf(stderr, "OpenCL Error code (0 is success):%d\n", error_code);  fflush(stderr);
      error_code = clSetKernelArg(mykernel, 4, sizeof(cl_int), (void *)&W);
-     fprintf(stderr, "OpenCL Error code (0 is success):%d\n", error_code);  fflush(stderr);
      error_code = clSetKernelArg(mykernel, 5, sizeof(cl_int), (void *)&H);
-     fprintf(stderr, "OpenCL Error code (0 is success):%d\n", error_code);  fflush(stderr);
      error_code = clSetKernelArg(mykernel, 6, sizeof(cl_double), (void *)&c0double);
-     fprintf(stderr, "OpenCL Error code (0 is success):%d\n", error_code);  fflush(stderr);
      error_code = clSetKernelArg(mykernel, 7, sizeof(cl_double), (void *)&c1double);
-     fprintf(stderr, "OpenCL Error code (0 is success):%d\n", error_code);  fflush(stderr);
      error_code = clSetKernelArg(mykernel, 8, sizeof(cl_double), (void *)&c2double);
-     fprintf(stderr, "OpenCL Error code (0 is success):%d\n", error_code);  fflush(stderr);
      error_code = clSetKernelArg(mykernel, 9, sizeof(cl_mem), (void *)&olddst_mem_obj);
-     fprintf(stderr, "OpenCL Error code (0 is success):%d\n", error_code);  fflush(stderr);
      
     fprintf(stderr, "Checkpoint 4x reached\n");
     fflush(stderr);
@@ -423,10 +401,27 @@ template<class T> void gauss3x3mult (T** RESTRICT src, T** RESTRICT dst, const i
 #endif
 
     for (int i = 1; i < H - 1; i++) {
+        if (i == 950) fprintf(stderr, "\n dst for multiplication value is %f", dst[i][0]);
         dst[i][0] *= b1 * (src[i - 1][0] + src[i + 1][0]) + b0 * src[i][0];
+	if (i == 950) {
+	  float temp =  b1 * (src[i - 1][0] + src[i + 1][0]) + b0 * src[i][0];;
+	       fprintf(stderr, "\n CPU 950 0 is %f", src[i][0]);
+	       fprintf(stderr, "\n CPU 949 0 is %f", src[i - 1][0]);
+	       fprintf(stderr, "\n CPU 951 0 is %f", src[i + 1][0]);
+	       fprintf(stderr, "\n CPU 950 0 base value is %f", temp);
+	       fprintf(stderr, "\n CPU 950 0 final value is %f", dst[i][0]);
+	       fprintf(stderr, "\n b1 is %f", b1);
+	       fprintf(stderr, "\n b0 is %f", b0);
+	       fflush(stderr);
+	    }
 
         for (int j = 1; j < W - 1; j++) {
 	  dst[i][j] *= c2 * (src[i - 1][j - 1] + src[i - 1][j + 1] + src[i + 1][j - 1] + src[i + 1][j + 1]) + c1 * (src[i - 1][j] + src[i][j - 1] + src[i][j + 1] + src[i + 1][j]) + c0 * src[i][j];
+	  if ((i == 10) && (j == 10)) {
+	    float temp =  c2 * (src[i - 1][j - 1] + src[i - 1][j + 1] + src[i + 1][j - 1] + src[i + 1][j + 1]) + c1 * (src[i - 1][j] + src[i][j - 1] + src[i][j + 1] + src[i + 1][j]) + c0 * src[i][j];
+	    fprintf(stderr, "\n CPU 10 10 base value is %f", temp);
+	  }
+		    
         }
 
         dst[i][W - 1] *= b1 * (src[i - 1][W - 1] + src[i + 1][W - 1]) + b0 * src[i][W - 1];
@@ -446,6 +441,8 @@ template<class T> void gauss3x3mult (T** RESTRICT src, T** RESTRICT dst, const i
         dst[H - 1][W - 1] *= src[H - 1][W - 1];
     }
 }
+
+
 
 template<class T> void gauss3x3div (T** RESTRICT src, T** RESTRICT dst, T** RESTRICT divBuffer, const int W, const int H, const double c0, const double c1, const double c2, const double b0, const double b1) { //const T c0, const T c1, const T c2, const T b0, const T b1)
 
@@ -1883,6 +1880,16 @@ void replace_floats_and_doubles(double* b0, double* b1,
       }
 }
 
+void reset_constant_values(cl_kernel kernel, double* b0_POINTER, double* b1_POINTER,
+				 double* c0_POINTER, double* c1_POINTER, double* c2_POINTER) {
+  int error_code;
+  error_code = clSetKernelArg(mulkernel, 5, sizeof(cl_double), (void *)&b0);
+  error_code = clSetKernelArg(mulkernel, 6, sizeof(cl_double), (void *)&b1);
+  error_code = clSetKernelArg(mulkernel, 7, sizeof(cl_double), (void *)&c0);
+  error_code = clSetKernelArg(mulkernel, 8, sizeof(cl_double), (void *)&c1);
+  error_code = clSetKernelArg(mulkernel, 9, sizeof(cl_double), (void *)&c2);
+}
+
 void reset_constants(cl_kernel kernel, double* b0_POINTER, double* b1_POINTER,
 				 double* c0_POINTER, double* c1_POINTER, double* c2_POINTER) {
   int error_code;
@@ -1891,18 +1898,17 @@ void reset_constants(cl_kernel kernel, double* b0_POINTER, double* b1_POINTER,
      error_code = clSetKernelArg(kernel, 8, sizeof(cl_double), (void *)c2_POINTER);
 }
 
-  template<class T> void OpenCLgauss3x3_ALL (OpenCL_helper *helper, int iterations, eGaussType gausstype, T** RESTRICT src, T** RESTRICT dst, T** RESTRICT divBuffer, const int W, const int H,  double c0,  double c1,  double c2,  double b0,  double b1, float sigma, float damping)
+template<class T> void OpenCLgauss3x3_ALL(OpenCL_helper *helper, int iterations, eGaussType gausstype, T** RESTRICT src, T** RESTRICT dst, T** RESTRICT divBuffer, const int W, const int H,  double c0,  double c1,  double c2,  double b0,  double b1, float sigma, float damping, bool iterate)
 {
     //turn array of arrays (the pointer to pointer(s)) into 2D array, excluding the outer rows and columns for newsrc,but  keeping them for oldsrc. Also creating dst for writing.
-    float* newsrc = (float*) malloc( (W - 2) * (H - 2) * sizeof(float) ); //allocate the memory for the new src
-    float* newdst = (float*) malloc( (W - 2) * (H - 2) * sizeof(float) ); //allocate the memory for the new dst, this will be pinned/mapped
     float* div  = (float*) malloc( W * H * sizeof(float) ); //allocate the memory for div
     
-    float* oldsrc = (float*) malloc( W * H * sizeof(float) ); //allocate the memory for the old src, this will be pinned/mapped and will be manilated by the CPU
-    float* olddst = (float*) malloc( W * H * sizeof(float) ); //allocate the memory for the old dst, this will be pinned/mapped
+    float* oldsrc = (float*) malloc( W * H * sizeof(float) ); //allocate the memory for src, this will be pinned/mapped and will be manilated by the CPU
+    float* olddst = (float*) malloc( W * H * sizeof(float) ); //allocate the memory for dst, this will be pinned/mapped
    
-    int* X = (int*)malloc( (W - 2) * (H - 2) * sizeof(int));
-    int* Y = (int*)malloc( (W - 2) * (H - 2) * sizeof(int));
+    int* Xindex = (int*)malloc( W  * H * sizeof(int));
+    int* Yindex = (int*)malloc( W  * H * sizeof(int));
+    
     for (int i = 0; i < H; i++)
 	{
 	  for (int j = 0; j < W; j++)
@@ -1910,49 +1916,29 @@ void reset_constants(cl_kernel kernel, double* b0_POINTER, double* b1_POINTER,
 	      oldsrc[i*W + j] = src[i][j];
 	      olddst[i*W + j] = dst[i][j];
 	      div[i*W + j] = divBuffer[i][j];
-	    }
-	}
-    
-    for (int i = 1; i < (H - 1); i++)
-	{
-	  int newi = i - 1;
-	  for (int j = 1; j < (W - 1); j++)
-	    {
-	      int newW = W - 2;
-	      int newj = j - 1;
-	      newsrc[newi*newW + newj] = src[i][j]; //copy src to newsrc
-	      newdst[newi*newW + newj] = dst[i][j]; //copy dst to newdst
-	      
-	      X[newi*newW + newj] = j;
-	      Y[newi*newW + newj] = i;
+	      Xindex[i*W + j] = j;
+	      Yindex[i*W + j] = i;
 	    }
 	}
 
-    fprintf(stderr, "src div pixel 1,1 is %f\n", src[1][1]);
-    fprintf(stderr, "newsrc div pixel 1,1 is %f\n", newsrc[0]);
-    fprintf(stderr, "Checkpoint div 3x reached\n");
-    fflush(stderr);
+    cl_kernel divkernel, standardkernel, multkernel, mulkernel;
 
-    cl_kernel divkernel, standardkernel, multkernel;
-
-    fprintf(stderr, "Checkpoint div Charlie reached\n"); fflush(stderr);
+    fprintf(stderr, "Checkpoint Gustaf reached\n"); fflush(stderr);
 
     standardkernel = helper->reuse_or_create_kernel(kernel_tag::gauss3x3std, "gauss_3x3_inner.cl", "gauss_3x3_inner");
-    divkernel = helper->reuse_or_create_kernel(kernel_tag::gauss3x3div, "gauss_3x3_div_inner.cl", "gauss_3x3_div_inner");
-    multkernel = helper->reuse_or_create_kernel(kernel_tag::gauss3x3mult, "gauss_3x3_mult_inner.cl", "gauss_3x3_mult_inner");
+    divkernel = helper->reuse_or_create_kernel(kernel_tag::gauss3x3div, "gauss_3x3_div_whole.cl", "gauss_3x3_div_whole");
+    mulkernel = helper->reuse_or_create_kernel(kernel_tag::gauss3x3mul, "gauss_3x3_mult_whole.cl", "gauss_3x3_mult_whole");
     cl_kernel dampingkernel = helper->reuse_or_create_kernel(kernel_tag::damping, "gauss_damping.cl", "gauss_damping");
     
     fprintf(stderr, "Checkpoint div Maha reached\n"); fflush(stderr);
-    int Wi = W - 2; int Hi = H - 2; int error_code;
+     int error_code;
 
     cl_mem oldsrc_mem_obj = helper->reuse_or_create_buffer(helper->oldsrc_, W, H, CL_MEM_ALLOC_HOST_PTR | CL_MEM_READ_WRITE);
-     cl_mem olddst_mem_obj = helper->reuse_or_create_buffer(helper->olddst_, W, H, CL_MEM_ALLOC_HOST_PTR | CL_MEM_READ_WRITE);
-     cl_mem div_mem_obj = helper->reuse_or_create_buffer(helper->div_, W, H, CL_MEM_READ_WRITE);
+    cl_mem olddst_mem_obj = helper->reuse_or_create_buffer(helper->olddst_, W, H, CL_MEM_ALLOC_HOST_PTR | CL_MEM_READ_WRITE);
+    cl_mem div_mem_obj = helper->reuse_or_create_buffer(helper->div_, W, H, CL_MEM_READ_WRITE);
 
-
-    cl_mem ret_mem_obj = helper->reuse_or_create_buffer(helper->gaussret_, Wi, Hi, CL_MEM_READ_WRITE);
-     cl_mem X_mem_obj = helper->reuse_or_create_buffer(helper->X_, Wi, Hi, CL_MEM_READ_ONLY);
-     cl_mem Y_mem_obj = helper->reuse_or_create_buffer(helper->Y_, Wi, Hi, CL_MEM_READ_ONLY);
+    cl_mem index_X_mem_obj = helper->reuse_or_create_buffer(helper->indexX_, W, H, CL_MEM_READ_ONLY);
+    cl_mem index_Y_mem_obj = helper->reuse_or_create_buffer(helper->indexY_, W, H, CL_MEM_READ_ONLY);
 
      /*error_code = clEnqueueWriteBuffer(helper->command_queue, oldsrc_mem_obj, CL_TRUE, 0, W*H*sizeof(float), oldsrc, 0, NULL, NULL); */
      float* mapped = (float*)clEnqueueMapBuffer(helper->command_queue, oldsrc_mem_obj, CL_TRUE, CL_MAP_WRITE, 0,  W*H*sizeof(float), NULL, NULL, NULL, &error_code);
@@ -1964,14 +1950,10 @@ void reset_constants(cl_kernel kernel, double* b0_POINTER, double* b1_POINTER,
       clFinish(helper->command_queue);
        fprintf(stderr, "second  mapping is %d", error_code); fflush(stderr);
       memcpy(dstmapped, olddst, W*H*sizeof(float));
-      
-     error_code = clEnqueueWriteBuffer(helper->command_queue, ret_mem_obj, CL_TRUE, 0, Wi*Hi*sizeof(float), newdst, 0, NULL, NULL);   fprintf(stderr, "OpenCL Error code (0 is success):%d\n", error_code);  fflush(stderr);
-      error_code = clEnqueueWriteBuffer(helper->command_queue, X_mem_obj, CL_TRUE, 0, Wi*Hi*sizeof(int), X, 0, NULL, NULL);
-  fprintf(stderr, "OpenCL Error code (0 is success):%d\n", error_code);  fflush(stderr);
-      error_code = clEnqueueWriteBuffer(helper->command_queue, Y_mem_obj, CL_TRUE, 0, Wi*Hi*sizeof(int), Y, 0, NULL, NULL);
-  fprintf(stderr, "OpenCL Error code (0 is success):%d\n", error_code);  fflush(stderr);
+         
+      error_code = clEnqueueWriteBuffer(helper->command_queue, index_X_mem_obj, CL_TRUE, 0, W*H*sizeof(int), Xindex, 0, NULL, NULL);
+      error_code = clEnqueueWriteBuffer(helper->command_queue, index_Y_mem_obj, CL_TRUE, 0, W*H*sizeof(int), Yindex, 0, NULL, NULL);
       error_code = clEnqueueWriteBuffer(helper->command_queue, div_mem_obj, CL_TRUE, 0, W*H*sizeof(float), div, 0, NULL, NULL);
-        fprintf(stderr, "OpenCL Error code (0 is success):%d\n", error_code);  fflush(stderr);
 
      error_code = clSetKernelArg(standardkernel, 0, sizeof(cl_mem), (void *)&ret_mem_obj);
      error_code = clSetKernelArg(standardkernel, 1, sizeof(cl_mem), (void *)&oldsrc_mem_obj);
@@ -1983,45 +1965,46 @@ void reset_constants(cl_kernel kernel, double* b0_POINTER, double* b1_POINTER,
      error_code = clSetKernelArg(standardkernel, 7, sizeof(cl_double), (void *)&c1);
      error_code = clSetKernelArg(standardkernel, 8, sizeof(cl_double), (void *)&c2);
 
-     error_code = clSetKernelArg(multkernel, 0, sizeof(cl_mem), (void *)&ret_mem_obj);
-     error_code = clSetKernelArg(multkernel, 1, sizeof(cl_mem), (void *)&olddst_mem_obj);
-     error_code = clSetKernelArg(multkernel, 2, sizeof(cl_mem), (void *)&X_mem_obj);
-     error_code = clSetKernelArg(multkernel, 3, sizeof(cl_mem), (void *)&Y_mem_obj);
-     error_code = clSetKernelArg(multkernel, 4, sizeof(cl_int), (void *)&W);
-     error_code = clSetKernelArg(multkernel, 5, sizeof(cl_int), (void *)&H);
-     error_code = clSetKernelArg(multkernel, 6, sizeof(cl_double), (void *)&c0);
-     error_code = clSetKernelArg(multkernel, 7, sizeof(cl_double), (void *)&c1);
-     error_code = clSetKernelArg(multkernel, 8, sizeof(cl_double), (void *)&c2);
-     error_code = clSetKernelArg(multkernel, 9, sizeof(cl_mem), (void *)&oldsrc_mem_obj);
-     
-     error_code = clSetKernelArg(divkernel, 0, sizeof(cl_mem), (void *)&ret_mem_obj);
-     error_code = clSetKernelArg(divkernel, 1, sizeof(cl_mem), (void *)&oldsrc_mem_obj);
-     error_code = clSetKernelArg(divkernel, 2, sizeof(cl_mem), (void *)&X_mem_obj);
-     error_code = clSetKernelArg(divkernel, 3, sizeof(cl_mem), (void *)&Y_mem_obj);
-     error_code = clSetKernelArg(divkernel, 4, sizeof(cl_int), (void *)&W);
-     error_code = clSetKernelArg(divkernel, 5, sizeof(cl_int), (void *)&H);
-     error_code = clSetKernelArg(divkernel, 6, sizeof(cl_double), (void *)&c0);
-     error_code = clSetKernelArg(divkernel, 7, sizeof(cl_double), (void *)&c1);
-     error_code = clSetKernelArg(divkernel, 8, sizeof(cl_double), (void *)&c2);
-     error_code = clSetKernelArg(divkernel, 9, sizeof(cl_mem), (void *)&div_mem_obj);
-     error_code = clSetKernelArg(divkernel, 10, sizeof(cl_mem), (void *)&olddst_mem_obj);
+     error_code = clSetKernelArg(mulkernel, 0, sizeof(cl_mem), (void *)&olddst_mem_obj);
+     error_code = clSetKernelArg(mulkernel, 1, sizeof(cl_mem), (void *)&index_X_mem_obj);
+     error_code = clSetKernelArg(mulkernel, 2, sizeof(cl_mem), (void *)&index_Y_mem_obj);
+     error_code = clSetKernelArg(mulkernel, 3, sizeof(cl_int), (void *)&W);
+     error_code = clSetKernelArg(mulkernel, 4, sizeof(cl_int), (void *)&H);
+     error_code = clSetKernelArg(mulkernel, 5, sizeof(cl_double), (void *)&b0);
+     error_code = clSetKernelArg(mulkernel, 6, sizeof(cl_double), (void *)&b1);
+     error_code = clSetKernelArg(mulkernel, 7, sizeof(cl_double), (void *)&c0);
+     error_code = clSetKernelArg(mulkernel, 8, sizeof(cl_double), (void *)&c1);
+     error_code = clSetKernelArg(mulkernel, 9, sizeof(cl_double), (void *)&c2);
+     error_code = clSetKernelArg(mulkernel, 10, sizeof(cl_mem), (void *)&oldsrc_mem_obj);
+
+     error_code = clSetKernelArg(divkernel, 0, sizeof(cl_mem), (void *)&olddst_mem_obj);
+     error_code = clSetKernelArg(divkernel, 1, sizeof(cl_mem), (void *)&index_X_mem_obj);
+     error_code = clSetKernelArg(divkernel, 2, sizeof(cl_mem), (void *)&index_Y_mem_obj);
+     error_code = clSetKernelArg(divkernel, 3, sizeof(cl_int), (void *)&W);
+     error_code = clSetKernelArg(divkernel, 4, sizeof(cl_int), (void *)&H);
+     error_code = clSetKernelArg(divkernel, 5, sizeof(cl_double), (void *)&b0);
+     error_code = clSetKernelArg(divkernel, 6, sizeof(cl_double), (void *)&b1);
+     error_code = clSetKernelArg(divkernel, 7, sizeof(cl_double), (void *)&c0);
+     error_code = clSetKernelArg(divkernel, 8, sizeof(cl_double), (void *)&c1);
+     error_code = clSetKernelArg(divkernel, 9, sizeof(cl_double), (void *)&c2);
+     error_code = clSetKernelArg(divkernel, 10, sizeof(cl_mem), (void *)&div_mem_obj);
+     error_code = clSetKernelArg(divkernel, 11, sizeof(cl_mem), (void *)&oldsrc_mem_obj);
 
      error_code = clSetKernelArg(dampingkernel, 0, sizeof(cl_mem), (void *)&olddst_mem_obj);
      error_code = clSetKernelArg(dampingkernel, 1, sizeof(cl_mem), (void *)&div_mem_obj);
      error_code = clSetKernelArg(dampingkernel, 2, sizeof(cl_int), (void *)&W);
      error_code = clSetKernelArg(dampingkernel, 3, sizeof(cl_int), (void *)&H);
-      error_code = clSetKernelArg(dampingkernel, 4, sizeof(cl_float), (void *)&damping);
+     error_code = clSetKernelArg(dampingkernel, 4, sizeof(cl_float), (void *)&damping);
      
      
     fprintf(stderr, "Checkpoint div 4x reached\n");
     fflush(stderr);
 
-      
-     size_t global_item_size = (H-2)*(W-2); 
+    size_t global_item_size2 = H*W; 
 
     clock_t diff, diff2;
     clock_t start = clock();
-    float *intermediate = (float*)malloc(Wi*Hi*sizeof(float));
+    float *intermediate = (float*)malloc(W*H*sizeof(float));
 
     /*error_code =  clEnqueueUnmapMemObject(helper->command_queue, oldsrc_mem_obj, mapped, NULL, NULL, NULL);
       fprintf(stderr, "first UNmapping is %d", error_code); fflush(stderr);
@@ -2043,7 +2026,19 @@ void reset_constants(cl_kernel kernel, double* b0_POINTER, double* b1_POINTER,
 
     constexpr int sampleJ = 10;
     constexpr int sampleI = 10;
-     
+
+    if (iterate == false) {
+
+    }
+
+    error_code =  clEnqueueUnmapMemObject(helper->command_queue, oldsrc_mem_obj, mapped, NULL, NULL, &ndevent0);
+    error_code =  clEnqueueUnmapMemObject(helper->command_queue, olddst_mem_obj, dstmapped, 1, &ndevent0, &ndevent);
+
+    /*     mapped =  (float*)clEnqueueMapBuffer(helper->command_queue, oldsrc_mem_obj, CL_TRUE, CL_MAP_WRITE, 0,  W*H*sizeof(float), NULL, NULL, NULL, &error_code);
+	   dstmapped =  (float*)clEnqueueMapBuffer(helper->command_queue, olddst_mem_obj, CL_TRUE, CL_MAP_WRITE, 0,  W*H*sizeof(float), NULL, NULL, NULL, &error_code);
+ mapped =  (float*)clEnqueueMapBuffer(helper->command_queue, oldsrc_mem_obj, CL_TRUE, CL_MAP_WRITE, 0,  W*H*sizeof(float), NULL, NULL, NULL, &error_code);
+	dstmapped =  (float*)clEnqueueMapBuffer(helper->command_queue, olddst_mem_obj, CL_TRUE, CL_MAP_WRITE, 0,  W*H*sizeof(float), NULL, NULL, NULL, &error_code); */
+
     for (int u = 0; u < iterations; u++) {
       
       fprintf(stderr, "New iteration cycle: %d\n", u); fflush(stderr);
@@ -2053,30 +2048,20 @@ void reset_constants(cl_kernel kernel, double* b0_POINTER, double* b1_POINTER,
       if (damping == 0.0f) {
 	fprintf(stderr, "Checkpoint Div"); fflush(stderr);
 	reprocess<float>(src, dst, W,  H, sigma, GAUSS_DIV, b_and_c, divBuffer);
-	if (b_and_c != NULL) {
 
+	if (b_and_c != NULL) {
      
 	replace_floats_and_doubles(&b0, &b1, &c0, &c1, &c2, b_and_c);
 	fprintf(stderr, "On gpu side: c0-%f, c1-%f, c2-%f and b0-%f, b1-%f\n", c0, c1, c2, b0, b1); fflush(stderr);
  
-	reset_constants(divkernel, &b0, &b1, &c0, &c1, &c2);
-     
-	div_firstrow_and_firstcolumn(mapped, dstmapped, divBuffer, W, H, b0, b1);
+	reset_constant_values(divkernel, &b0, &b1, &c0, &c1, &c2);
 	
-	error_code =  clEnqueueUnmapMemObject(helper->command_queue, oldsrc_mem_obj, mapped, NULL, NULL, &ndevent0);
-        error_code =  clEnqueueUnmapMemObject(helper->command_queue, olddst_mem_obj, dstmapped, 1, &ndevent0, &ndevent);
+	error_code = clEnqueueNDRangeKernel(helper->command_queue, divkernel, 1, NULL, &global_item_size2, NULL, 1, &ndevent, &ndevent);    	 
+	fprintf(stderr, "Checkpoint Memphis\n"); fflush(stderr);
+	}
 	
-	error_code = clEnqueueNDRangeKernel(helper->command_queue, divkernel, 1, NULL, &global_item_size, NULL, 1, &ndevent, &ndevent);
-	      mapped =  (float*)clEnqueueMapBuffer(helper->command_queue, oldsrc_mem_obj, CL_TRUE, CL_MAP_WRITE, 0,  W*H*sizeof(float), NULL, NULL, NULL, &error_code);
-	      dstmapped =  (float*)clEnqueueMapBuffer(helper->command_queue, olddst_mem_obj, CL_TRUE, CL_MAP_WRITE, 0,  W*H*sizeof(float), NULL, NULL, NULL, &error_code);
-	 
-	 div_lastcolumn_and_lastrow(mapped, dstmapped, divBuffer, W,  H, b0, b1);
-	 fprintf(stderr, "Checkpoint Memphis\n"); fflush(stderr);
-	} 	 fprintf(stderr, "No. %d: Post div gpu %d,%d is %f \n", u, sampleI, sampleJ, dstmapped[sampleI*W + sampleJ]); fflush(stderr);
       }
-
-
-
+      
       
       else if (damping > 0.0f)
 	{
@@ -2087,50 +2072,63 @@ void reset_constants(cl_kernel kernel, double* b0_POINTER, double* b1_POINTER,
 
 	fprintf(stderr, "On gpu side: c0-%f, c1-%f, c2-%f and b0-%f, b1-%f\n", c0, c1, c2, b0, b1); fflush(stderr);
 
-        reset_constants(standardkernel, &b0, &b1, &c0, &c1, &c2);
+        reset_constant_values(standardkernel, &b0, &b1, &c0, &c1, &c2);
         //standard gauss3x3
-
-        standard_firstrow_and_firstcolumn(mapped, dstmapped, W, H, b0, b1);
+	     
+        error_code = clEnqueueNDRangeKernel(helper->command_queue, standardkernel, 1, NULL, &global_item_size2, NULL, 0, NULL, &ndevent0);	
+         }
 	
-
-	error_code =  clEnqueueUnmapMemObject(helper->command_queue, oldsrc_mem_obj, mapped, NULL, NULL, NULL);
-        error_code =  clEnqueueUnmapMemObject(helper->command_queue, olddst_mem_obj, dstmapped, NULL, NULL, NULL);
-     
-        error_code = clEnqueueNDRangeKernel(helper->command_queue, standardkernel, 1, NULL, &global_item_size, NULL, 0, NULL, &ndevent0);
-   
-        mapped =  (float*)clEnqueueMapBuffer(helper->command_queue, oldsrc_mem_obj, CL_TRUE, CL_MAP_WRITE, 0,  W*H*sizeof(float), NULL, NULL, NULL, &error_code);
-	dstmapped =  (float*)clEnqueueMapBuffer(helper->command_queue, olddst_mem_obj, CL_TRUE, CL_MAP_WRITE, 0,  W*H*sizeof(float), NULL, NULL, NULL, &error_code);
-
-	standard_lastcolumn_and_lastrow(mapped, dstmapped, W, H, b0, b1);
-	
-	}
 	/****damping****/
 	error_code =  clEnqueueUnmapMemObject(helper->command_queue, olddst_mem_obj, dstmapped, NULL, NULL, NULL);
         error_code = clEnqueueNDRangeKernel(helper->command_queue, dampingkernel, 1, NULL, &global_item_size, NULL, 1, &ndevent0, &ndevent);
 	dstmapped =  (float*)clEnqueueMapBuffer(helper->command_queue, olddst_mem_obj, CL_TRUE, CL_MAP_WRITE, 0,  W*H*sizeof(float), NULL, NULL, NULL, &error_code);
-	fprintf(stderr, "No. %d: gpu damping resullt %d,%d is %f \n", u, sampleI, sampleJ, dstmapped[sampleI*W + sampleJ]);
+	fprintf(stderr, "No. %d: gpu damping result %d,%d is %f \n", u, sampleI, sampleJ, dstmapped[sampleI*W + sampleJ]);
         }
 
 
 
-      fprintf(stderr, "Checkpoint Mult\n"); fflush(stderr);
+     fprintf(stderr, "Checkpoint Mult\n"); fflush(stderr);
      reprocess<float>(dst, src, W,  H, sigma, GAUSS_MULT, b_and_c);
+
+     rtengine::JaggedArray<double> tmpSRC(W, H);
+     rtengine::JaggedArray<double> tmpDST(W, H);
+
+	 for (int i = 0; i < H; i++) {
+        for(int j = 0; j < W; j++) {
+	  tmpSRC[i][j] = mapped[W*i + j];
+	  tmpDST[i][j] = dstmapped[W*i + j]; //use duplicate for comparison on CPU
+        }
+    }	 
+       
      
      	if (b_and_c != NULL) {
      replace_floats_and_doubles(&b0, &b1, &c0, &c1, &c2, b_and_c);
-     reset_constants(multkernel, &b0, &b1, &c0, &c1, &c2);
+     // reset_constants(mulkernel, &b0, &b1, &c0, &c1, &c2);
+     error_code = clSetKernelArg(mulkernel, 5, sizeof(cl_double), (void *)&b0);
+     error_code = clSetKernelArg(mulkernel, 6, sizeof(cl_double), (void *)&b1);
+     error_code = clSetKernelArg(mulkernel, 7, sizeof(cl_double), (void *)&c0);
+     error_code = clSetKernelArg(mulkernel, 8, sizeof(cl_double), (void *)&c1);
+     error_code = clSetKernelArg(mulkernel, 9, sizeof(cl_double), (void *)&c2);
 
-     mult_firstrow_and_firstcolumn(dstmapped, mapped, W, H, b0, b1);
+     // mult_firstrow_and_firstcolumn(dstmapped, mapped, W, H, b0, b1);
+     fprintf(stderr, "STARTING POINT: Pre mul gpu dst %d,%d is %f \n", sampleI, sampleJ, dstmapped[sampleI*W + sampleJ]); fflush(stderr);
+        fprintf(stderr, "STARTING POINT: Pre mul CPU dst %d,%d is %f \n", sampleI, sampleJ, tmpDST[sampleI][sampleJ]); fflush(stderr);
+
+     gauss3x3mult<double> (tmpDST, tmpSRC, W, H, c0, c1, c2, b0, b1);
 
      error_code =  clEnqueueUnmapMemObject(helper->command_queue, olddst_mem_obj, dstmapped, NULL, NULL, NULL);
      error_code =  clEnqueueUnmapMemObject(helper->command_queue, oldsrc_mem_obj, mapped, NULL, NULL, NULL);
      
-     error_code = clEnqueueNDRangeKernel(helper->command_queue, multkernel, 1, NULL, &global_item_size, NULL, 0, NULL, &ndevent);
+     error_code = clEnqueueNDRangeKernel(helper->command_queue, mulkernel, 1, NULL, &global_item_size2, NULL, 0, NULL, &ndevent);
+     cl_int result = clFinish(helper->command_queue);
 
        dstmapped =  (float*)clEnqueueMapBuffer(helper->command_queue, olddst_mem_obj, CL_TRUE, CL_MAP_WRITE, 0,  W*H*sizeof(float), NULL, NULL, NULL, &error_code);
       mapped =  (float*)clEnqueueMapBuffer(helper->command_queue, oldsrc_mem_obj, CL_TRUE, CL_MAP_WRITE, 0,  W*H*sizeof(float), NULL, NULL, NULL, &error_code);
+
+      fprintf(stderr, "COMPARISON: Post mul gpu src %d,%d is %f \n", sampleI, sampleJ, mapped[sampleI*W + sampleJ]); fflush(stderr);
+        fprintf(stderr, "COMPARISON: Post mul CPU src %d,%d is %f \n", sampleI, sampleJ, tmpSRC[sampleI][sampleJ]); fflush(stderr);
   
-      mult_lastcolumn_and_lastrow(dstmapped, mapped, W, H, b0, b1);
+      // mult_lastcolumn_and_lastrow(dstmapped, mapped, W, H, b0, b1);
 	 
 	} fprintf(stderr, "No. %d: Post mult gpu tmpI/src %d,%d is %f \n", u, sampleI, sampleJ, mapped[sampleI*W + sampleJ]); fflush(stderr);
     }
@@ -2141,7 +2139,7 @@ void reset_constants(cl_kernel kernel, double* b0_POINTER, double* b1_POINTER,
      fprintf(stderr, "OpenCL took %f to calculate", msec);
      fflush(stderr);
 
-     free(X); free(Y);
+     free(X); free(Y); free(Xindex); free(Yindex); 
 
      rtengine::JaggedArray<float> GPU(W, H);
 
@@ -2226,7 +2224,7 @@ void reset_constants(cl_kernel kernel, double* b0_POINTER, double* b1_POINTER,
  free(intermediate); free(newdst); free(newsrc); free(div); free(olddst); free(oldsrc); free(b_and_c);
 }
 //my original Nov 2019: template<class T> void gaussianBlurImpl(OpenCL_helper* helper, int iterations, T** src, T** dst, const int W, const int H, const double sigma, T *buffer = nullptr, eGaussType gausstype = GAUSS_STANDARD, T** buffer2 = nullptr, float damping = 0.0f)
-template<class T> void gaussianBlurImpl(OpenCL_helper* helper, int iterations, T** src, T** dst, const int W, const int H, const double sigma, bool useBoxBlur, T *buffer = nullptr, eGaussType gausstype = GAUSS_STANDARD, T** buffer2 = nullptr, float damping = 0.0f)
+    template<class T> void gaussianBlurImpl(OpenCL_helper* helper, int iterations, T** src, T** dst, const int W, const int H, const double sigma, bool useBoxBlur, T *buffer = nullptr, eGaussType gausstype = GAUSS_STANDARD, T** buffer2 = nullptr, float damping = 0.0f, bool iterate = false)
 
 {
     static constexpr auto GAUSS_SKIP = 0.25;
@@ -2314,7 +2312,7 @@ template<class T> void gaussianBlurImpl(OpenCL_helper* helper, int iterations, T
 		  fprintf(stderr, "Engaging OpenCL gauss 3x3 div\n");
 	            fflush(stderr);
 		    if (helper!= NULL) 
-		    OpenCLgauss3x3_ALL<T> (helper, iterations, gausstype, src, dst, buffer2, W, H, c0, c1, c2, b0, b1, sigma, damping); //sigma added for reprocessing
+		      OpenCLgauss3x3_ALL<T> (helper, iterations, gausstype, src, dst, buffer2, W, H, c0, c1, c2, b0, b1, sigma, damping, iterate); //sigma added for reprocessing
 		    else { 	fprintf(stderr, "On CPU div side: c0-%f, c1-%f, c2-%f and b0-%f, b1-%f\n", c0, c1, c2, b0, b1); fflush(stderr);
 		      fprintf(stderr, "earlier point CPU 10,10 is %f\n", src[10][10]); fflush(stderr);
 		      gauss3x3div<T> (src, dst, buffer2, W, H, c0, c1, c2, b0, b1);
@@ -2433,9 +2431,9 @@ void gaussianBlur(float** src, float** dst, const int W, const int H, const doub
   gaussianBlurImpl<float>(NULL, NULL, src, dst, W, H, sigma, useBoxBlur, buffer, gausstype, buffer2);
 }
 
-void OpenCLgaussianBlur(OpenCL_helper* helper, int iterations, float** src, float** dst, const int W, const int H, const double sigma, bool useBoxBlur, float *buffer, eGaussType gausstype, float** buffer2, float damping)
+void OpenCLgaussianBlur(OpenCL_helper* helper, int iterations, float** src, float** dst, const int W, const int H, const double sigma, bool useBoxBlur, float *buffer, eGaussType gausstype, float** buffer2, float damping, bool iterate)
 {
-  gaussianBlurImpl<float>(helper, iterations, src, dst, W, H, sigma, useBoxBlur, buffer, gausstype, buffer2, damping);
+  gaussianBlurImpl<float>(helper, iterations, src, dst, W, H, sigma, useBoxBlur, buffer, gausstype, buffer2, damping,  iterate);
 }
 
 
