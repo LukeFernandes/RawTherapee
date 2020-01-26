@@ -13,6 +13,8 @@ __kernel void intp_plus(__global const float *blend, __global const float *lum, 
     float maxresult = fmax(blur[index], 0.0f);
 
     // Do the operation *intp*
-    ret[index] = blend[index] * lum[index] + (1 - blend[index]) * maxresult;
+    ret[index] = blend[index] * (lum[index] - maxresult) + maxresult;
+    //ret[index] = 5.0f;
+    //ret[index] = blend[index] * lum[index] + (1 - blend[index]) * maxresult;
 
 }

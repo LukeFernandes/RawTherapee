@@ -29,8 +29,11 @@
 typedef enum {
 	      maxkernel = 5,
 	      gauss3x3std = 34,
+	      gauss3x3stdnew = 35,
 	      gauss3x3div = 23,
+	      gauss3x3divnew = 24,
 	      gauss3x3mult = 87,
+	      gauss3x3mul = 51,
 	      intptag = 2,
 	      damping = 98
 } kernel_tag;
@@ -57,20 +60,22 @@ typedef struct {
     cl_context context;
     cl_command_queue command_queue;
     cl_program program;
-    cl_device_id device_id = NULL;
-    cl_mem luminance_ = NULL;
-    cl_mem tmpI_ = NULL;
-    cl_mem blur_ = NULL;
-    cl_mem blend_ = NULL;
-   cl_mem src_ = NULL;
-   cl_mem oldsrc_ = NULL;
-   cl_mem olddst_ = NULL;
-   cl_mem newdst_ = NULL;
-   cl_mem gaussret_ = NULL;
-   cl_mem X_ = NULL;
-   cl_mem Y_ = NULL;
-   cl_mem div_ = NULL;
-   cl_mem dampfac_ = NULL;
+    cl_device_id device_id = nullptr;
+    cl_mem luminance_ = nullptr;
+    cl_mem tmpI_ = nullptr;
+    cl_mem blur_ = nullptr;
+    cl_mem blend_ = nullptr;
+   cl_mem src_ = nullptr;
+   cl_mem oldsrc_ = nullptr;
+   cl_mem olddst_ = nullptr;
+   cl_mem newdst_ = nullptr;
+   cl_mem gaussret_ = nullptr;
+   cl_mem X_ = nullptr;
+   cl_mem Y_ = nullptr;
+   cl_mem indexX_ = nullptr;
+   cl_mem indexY_ = nullptr;
+   cl_mem div_ = nullptr;
+   cl_mem dampfac_ = nullptr;
 
    
     std::vector<kernel_with_tag> kernels;

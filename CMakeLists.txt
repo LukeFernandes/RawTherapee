@@ -364,6 +364,11 @@ if(WITH_MYFILE_MMAP)
     add_definitions(-DMYFILE_MMAP)
 endif()
 
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -ffloat-store")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -ffloat-store")
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -msse2 -mfpmath=sse")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -msse2 -mfpmath=sse")
+
 if(WITH_LTO)
     # Using LTO with older versions of binutils requires setting extra flags
     set(BINUTILS_VERSION_MININUM "2.29")

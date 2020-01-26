@@ -81,15 +81,15 @@ OpenCL_helper::OpenCL_helper() {
             fflush(stderr);
     
             program = clCreateProgramWithSource(context, 1, (const char **)&source_str, (const size_t *)&source_size, &error_code);
-	     fprintf(stderr, "OpenCL general Error code 3  (0 is success):%d\n", error_code);
+	     fprintf(stderr, "Setup kernel error codes:%d,", error_code);
              fflush(stderr);
 	    error_code = clBuildProgram(program, 1, &device_id, NULL, NULL, NULL);
-	     fprintf(stderr, "OpenCL general Error code 4 (0 is success):%d\n", error_code);
+	     fprintf(stderr, "%d,", error_code);
              fflush(stderr);
 	     cl_kernel *kernel = (cl_kernel*)malloc(sizeof(cl_kernel));
 	     *kernel = clCreateKernel(program, kernel_name, &error_code); 
 	     kernels.push_back(kernel_with_tag{*kernel, flag});
-	     fprintf(stderr, "OpenCL general Error code 5 (0 is success):%d\n", error_code);
+	     fprintf(stderr, "%d\n", error_code);
              fflush(stderr);
             free(source_str);
 	    return kernel;
@@ -100,10 +100,9 @@ cl_kernel OpenCL_helper::reuse_or_create_kernel(kernel_tag desired_tag, const ch
       cl_kernel kernel;
       int error_code = 0;
 
-      fprintf(stderr, "Checkpoint Ganesh\n"); fflush(stderr);
       fprintf(stderr, "Kernels length is %d \n", (int)this->kernels.size()); fflush(stderr);
       std::vector<kernel_with_tag>::iterator it = std::find_if(this->kernels.begin(), this->kernels.end(), [&desired_tag](const kernel_with_tag& obj) {return obj.tag == desired_tag;});
-       fprintf(stderr, "Checkpoint Ganesh 2\n"); fflush(stderr);
+
     if (it != this->kernels.end())   // element not found
       {
 	kernel = it->kernel;
@@ -136,7 +135,7 @@ cl_mem OpenCL_helper::reuse_or_create_buffer(cl_mem buffer_slot, int W, int H, c
 
 
 void  OpenCL_helper::JaggedArray_to_1d_array(float* d1_array, rtengine::JaggedArray<float> *jaggedarray, int W, int H) {
-  fprintf(stderr, "Checkpoint Equestrian\n"); fflush(stderr);
+
     for (int i = 0; i < H; i++)
 	       {
 	        for (int j = 0; j < W; j++)
@@ -148,7 +147,7 @@ void  OpenCL_helper::JaggedArray_to_1d_array(float* d1_array, rtengine::JaggedAr
 
 void OpenCL_helper::ArrayofArrays_to_1d_array(float* d1_array, float** d2_array, int W, int H)
 {
-  fprintf(stderr, "Array of arrays to 1d array\n"); fflush(stderr);
+
     for (int i = 0; i < H; i++)
 	       {
 	        for (int j = 0; j < W; j++)

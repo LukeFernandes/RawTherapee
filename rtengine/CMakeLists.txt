@@ -1,3 +1,5 @@
+find_package(OpenCL REQUIRED)
+
 include_directories(${EXTRA_INCDIR}
     ${EXPAT_INCLUDE_DIRS}
     ${FFTW3F_INCLUDE_DIRS}
@@ -11,7 +13,8 @@ include_directories(${EXTRA_INCDIR}
     ${LCMS_INCLUDE_DIRS}
     ${LENSFUN_INCLUDE_DIRS}
     ${RSVG_INCLUDE_DIRS}
-    "C:/Progra~1/NVIDIAGPUComputingToolkit/CUDA/v10.0/include"
+    ${OpenCL_INCLUDE_DIRS}
+   # "C:/Progra~1/NVIDIAGPUComputingToolkit/CUDA/v10.0/include"
     )
 
 
@@ -27,7 +30,8 @@ link_directories("${PROJECT_SOURCE_DIR}/rtexif"
     ${LCMS_LIBRARY_DIRS}
     ${LENSFUN_LIBRARY_DIRS}
     ${RSVG_LIBRARY_DIRS}
-    "C:/Progra~1/NVIDIAGPUComputingToolkit/CUDA/v10.0/lib/x64"
+    ${OpenCL_LIBRARY}
+    #"C:/Progra~1/NVIDIAGPUComputingToolkit/CUDA/v10.0/lib/x64"
     )
     
 
@@ -187,7 +191,8 @@ target_link_libraries(rtengine rtexif
     ${ZLIB_LIBRARIES}
     ${LENSFUN_LIBRARIES}
     ${RSVG_LIBRARIES}
-    "C:/Progra~1/NVIDIAGPUComputingToolkit/CUDA/v10.0/lib/x64/OpenCL.lib"
+    ${OpenCL_LIBRARY}
+    #"C:/Progra~1/NVIDIAGPUComputingToolkit/CUDA/v10.0/lib/x64/OpenCL.lib"
     )
     
 
