@@ -29,9 +29,10 @@ typedef struct {
   double c2;
   double b0;
   double b1;
+  //bool already_done_on_CPU;
 } reprocess_data;
 
 void gaussianBlur(float** src, float** dst, const int W, const int H, const double sigma, bool useBoxBlur = false, float *buffer = nullptr, eGaussType gausstype = GAUSS_STANDARD, float** buffer2 = nullptr);
 
-void OpenCLgaussianBlur(OpenCL_helper* helper, int iterations, float** src, float** dst, const int W, const int H, const double sigma, bool useBoxBlur = false, float *buffer = nullptr, eGaussType gausstype = GAUSS_STANDARD, float** buffer2 = nullptr, float damping = 0.0f, bool iterate = false);
+void OpenCLgaussianBlur(OpenCL_helper* helper, int iterations, cl_mem src_clmem, cl_mem dst_clmem, cl_mem div_clmem, float** src, float** dst, const int W, const int H, const double sigma, bool useBoxBlur = false, float *buffer = nullptr, eGaussType gausstype = GAUSS_STANDARD, float** buffer2 = nullptr, float damping = 0.0f);
 

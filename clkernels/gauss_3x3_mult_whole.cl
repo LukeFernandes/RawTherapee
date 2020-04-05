@@ -87,7 +87,7 @@ int index_equiv = currentY * W + currentX;
     printf("MULT gPu 900, 900 intermediate result is %f \n", temp);
   }
   
-  olddst[index_equiv] *= temp;
+  olddst[index_equiv] = olddst[index_equiv] * temp;
     if ((currentX == checkintX) && (currentY == checkintY)) printf("MULT gPu final result 900, 900 is %f \n", olddst[index_equiv]);
 		  
 

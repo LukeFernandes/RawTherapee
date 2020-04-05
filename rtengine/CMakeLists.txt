@@ -1,4 +1,5 @@
 find_package(OpenCL REQUIRED)
+set( OpenCL_VERSION "1.2" )
 
 include_directories(${EXTRA_INCDIR}
     ${EXPAT_INCLUDE_DIRS}

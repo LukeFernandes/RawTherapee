@@ -161,7 +161,7 @@ void dcdamping (float** aI, float** aO, float damping, int W, int H)
     }
 }
 
-  void OpenCL_max(float* lum, JaggedArray<float> &tmpA, OpenCL_helper* helper, int W, int H, cl_mem lum_mem_obj, cl_mem ret_mem_obj,  size_t _global_item_size, float* _read_storage)
+void OpenCL_max(float* lum, JaggedArray<float> &tmpA, OpenCL_helper* helper, int W, int H, cl_mem input_mem_obj, cl_mem ret_mem_obj,  size_t _global_item_size, float* _read_storage)
 {
 
       cl_kernel mykernel;
@@ -169,13 +169,13 @@ void dcdamping (float** aI, float** aO, float damping, int W, int H)
       //this kernel is for maximising luminance
       mykernel = helper->reuse_or_create_kernel(maxkernel, "opencl_max.cl", "opencl_max");         
  
-      cl_int error_code = NULL;
+      cl_int error_code = 0;
       //create the OpenCL memory objects that coresspond to the input luminance and the return value
 	
-    error_code = clEnqueueWriteBuffer(helper->command_queue, lum_mem_obj, CL_TRUE, 0, W*H*sizeof(float), lum, 0, NULL, NULL);
+    error_code = clEnqueueWriteBuffer(helper->command_queue, input_mem_obj, CL_TRUE, 0, W*H*sizeof(float), lum, 0, NULL, NULL);
     fprintf(stderr, "OpenCL Error code (0 is success):%d\n", error_code); fflush(stderr);
       
-      error_code = clSetKernelArg(mykernel, 0, sizeof(cl_mem), (void *)&lum_mem_obj);
+      error_code = clSetKernelArg(mykernel, 0, sizeof(cl_mem), (void *)&input_mem_obj);
       fprintf(stderr, "OpenCL Error code (0 is success):%d\n", error_code);  fflush(stderr);
       error_code = clSetKernelArg(mykernel, 1, sizeof(cl_mem), (void *)&ret_mem_obj);
       fprintf(stderr, "OpenCL Error code (0 is success):%d\n", error_code);  fflush(stderr);
@@ -202,7 +202,57 @@ void dcdamping (float** aI, float** aO, float damping, int W, int H)
 
 }
 
-void OpenCL_intp ((float* lum, JaggedArray<float> &tmpA, OpenCL_helper* helper, int W, int H, cl_mem lum_mem_obj, cl_mem ret_mem_obj,  size_t _global_item_size, float* _read_storage)
+void OpenCL_intp_1 (OpenCL_helper* helper, int W, int H, cl_mem input_mem_obj, cl_mem blur_mem_obj, cl_mem blend_mem_obj, float* _read_storage) {
+
+                 cl_int error_code = 0;
+		 size_t global_item_size = H*W; 
+                 cl_kernel intp_kernel = helper->reuse_or_create_kernel(kernel_tag::intptag, "intp_plus.cl", "intp_plus");
+
+		 error_code = clSetKernelArg(intp_kernel, 0, sizeof(cl_mem), (void *)&blend_mem_obj);
+		 error_code = clSetKernelArg(intp_kernel, 1, sizeof(cl_mem), (void *)&input_mem_obj);
+		 error_code = clSetKernelArg(intp_kernel, 2, sizeof(cl_mem), (void *)&blur_mem_obj);
+
+		 error_code = clEnqueueNDRangeKernel(helper->command_queue, intp_kernel, 1, nullptr, &global_item_size, nullptr, 0, nullptr, nullptr); fflush(stderr);
+		 error_code = clEnqueueReadBuffer(helper->command_queue, blur_mem_obj, CL_TRUE, 0, W*H*sizeof(float), _read_storage, 0, nullptr, nullptr); fflush(stderr);	       
+		      
+}
+
+void OpenCL_intp_2 (OpenCL_helper* helper, int W, int H, cl_mem blend_mem_obj, cl_mem tmpI_mem_obj, cl_mem lum_mem_obj, cl_mem Xbuffer, cl_mem Ybuffer, float* _read_storage, const float* amount) {
+
+                 cl_int error_code = 0;
+		 size_t global_item_size = H*W; 
+                 cl_kernel intp_kernel = helper->reuse_or_create_kernel(kernel_tag::intptag2, "intp_plus_version2.cl", "intp_plus_version2");
+
+		 error_code = clSetKernelArg(intp_kernel, 0, sizeof(cl_mem), (void *)&blend_mem_obj);
+		 error_code = clSetKernelArg(intp_kernel, 1, sizeof(cl_mem), (void *)&tmpI_mem_obj);
+		 error_code = clSetKernelArg(intp_kernel, 2, sizeof(cl_mem), (void *)&lum_mem_obj);
+		  error_code = clSetKernelArg(intp_kernel, 3, sizeof(cl_mem), (void *)&Xbuffer);
+		   error_code = clSetKernelArg(intp_kernel, 4, sizeof(cl_mem), (void *)&Ybuffer);
+		 error_code = clSetKernelArg(intp_kernel, 5, sizeof(cl_double), (void *)amount);
+
+		 error_code = clEnqueueNDRangeKernel(helper->command_queue, intp_kernel, 1, nullptr, &global_item_size, nullptr, 0, nullptr, nullptr); fflush(stderr);
+		 error_code = clEnqueueReadBuffer(helper->command_queue, lum_mem_obj, CL_TRUE, 0, W*H*sizeof(float), _read_storage, 0, nullptr, nullptr); fflush(stderr);	       
+		      
+}
+
+void OpenCL_intp_3 (OpenCL_helper* helper, int W, int H, cl_mem blend_mem_obj, cl_mem lum_mem_obj, cl_mem blur_mem_obj, cl_mem Xbuffer, cl_mem Ybuffer, float* _read_storage) {
+
+                 cl_int error_code = 0;
+		 size_t global_item_size = H*W; 
+                 cl_kernel intp_kernel = helper->reuse_or_create_kernel(kernel_tag::intptag3, "intp_plus_version3.cl", "intp_plus_version3");
+
+		 error_code = clSetKernelArg(intp_kernel, 0, sizeof(cl_mem), (void *)&blend_mem_obj);
+		 error_code = clSetKernelArg(intp_kernel, 1, sizeof(cl_mem), (void *)&lum_mem_obj);
+		 error_code = clSetKernelArg(intp_kernel, 2, sizeof(cl_mem), (void *)&blur_mem_obj);
+		 error_code = clSetKernelArg(intp_kernel, 3, sizeof(cl_mem), (void *)&Xbuffer);
+		 error_code = clSetKernelArg(intp_kernel, 4, sizeof(cl_mem), (void *)&Ybuffer);
+
+		 error_code = clEnqueueNDRangeKernel(helper->command_queue, intp_kernel, 1, nullptr, &global_item_size, nullptr, 0, nullptr, nullptr); fflush(stderr);
+		 error_code = clEnqueueReadBuffer(helper->command_queue, lum_mem_obj, CL_TRUE, 0, W*H*sizeof(float), _read_storage, 0, nullptr, nullptr); fflush(stderr);	       
+		      
+}
+
+
 
 }
 
@@ -218,9 +268,8 @@ void ImProcFunctions::deconvsharpening (float** luminance, float** tmp, const fl
     }
 BENCHFUN
   JaggedArray<float> tmpI(W, H); //What are these for?
-    JaggedArray<float> tmpI2(W, H);
-     JaggedArray<float> tmpI3(W, H);
-      JaggedArray<float> tmpIB(W, H);
+    JaggedArray<float> tmpI_cpu_compare(W, H);
+      JaggedArray<float> blend_cpu_compare(W, H);
     
     clock_t diff, diff2;
     clock_t start = clock();
@@ -229,9 +278,11 @@ BENCHFUN
 #endif
     for (int i = 0; i < H; i++) {
         for(int j = 0; j < W; j++) {
-	  tmpI2[i][j] = max(luminance[i][j], 0.f); //use duplicate for comparison on CPU
+	  tmpI_cpu_compare[i][j] = max(luminance[i][j], 0.f); //use duplicate for comparison on CPU
         }
     }
+
+    diff = clock() - start;
     
       /*OpenCL section 1 ***************** */
     
@@ -246,8 +297,7 @@ BENCHFUN
 	   helper = this->helper;     
       }
 
-      
-      diff = clock() - start;
+      start = clock();
 
       //turn array of arrays into 1d array
       float* lum = (float*) malloc(W*H*sizeof(float));
@@ -258,30 +308,10 @@ BENCHFUN
       kernel_tag maxtag = maxkernel; //this is for keeping track of the different kernels we use
       
       mykernel = helper->reuse_or_create_kernel(maxkernel, "opencl_max.cl", "opencl_max"); //this kernel is just using the fmax intrinsic        
-      cl_mem lum_mem_obj; 
-      cl_mem tmpI_mem_obj;
+      cl_mem lum_mem_obj, tmpI_mem_obj, blend_mem_obj, blur_mem_obj = nullptr;
 
-      helper->reuse_or_create_buffer(lum_mem_obj, W, H, CL_MEM_READ_ONLY);
-      
-      if (helper->luminance_ != nullptr)  // luminance element not found - create it. There is a specific slot in the OpenCl helper class for this.
-      {
-	lum_mem_obj = helper->luminance_;
-      }
-      else 
-      {
-        lum_mem_obj = clCreateBuffer(helper->context, CL_MEM_READ_ONLY, W*H*sizeof(float), nullptr, &error_code);
-	helper->luminance_ = lum_mem_obj;
-	} 
-
-   if ( helper->tmpI_ != nullptr)   // return element not found - create it
-      {
-	tmpI_mem_obj  = helper->tmpI_;
-      }
-      else
-      {
-        tmpI_mem_obj = clCreateBuffer(helper->context, CL_MEM_READ_WRITE, W*H*sizeof(float), nullptr, &error_code);
-	helper->tmpI_ = tmpI_mem_obj;
-      }
+      lum_mem_obj = helper->reuse_or_create_buffer(&(helper->luminance_), W, H, CL_MEM_READ_ONLY);
+      tmpI_mem_obj =  helper->reuse_or_create_buffer(&(helper->tmpI_), W, H, CL_MEM_READ_WRITE);
 
       size_t global_item_size = H*W; 
       size_t local_item_size = 64;
@@ -289,11 +319,12 @@ BENCHFUN
       float *read_storage = (float*)malloc(W*H*sizeof(float));
 
       //perform the fmax operation on GPU
-      OpenCL_max(lum,  tmpI,  helper,  W,  H,  lum_mem_obj,  tmpI_mem_obj,  global_item_size, read_storage);
+    OpenCL_max(lum, tmpI, helper, W, H, lum_mem_obj, tmpI_mem_obj, global_item_size, read_storage);
+    diff2 = clock() - start;
 
     int msec = diff * 1000 / CLOCKS_PER_SEC;
     int msec2 = diff2 * 1000 / CLOCKS_PER_SEC;
-    fprintf(stderr, "OpenCL Pixel 5,49 is %f\n While CPU Pixel 5,49 is %f\n", tmpI[5][49], tmpI2[5][49]);
+ 
     fprintf(stderr, "CPU time: %d\n GPU time: %d\n", msec, msec2);
     fflush(stderr);
 
@@ -309,6 +340,7 @@ BENCHFUN
     float *blend1d = (float*)malloc(W * H * sizeof(float));
     float *blur1d = (float*)malloc(W * H * sizeof(float));
     
+    
     if (sharpenParam.blurradius >= 0.25f) {
         blurbuffer = new JaggedArray<float>(W, H);
         JaggedArray<float> &blur = *blurbuffer;
@@ -316,16 +348,15 @@ BENCHFUN
 	  Transposition of 'blur[i][j] = intp(blend_jagged_array[i][j], luminance[i][j], std::max(blur[i][j], 0.0f));' into OpenCL
 	*************************************/
 	//if using CPU
-        gaussianBlur(tmpI2, blur, W, H, sharpenParam.blurradius);
+        gaussianBlur(tmpI_cpu_compare, blur, W, H, sharpenParam.blurradius);
 	 
-	OpenCLgaussianBlur(helper, 0, tmpI, tmpIB, W, H, sharpenParam.blurradius);
+	OpenCLgaussianBlur(helper, 1, tmpI_mem_obj, blend_mem_obj, nullptr, tmpI, blend_cpu_compare, W, H, sharpenParam.blurradius);
 
 	fprintf(stderr, "\n Initial GB CPU 1550, 0 is %f\n", blur[1550][0]);
-	fprintf(stderr, "\n Initial GB gPu 1550, 0 is %f\n", tmpIB[1550][0]);
+	fprintf(stderr, "\n Initial GB gPu 1550, 0 is %f\n", blend_cpu_compare[1550][0]);
          
-	cl_kernel intp_kernel = helper->reuse_or_create_kernel(kernel_tag::intptag, "intp_plus.cl", "intp_plus");
-	cl_mem blend_mem_obj = helper->reuse_or_create_buffer(helper->blend_, W, H, CL_MEM_READ_WRITE);
-	cl_mem blur_mem_obj = helper->reuse_or_create_buffer(helper->blur_, W, H, CL_MEM_READ_WRITE);
+	blend_mem_obj = helper->reuse_or_create_buffer(&(helper->blend_), W, H, CL_MEM_READ_WRITE);
+	blur_mem_obj = helper->reuse_or_create_buffer(&(helper->blur_), W, H, CL_MEM_READ_WRITE);
 	
 	if (helper->luminance_ != NULL)
 		{
@@ -337,29 +368,15 @@ BENCHFUN
 
 		 error_code = clEnqueueWriteBuffer(helper->command_queue, blend_mem_obj, CL_TRUE, 0, W*H*sizeof(float), blend1d, 0, NULL, NULL);
 		 error_code = clEnqueueWriteBuffer(helper->command_queue, blur_mem_obj, CL_TRUE, 0, W*H*sizeof(float), blur1d, 0, NULL, NULL);
-		 error_code = clSetKernelArg(intp_kernel, 0, sizeof(cl_mem), (void *)&blend_mem_obj);
-		 error_code = clSetKernelArg(intp_kernel, 1, sizeof(cl_mem), (void *)&lum_mem_obj);
-		 error_code = clSetKernelArg(intp_kernel, 2, sizeof(cl_mem), (void *)&blur_mem_obj);
-	         error_code = clSetKernelArg(intp_kernel, 3, sizeof(cl_mem), (void *)&tmpI_mem_obj);
-
-		 error_code = clEnqueueNDRangeKernel(helper->command_queue, intp_kernel, 1, NULL, &global_item_size, NULL, 0, NULL, NULL); fflush(stderr);
-		 fprintf(stderr, "\nread storage pre-read is %f\n", read_storage[1550*W + 0]); fflush(stderr);
-		 error_code = clEnqueueReadBuffer(helper->command_queue, tmpI_mem_obj, CL_TRUE, 0, W*H*sizeof(float), read_storage, 0, NULL, NULL); fflush(stderr);
-		      
-	       //turn 2D array into jagged array
-
-               for (int i = 0; i < H; i++)
-	       {
-	        for (int j = 0; j < W; j++)
-	         {
-		   tmpI3[i][j] = read_storage[i*W + j];
-	         }
-             	}
+		 OpenCL_intp_1(helper, W, H, lum_mem_obj, blur_mem_obj, blend_mem_obj, read_storage);
 		      
 		 free(blend1d);
 		 free(blur1d);
 
-		 fprintf(stderr, "\nintp result from gPu is %f\n", tmpI3[1550][0]); fflush(stderr);
+		 //turn 2D array into jagged array
+	       OpenCL_helper::d1_array_to_JaggedArray(read_storage, &blend_cpu_compare, W, H);
+
+		 fprintf(stderr, "\nintp result from gPu is %f\n", blend_cpu_compare[1550][0]); fflush(stderr);
 
 		      
 		}
@@ -399,8 +416,18 @@ BENCHFUN
     rtengine::JaggedArray<float> gputmp(W, H);
     rtengine::JaggedArray<float> gpuluminance(W, H);
 
-    constexpr int sampleJ = 10;
-    constexpr int sampleI = 10;
+    cl_mem tmp_mem_obj = helper->reuse_or_create_buffer(&(helper->tmp_), W, H, CL_MEM_READ_WRITE);
+    
+    float* tmp1d =  (float*) malloc(W*H*sizeof(float));
+    OpenCL_helper::ArrayofArrays_to_1d_array(tmp1d, tmp, W, H);
+    error_code = clEnqueueWriteBuffer(helper->command_queue, tmp_mem_obj, CL_TRUE, 0, W*H*sizeof(float), tmp1d, 0, NULL, NULL);
+
+    constexpr int sampleJ = 900;
+    constexpr int sampleI = 900;
+
+    fprintf(stderr, "Check: gpu tmpI (src) is %d,%d is %f \n", sampleI, sampleJ, tmpI[sampleI][sampleJ]); fflush(stderr);
+    fprintf(stderr, "Check: CPU tmpI (src) is %d,%d is %f \n", sampleI, sampleJ, tmpI_cpu_compare[sampleI][sampleJ]); fflush(stderr);
+    fflush(stderr);
 
     //copy
      for (int i = 0; i < H; i++) {
@@ -415,25 +442,25 @@ BENCHFUN
        fprintf(stderr, "gpu tmp (DST) is %d,%d is %f \n", sampleI, sampleJ, gputmp[sampleI][sampleJ]); fflush(stderr);
        fprintf(stderr, "CPU tmp (DST) is %d,%d is %f \n", sampleI, sampleJ, tmp[sampleI][sampleJ]); fflush(stderr);
 
-     fprintf(stderr, "luminance 10,10 is %f \n", sampleI, sampleJ, luminance[sampleI][sampleJ]); fflush(stderr);
+     fprintf(stderr, "luminance %d,%d is %f \n", sampleI, sampleJ, luminance[sampleI][sampleJ]); fflush(stderr);
      /*CPU**************************/
      for (int k = 0; k < sharpenParam.deconviter; k++) {
         fprintf(stderr, "CPU %d,%d is %f \n", sampleI, sampleJ, tmp[sampleI][sampleJ]); fflush(stderr);
             if (!needdamp) {
                 // apply gaussian blur and divide luminance by result of gaussian blur
 
-	      gaussianBlur(tmpI, tmp, W, H, sigma, false, nullptr, GAUSS_DIV, luminance); //yours before merge res: gaussianBlur(tmpI, tmp, W, H, sigma, nullptr, GAUSS_DIV, luminance);  
+	      gaussianBlur(tmpI_cpu_compare, tmp, W, H, sigma, false, nullptr, GAUSS_DIV, luminance); //yours before merge res: gaussianBlur(tmpI, tmp, W, H, sigma, nullptr, GAUSS_DIV, luminance);  
 		fprintf(stderr, "No. %d: Post div CPU tmp/DST %d,%d is %f \n", k, sampleI, sampleJ, tmp[sampleI][sampleJ]);
 		fflush(stderr);
             } else {
                 // apply gaussian blur + damping
-                gaussianBlur(tmpI, tmp, W, H, sigma);
+                gaussianBlur(tmpI_cpu_compare, tmp, W, H, sigma);
                 dcdamping(tmp, luminance, damping, W, H);
 		fprintf(stderr, "No. %d: CPU damping result %d,%d is %f \n", k, sampleI, sampleJ, tmp[sampleI][sampleJ]);
             }
 
-            gaussianBlur(tmp, tmpI, W, H, sigma, false, nullptr, GAUSS_MULT); //yours before merge res: gaussianBlur(tmp, tmpI, W, H, sigma, nullptr, GAUSS_MULT); 
-	    fprintf(stderr, "No. %d: Post mult CPU tmpI/src %d,%d is %f \n", k, sampleI, sampleJ, tmpI[sampleI][sampleJ]);
+            gaussianBlur(tmp, tmpI_cpu_compare, W, H, sigma, false, nullptr, GAUSS_MULT); //yours before merge res: gaussianBlur(tmp, tmpI, W, H, sigma, nullptr, GAUSS_MULT); 
+	    fprintf(stderr, "No. %d: Post mult CPU tmpI/src %d,%d is %f \n", k, sampleI, sampleJ, tmpI_cpu_compare[sampleI][sampleJ]);
 
         } // end for
      /*****************************/
@@ -442,30 +469,92 @@ BENCHFUN
     
 	      fprintf(stderr, "Checkpoint Cato \n"); fflush(stderr);
                 // apply gaussian blur and divide luminance by result of gaussian blur 
-	      OpenCLgaussianBlur(helper, sharpenParam.deconviter, gputmpI, gputmp, W, H, sigma, false, nullptr, GAUSS_DIV, luminance, damping, true);
-	      fprintf(stderr, "gpu post iterations is %f,%f \n ", gputmpI[sampleI][sampleJ]); fflush(stderr);
-	      fprintf(stderr, "gpu post iterations is %f,%f \n ", tmpI[sampleI][sampleJ]); fflush(stderr);
+	      OpenCLgaussianBlur(helper, sharpenParam.deconviter, tmpI_mem_obj, tmp_mem_obj, nullptr,  gputmpI, gputmp, W, H, sigma, false, nullptr, GAUSS_DIV, luminance, damping);
+	      fprintf(stderr, "gpu post iterations is %f \n ", gputmpI[sampleI][sampleJ]); fflush(stderr);
+	      fprintf(stderr, "gpu post iterations is %f \n ", tmpI[sampleI][sampleJ]); fflush(stderr);
+
+JaggedArray<float> lum_gPu(W, H);
+ error_code = clEnqueueReadBuffer(helper->command_queue, tmpI_mem_obj, CL_TRUE, 0, W*H*sizeof(float), read_storage, 0, NULL, NULL);
+  fprintf(stderr, "\nBefore intp2: blend result CPU/gPu is %f\n", blend_jagged_array[sampleI][sampleJ]);
+  fprintf(stderr, "\nBefore intp2: tmpI GPU buffer result is %f \n", read_storage[sampleI*W + sampleJ]);
+  fprintf(stderr, "\nBefore intp2: tmpI result CPU, gPu is %f, %f\n", tmpI_cpu_compare[sampleI][sampleJ], gputmpI[sampleI][sampleJ]);
+  fprintf(stderr, "\nBefore intp2: luminance result CPU/gPu is %f, %f\n", luminance[sampleI][sampleJ]);
+
+  helper->tmpI_ = helper->olddst_;
+    int* Xindex = (int*)malloc( W  * H * sizeof(int));
+    int* Yindex = (int*)malloc( W  * H * sizeof(int));
+    for (int i = 0; i < H; i++)
+	{
+	  for (int j = 0; j < W; j++)
+	    {
+	      Xindex[i*W + j] = j;
+	      Yindex[i*W + j] = i;
+	    }
+	}
+
+    cl_mem index_X_mem_obj = helper->reuse_or_create_buffer(&(helper->indexX_), W, H, CL_MEM_READ_ONLY);
+    cl_mem index_Y_mem_obj = helper->reuse_or_create_buffer(&(helper->indexY_), W, H, CL_MEM_READ_ONLY);
+      error_code = clEnqueueWriteBuffer(helper->command_queue, index_X_mem_obj, CL_TRUE, 0, W*H*sizeof(int), Xindex, 0, nullptr, nullptr);
+      error_code = clEnqueueWriteBuffer(helper->command_queue, index_Y_mem_obj, CL_TRUE, 0, W*H*sizeof(int), Yindex, 0, nullptr, nullptr);
+      
+    OpenCL_intp_2(helper, W, H, blend_mem_obj, tmpI_mem_obj, lum_mem_obj,  index_X_mem_obj, index_Y_mem_obj, read_storage, &amount);
+
+for (int i = 0; i < H; i++)
+	       {
+	        for (int j = 0; j < W; j++)
+	         {
+		   lum_gPu[i][j] = read_storage[i*W + j];
+	         }
+             	}
+ fprintf(stderr, "\ngPu luminance result after second intp is %f\n", lum_gPu[sampleI][sampleJ]);
+ 
     
 #ifdef _OPENMP
         #pragma omp for
-#endif
+#endif	      
 
         for (int i = 0; i < H; ++i) {
             for (int j = 0; j < W; ++j) {
 	      luminance[i][j] = intp(blend_jagged_array[i][j] * amount, max(tmpI[i][j], 0.0f), luminance[i][j]);
             }
         }
+ fprintf(stderr, "\nCPU luminance result after second intp is %f\n", luminance[sampleI][sampleJ]);
+ fflush(stderr);
+
+ 
 
         if (sharpenParam.blurradius >= 0.25f) {
             JaggedArray<float> &blur = *blurbuffer;
+
+	    cl_mem blend2_mem_obj = helper->reuse_or_create_buffer(&(helper->blend2_), W, H, CL_MEM_READ_WRITE);
+	    float* temp = (float*)malloc(W*H*sizeof(float));
+	    OpenCL_helper::JaggedArray_to_1d_array(temp, &blur, W, H);
+	    error_code = clEnqueueWriteBuffer(helper->command_queue, blend2_mem_obj, CL_TRUE, 0, W*H*sizeof(float), temp, 0, nullptr, nullptr);
+
+	    OpenCL_intp_3(helper, W, H, blend_mem_obj, lum_mem_obj, blur_mem_obj, index_X_mem_obj, index_Y_mem_obj, read_storage);
+	    //OpenCL_helper::d1_array_to_JaggedArray(read_storage, &lum_gPu,  W,  H);
+	    for (int i = 0; i < H; i++)
+	       {
+	        for (int j = 0; j < W; j++)
+	         {
+		   lum_gPu[i][j] = read_storage[i*W + j];
+	         }
+             	}
+
+	    fprintf(stderr, "\ngPu luminance result after third intp is %f\n", lum_gPu[sampleI][sampleJ]);
+
+	    
 #ifdef _OPENMP
         #pragma omp for
 #endif
             for (int i = 0; i < H; ++i) {
                 for (int j = 0; j < W; ++j) {
                     luminance[i][j] = intp(blend_jagged_array[i][j], luminance[i][j], max(blur[i][j], 0.0f));
+		    
                 }
             }
+	    fprintf(stderr, "\nCPU luminance result after third intp is %f\n", luminance[sampleI][sampleJ]);
+	     fflush(stderr);
         }
 	// } // end parallel
     delete blurbuffer;
