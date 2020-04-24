@@ -23,7 +23,6 @@
 
 #include <gtkmm.h>
 
-#include "crophandler.h"
 #include "editenums.h"
 #include "filethumbnailbuttonset.h"
 #include "imageareatoollistener.h"
@@ -44,7 +43,7 @@ struct FileBrowserEntryIdleHelper {
 };
 
 class FileThumbnailButtonSet;
-class FileBrowserEntry : public ThumbBrowserEntryBase,
+class FileBrowserEntry final : public ThumbBrowserEntryBase,
     public ThumbnailListener,
     public ThumbImageUpdateListener,
     public rtengine::NonCopyable

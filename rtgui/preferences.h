@@ -22,7 +22,6 @@
 
 #include <gtkmm.h>
 
-#include "adjuster.h"
 #include "dynamicprofilepanel.h"
 #include "options.h"
 #include "../rtengine/profilestore.h"
@@ -30,7 +29,7 @@
 class RTWindow;
 class Splash;
 
-class Preferences :
+class Preferences final :
     public Gtk::Dialog,
     public ProfileStoreListener
 {
@@ -249,7 +248,7 @@ class Preferences :
     void switchFontTo  (const Glib::ustring &newFontFamily, const int newFontSize);
     bool splashClosed (GdkEventAny* event);
 
-    int getThemeRowNumber (Glib::ustring& longThemeFName);
+    int getThemeRowNumber (const Glib::ustring& longThemeFName);
 
     void appendBehavList (Gtk::TreeModel::iterator& parent, Glib::ustring label, int id, bool set);
 

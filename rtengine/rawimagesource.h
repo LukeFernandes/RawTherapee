@@ -26,6 +26,7 @@
 #include "colortemp.h"
 #include "iimage.h"
 #include "imagesource.h"
+#include "procparams.h"
 
 #define HR_SCALE 2
 
@@ -37,7 +38,7 @@ class DiagonalCurve;
 class RetinextransmissionCurve;
 class RetinexgaintransmissionCurve;
 
-class RawImageSource : public ImageSource
+class RawImageSource final : public ImageSource
 {
 private:
     static DiagonalCurve *phaseOneIccCurve;
@@ -86,11 +87,13 @@ protected:
 
     // the interpolated green plane:
     array2D<float> green;
+    array2D<float> greenloc;
     // the interpolated red plane:
     array2D<float> red;
+    array2D<float> redloc;
     // the interpolated blue plane:
     array2D<float> blue;
-    // the interpolated green plane:
+    array2D<float> blueloc;
     array2D<float>* greenCache;
     // the interpolated red plane:
     array2D<float>* redCache;
@@ -108,6 +111,7 @@ protected:
     void hlRecovery          (const std::string &method, float* red, float* green, float* blue, int width, float* hlmax);
     void transformRect       (const PreviewProps &pp, int tran, int &sx1, int &sy1, int &width, int &height, int &fw);
     void transformPosition   (int x, int y, int tran, int& tx, int& ty);
+    void ItcWB(bool extra, double &tempref, double &greenref, double &tempitc, double &greenitc, float &studgood, array2D<float> &redloc, array2D<float> &greenloc, array2D<float> &blueloc, int bfw, int bfh, double &avg_rm, double &avg_gm, double &avg_bm, const procparams::ColorManagementParams &cmp, const procparams::RAWParams &raw, const procparams::WBParams & wbpar);
 
     unsigned FC(int row, int col) const;
     inline void getRowStartEnd (int x, int &start, int &end);
@@ -120,16 +124,15 @@ public:
     int load(const Glib::ustring &fname) override { return load(fname, false); }
     int load(const Glib::ustring &fname, bool firstFrameOnly);
     void        preprocess  (const procparams::RAWParams &raw, const procparams::LensProfParams &lensProf, const procparams::CoarseTransformParams& coarse, bool prepareDenoise = true) override;
-    void        filmNegativeProcess (const procparams::FilmNegativeParams &params) override;
+    void        filmNegativeProcess (const procparams::FilmNegativeParams &params, std::array<float, 3>& filmBaseValues) override;
     bool        getFilmNegativeExponents (Coord2D spotA, Coord2D spotB, int tran, const procparams::FilmNegativeParams &currentParams, std::array<float, 3>& newExps) override;
+    bool        getRawSpotValues(Coord2D spot, int spotSize, int tran, const procparams::FilmNegativeParams &params, std::array<float, 3>& rawValues) override;
     void        demosaic    (const procparams::RAWParams &raw, bool autoContrast, double &contrastThreshold, bool cache = false) override;
     void        retinex       (const procparams::ColorManagementParams& cmp, const procparams::RetinexParams &deh, const procparams::ToneCurveParams& Tc, LUTf & cdcurve, LUTf & mapcurve, const RetinextransmissionCurve & dehatransmissionCurve, const RetinexgaintransmissionCurve & dehagaintransmissionCurve, multi_array2D<float, 4> &conversionBuffer, bool dehacontlutili, bool mapcontlutili, bool useHsl, float &minCD, float &maxCD, float &mini, float &maxi, float &Tmean, float &Tsigma, float &Tmin, float &Tmax, LUTu &histLRETI) override;
     void        retinexPrepareCurves       (const procparams::RetinexParams &retinexParams, LUTf &cdcurve, LUTf &mapcurve, RetinextransmissionCurve &retinextransmissionCurve, RetinexgaintransmissionCurve &retinexgaintransmissionCurve, bool &retinexcontlutili, bool &mapcontlutili, bool &useHsl, LUTu & lhist16RETI, LUTu & histLRETI) override;
     void        retinexPrepareBuffers      (const procparams::ColorManagementParams& cmp, const procparams::RetinexParams &retinexParams, multi_array2D<float, 4> &conversionBuffer, LUTu &lhist16RETI) override;
-    void        flushRawData      () override;
-    void        flushRGB          () override;
+    void        flush      () override;
     void        HLRecovery_Global (const procparams::ToneCurveParams &hrp) override;
-    void        refinement_lassus (int PassCount);
     void        refinement(int PassCount);
     void        setBorder(unsigned int rawBorder) override {border = rawBorder;}
     bool        isRGBSourceModified() const override
@@ -137,9 +140,12 @@ public:
         return rgbSourceModified;   // tracks whether cached rgb output of demosaic has been modified
     }
 
-    void        processFlatField(const procparams::RAWParams &raw, const RawImage *riFlatFile, const unsigned short black[4]);
+    void        processFlatField(const procparams::RAWParams &raw, const RawImage *riFlatFile, const float black[4]);
     void        copyOriginalPixels(const procparams::RAWParams &raw, RawImage *ri, RawImage *riDark, RawImage *riFlatFile, array2D<float> &rawData  );
     void        scaleColors (int winx, int winy, int winw, int winh, const procparams::RAWParams &raw, array2D<float> &rawData); // raw for cblack
+    void        WBauto(double &tempref, double &greenref, array2D<float> &redloc, array2D<float> &greenloc, array2D<float> &blueloc, int bfw, int bfh, double &avg_rm, double &avg_gm, double &avg_bm, double &tempitc, double &greenitc, float &studgood, bool &twotimes, const procparams::WBParams & wbpar, int begx, int begy, int yEn, int xEn, int cx, int cy, const procparams::ColorManagementParams &cmp, const procparams::RAWParams &raw) override;
+    void        getAutoWBMultipliersitc(double &tempref, double &greenref, double &tempitc, double &greenitc, float &studgood, int begx, int begy, int yEn, int xEn, int cx, int cy, int bf_h, int bf_w, double &rm, double &gm, double &bm, const procparams::WBParams & wbpar, const procparams::ColorManagementParams &cmp, const procparams::RAWParams &raw) override;
+    void        getrgbloc(int begx, int begy, int yEn, int xEn, int cx, int cy, int bf_h, int bf_w) override;
 
     void        getImage    (const ColorTemp &ctemp, int tran, Imagefloat* image, const PreviewProps &pp, const procparams::ToneCurveParams &hrp, const procparams::RAWParams &raw) override;
     eSensorType getSensorType () const override;
@@ -267,7 +273,7 @@ protected:
     void hphd_demosaic();
     void vng4_demosaic(const array2D<float> &rawData, array2D<float> &red, array2D<float> &green, array2D<float> &blue);
     void igv_interpolate(int winw, int winh);
-    void lmmse_interpolate_omp(int winw, int winh, array2D<float> &rawData, array2D<float> &red, array2D<float> &green, array2D<float> &blue, int iterations);
+    void lmmse_interpolate_omp(int winw, int winh, const array2D<float> &rawData, array2D<float> &red, array2D<float> &green, array2D<float> &blue, int iterations);
     void amaze_demosaic_RT(int winx, int winy, int winw, int winh, const array2D<float> &rawData, array2D<float> &red, array2D<float> &green, array2D<float> &blue, size_t chunkSize = 1, bool measure = false);//Emil's code for AMaZE
     void dual_demosaic_RT(bool isBayer, const procparams::RAWParams &raw, int winw, int winh, const array2D<float> &rawData, array2D<float> &red, array2D<float> &green, array2D<float> &blue, double &contrast, bool autoContrast = false);
     void fast_demosaic();//Emil's code for fast demosaicing

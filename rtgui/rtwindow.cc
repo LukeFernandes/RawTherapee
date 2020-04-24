@@ -44,14 +44,14 @@ extern unsigned char initialGdkScale;
 static gboolean
 osx_should_quit_cb (GtkosxApplication *app, gpointer data)
 {
-    RTWindow *rtWin = (RTWindow *)data;
+    RTWindow * const rtWin = static_cast<RTWindow*>(data);
     return rtWin->on_delete_event (0);
 }
 
 static void
 osx_will_quit_cb (GtkosxApplication *app, gpointer data)
 {
-    RTWindow *rtWin = (RTWindow *)data;
+    RTWindow *rtWin = static_cast<RTWindow*>(data);
     rtWin->on_delete_event (0);
     gtk_main_quit ();
 }
@@ -75,7 +75,7 @@ bool RTWindow::osxFileOpenEvent (Glib::ustring path)
 static gboolean
 osx_open_file_cb (GtkosxApplication *app, gchar *path_, gpointer data)
 {
-    RTWindow *rtWin = (RTWindow *)data;
+    RTWindow *rtWin = static_cast<RTWindow*>(data);
 
     if (!argv1.empty()) {
         // skip handling if we have a file argument or else we get double open of same file
@@ -99,6 +99,8 @@ RTWindow::RTWindow ()
     , bpanel (nullptr)
     , splash (nullptr)
     , btn_fullscreen (nullptr)
+    , iFullscreen (nullptr)
+    , iFullscreen_exit (nullptr)
     , epanel (nullptr)
     , fpanel (nullptr)
 {
@@ -179,7 +181,7 @@ RTWindow::RTWindow ()
                 fontScale = options.fontSize / (float)RTScalable::baseFontSize;
             }
             if (rtengine::settings->verbose) {
-                printf("\"Non-Default\" font size(%d) * scale(%d) / fontScale(%.3f)\n", options.fontSize, (int)initialGdkScale, fontScale);
+                printf("\"Non-Default\" font size(%d) * scale(%d) / fontScale(%.3f)\n", options.fontSize, (int)initialGdkScale, static_cast<double>(fontScale));
             }
         } else {
             Glib::RefPtr<Gtk::StyleContext> style = Gtk::StyleContext::create();
@@ -209,7 +211,7 @@ RTWindow::RTWindow ()
                 if ((int)initialGdkScale > 1 || pt != RTScalable::baseFontSize) {
                     css = Glib::ustring::compose ("* { font-size: %1pt}", pt * (int)initialGdkScale);
                     if (rtengine::settings->verbose) {
-                        printf("\"Default\" font size(%d) * scale(%d) / fontScale(%.3f)\n", pt, (int)initialGdkScale, fontScale);
+                        printf("\"Default\" font size(%d) * scale(%d) / fontScale(%.3f)\n", pt, (int)initialGdkScale, static_cast<double>(fontScale));
                     }
                 }
             }
@@ -231,13 +233,6 @@ RTWindow::RTWindow ()
             }
         }
     }
-
-#ifndef NDEBUG
-    else if (!screen) {
-        printf ("ERROR: Can't get default screen!\n");
-    }
-
-#endif
 
     // ------- end loading theme files
 
@@ -390,8 +385,13 @@ RTWindow::RTWindow ()
         iccProfileCreator->set_tooltip_markup (M ("MAIN_BUTTON_ICCPROFCREATOR"));
         iccProfileCreator->signal_clicked().connect ( sigc::mem_fun (*this, &RTWindow::showICCProfileCreator) );
 
-        //Gtk::LinkButton* rtWeb = Gtk::manage (new Gtk::LinkButton ("http://rawtherapee.com"));   // unused... but fail to be linked anyway !?
-        //Gtk::Button* preferences = Gtk::manage (new Gtk::Button (M("MAIN_BUTTON_PREFERENCES")+"..."));
+        Gtk::Button* helpBtn = Gtk::manage (new Gtk::Button ());
+        setExpandAlignProperties (helpBtn, false, false, Gtk::ALIGN_CENTER, Gtk::ALIGN_CENTER);
+        helpBtn->set_relief(Gtk::RELIEF_NONE);
+        helpBtn->set_image (*Gtk::manage (new RTImage ("questionmark.png")));
+        helpBtn->set_tooltip_markup (M ("GENERAL_HELP"));
+        helpBtn->signal_clicked().connect (sigc::mem_fun (*this, &RTWindow::showRawPedia));
+
         Gtk::Button* preferences = Gtk::manage (new Gtk::Button ());
         setExpandAlignProperties (preferences, false, false, Gtk::ALIGN_CENTER, Gtk::ALIGN_CENTER);
         preferences->set_relief(Gtk::RELIEF_NONE);
@@ -399,7 +399,6 @@ RTWindow::RTWindow ()
         preferences->set_tooltip_markup (M ("MAIN_BUTTON_PREFERENCES"));
         preferences->signal_clicked().connect ( sigc::mem_fun (*this, &RTWindow::showPreferences) );
 
-        //btn_fullscreen = Gtk::manage( new Gtk::Button(M("MAIN_BUTTON_FULLSCREEN")));
         btn_fullscreen = Gtk::manage ( new Gtk::Button());
         setExpandAlignProperties (btn_fullscreen, false, false, Gtk::ALIGN_CENTER, Gtk::ALIGN_CENTER);
         btn_fullscreen->set_relief(Gtk::RELIEF_NONE);
@@ -421,6 +420,7 @@ RTWindow::RTWindow ()
             actionGrid->set_orientation (Gtk::ORIENTATION_VERTICAL);
             actionGrid->attach_next_to (prProgBar, Gtk::POS_BOTTOM, 1, 1);
             actionGrid->attach_next_to (*iccProfileCreator, Gtk::POS_BOTTOM, 1, 1);
+            actionGrid->attach_next_to (*helpBtn, Gtk::POS_BOTTOM, 1, 1);
             actionGrid->attach_next_to (*preferences, Gtk::POS_BOTTOM, 1, 1);
             actionGrid->attach_next_to (*btn_fullscreen, Gtk::POS_BOTTOM, 1, 1);
             mainNB->set_action_widget (actionGrid, Gtk::PACK_END);
@@ -429,6 +429,7 @@ RTWindow::RTWindow ()
             actionGrid->set_orientation (Gtk::ORIENTATION_HORIZONTAL);
             actionGrid->attach_next_to (prProgBar, Gtk::POS_RIGHT, 1, 1);
             actionGrid->attach_next_to (*iccProfileCreator, Gtk::POS_RIGHT, 1, 1);
+            actionGrid->attach_next_to (*helpBtn, Gtk::POS_RIGHT, 1, 1);
             actionGrid->attach_next_to (*preferences, Gtk::POS_RIGHT, 1, 1);
             actionGrid->attach_next_to (*btn_fullscreen, Gtk::POS_RIGHT, 1, 1);
             mainNB->set_action_widget (actionGrid, Gtk::PACK_END);
@@ -919,6 +920,12 @@ void RTWindow::writeToolExpandedStatus (std::vector<int> &tpOpen)
     }
 }
 
+
+void RTWindow::showRawPedia()
+{
+    GError* gerror = nullptr;
+    gtk_show_uri(nullptr, "https://rawpedia.rawtherapee.com/", GDK_CURRENT_TIME, &gerror);
+}
 
 void RTWindow::showICCProfileCreator ()
 {

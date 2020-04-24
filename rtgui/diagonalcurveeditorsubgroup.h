@@ -21,13 +21,13 @@
 #include <gtkmm.h>
 
 #include "curveeditorgroup.h"
-
+#include "adjuster.h"
 #include "../rtengine/noncopyable.h"
 
 class DiagonalCurveEditor;
 class MyDiagonalCurve;
 
-class DiagonalCurveEditorSubGroup :
+class DiagonalCurveEditorSubGroup final :
     public CurveEditorSubGroup,
     public SHCListener,
     public AdjusterListener,

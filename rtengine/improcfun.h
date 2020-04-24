@@ -19,12 +19,19 @@
 #pragma once
 
 #include <memory>
+#include <vector>
 
 #include "coord2d.h"
 #include "gamutwarning.h"
 #include "OpenCL_support.h"
 #include "pipettebuffer.h"
 
+namespace Glib
+{
+
+class ustring;
+
+}
 template<typename T>
 class LUT;
 
@@ -45,8 +52,10 @@ class FramesMetaData;
 class LensCorrection;
 class NoiseCurve;
 class OpacityCurve;
+class PipetteBuffer;
 class ToneCurve;
 class WavCurve;
+class Wavblcurve;
 class WavOpacityCurveBY;
 class WavOpacityCurveRG;
 class WavOpacityCurveW;
@@ -85,8 +94,8 @@ class ImProcFunctions
     void calcVignettingParams(int oW, int oH, const procparams::VignettingParams& vignetting, double &w2, double &h2, double& maxRadius, double &v, double &b, double &mul);
 
     void transformLuminanceOnly(Imagefloat* original, Imagefloat* transformed, int cx, int cy, int oW, int oH, int fW, int fH);
-    void transformGeneral(bool highQuality, Imagefloat *original, Imagefloat *transformed, int cx, int cy, int sx, int sy, int oW, int oH, int fW, int fH, const LensCorrection *pLCPMap);
-    void transformLCPCAOnly(Imagefloat *original, Imagefloat *transformed, int cx, int cy, const LensCorrection *pLCPMap);
+    void transformGeneral(bool highQuality, Imagefloat *original, Imagefloat *transformed, int cx, int cy, int sx, int sy, int oW, int oH, int fW, int fH, const LensCorrection *pLCPMap, bool useOriginalBuffer);
+    void transformLCPCAOnly(Imagefloat *original, Imagefloat *transformed, int cx, int cy, const LensCorrection *pLCPMap, bool useOriginalBuffer);
 
     bool needsCA() const;
     bool needsDistortion() const;
@@ -124,19 +133,24 @@ public:
     }
     void setScale(double iscale);
 
-    bool needsTransform() const;
+    bool needsTransform(int oW, int oH, int rawRotationDeg, const FramesMetaData *metadata) const;
     bool needsPCVignetting() const;
 
     void firstAnalysis(const Imagefloat* const working, const procparams::ProcParams &params, LUTu & vhist16);
     void updateColorProfiles(const Glib::ustring& monitorProfile, RenderingIntent monitorIntent, bool softProof, bool gamutCheck);
-    void rgbProc(Imagefloat* working, LabImage* lab, PipetteBuffer *pipetteBuffer, LUTf & hltonecurve, LUTf & shtonecurve, LUTf & tonecurve,
-                           int sat, LUTf & rCurve, LUTf & gCurve, LUTf & bCurve, float satLimit, float satLimitOpacity, const ColorGradientCurve & ctColorCurve, const OpacityCurve & ctOpacityCurve, bool opautili, LUTf & clcurve, LUTf & cl2curve, const ToneCurve & customToneCurve1, const ToneCurve & customToneCurve2,
-                 const ToneCurve & customToneCurvebw1, const ToneCurve & customToneCurvebw2, double &rrm, double &ggm, double &bbm, float &autor, float &autog, float &autob, DCPProfile *dcpProf, const DCPProfileApplyState &asIn, LUTu &histToneCurve, size_t chunkSize = 1, bool measure = false);
-    void rgbProc(Imagefloat* working, LabImage* lab, PipetteBuffer *pipetteBuffer, LUTf & hltonecurve, LUTf & shtonecurve, LUTf & tonecurve,
-                           int sat, LUTf & rCurve, LUTf & gCurve, LUTf & bCurve, float satLimit, float satLimitOpacity, const ColorGradientCurve & ctColorCurve, const OpacityCurve & ctOpacityCurve, bool opautili, LUTf & clcurve, LUTf & cl2curve, const ToneCurve & customToneCurve1, const ToneCurve & customToneCurve2,
-                 const ToneCurve & customToneCurvebw1, const ToneCurve & customToneCurvebw2, double &rrm, double &ggm, double &bbm, float &autor, float &autog, float &autob,
-                 double expcomp, int hlcompr, int hlcomprthresh, DCPProfile *dcpProf, const DCPProfileApplyState &asIn, LUTu &histToneCurve, size_t chunkSize = 1, bool measure = false);
-    void labtoning(float r, float g, float b, float &ro, float &go, float &bo, int algm, int metchrom, int twoc, float satLimit, float satLimitOpacity, const ColorGradientCurve & ctColorCurve, const OpacityCurve & ctOpacityCurve, LUTf & clToningcurve, LUTf & cl2Toningcurve, float iplow, float iphigh, double wp[3][3], double wip[3][3]);
+    void rgbProc(Imagefloat* working, LabImage* lab, PipetteBuffer *pipetteBuffer, const LUTf& hltonecurve, const LUTf& shtonecurve, const LUTf& tonecurve,
+                 int sat, const LUTf& rCurve, const LUTf& gCurve, const LUTf& bCurve, float satLimit, float satLimitOpacity, const ColorGradientCurve& ctColorCurve,
+                 const OpacityCurve& ctOpacityCurve, bool opautili, const LUTf& clcurve, const LUTf& cl2curve, const ToneCurve& customToneCurve1,
+                 const ToneCurve& customToneCurve2, const ToneCurve& customToneCurvebw1, const ToneCurve& customToneCurvebw2,
+                 double &rrm, double &ggm, double &bbm, float &autor, float &autog, float &autob, DCPProfile *dcpProf,
+                 const DCPProfileApplyState& asIn, LUTu& histToneCurve, size_t chunkSize = 1, bool measure = false);
+    void rgbProc(Imagefloat* working, LabImage* lab, PipetteBuffer *pipetteBuffer, const LUTf& hltonecurve, const LUTf& shtonecurve, const LUTf& tonecurve,
+                 int sat, const LUTf& rCurve, const LUTf& gCurve, const LUTf& bCurve, float satLimit, float satLimitOpacity, const ColorGradientCurve& ctColorCurve,
+                 const OpacityCurve& ctOpacityCurve, bool opautili, const LUTf& clcurve, const LUTf& cl2curve, const ToneCurve& customToneCurve1,
+                 const ToneCurve& customToneCurve2, const ToneCurve& customToneCurvebw1, const ToneCurve& customToneCurvebw2,
+                 double &rrm, double &ggm, double &bbm, float &autor, float &autog, float &autob, double expcomp, int hlcompr,
+                 int hlcomprthresh, DCPProfile *dcpProf, const DCPProfileApplyState& asIn, LUTu& histToneCurve, size_t chunkSize = 1, bool measure = false);
+    void labtoning(float r, float g, float b, float &ro, float &go, float &bo, int algm, int metchrom, int twoc, float satLimit, float satLimitOpacity, const ColorGradientCurve & ctColorCurve, const OpacityCurve & ctOpacityCurve, const LUTf & clToningcurve, const LUTf & cl2Toningcurve, float iplow, float iphigh, double wp[3][3], double wip[3][3]);
     void toning2col(float r, float g, float b, float &ro, float &go, float &bo, float iplow, float iphigh, float rl, float gl, float bl, float rh, float gh, float bh, float SatLow, float SatHigh, float balanS, float balanH, float reducac, int mode, int preser, float strProtect);
     void toningsmh(float r, float g, float b, float &ro, float &go, float &bo, float RedLow, float GreenLow, float BlueLow, float RedMed, float GreenMed, float BlueMed, float RedHigh, float GreenHigh, float BlueHigh, float reducac, int mode, float strProtect);
     void toningsmh2(float r, float g, float b, float &ro, float &go, float &bo, float low[3], float satLow, float med[3], float satMed, float high[3], float satHigh, float reducac, int mode, int preser);
@@ -146,17 +160,17 @@ public:
     void retreavergb(float &r, float &g, float &b);
     void moyeqt(Imagefloat* working, float &moyS, float &eqty);
 
-    void luminanceCurve(LabImage* lold, LabImage* lnew, LUTf &curve);
+    void luminanceCurve(LabImage* lold, LabImage* lnew, const LUTf &curve);
     void ciecam_02float(CieImage* ncie, float adap, int pW, int pwb, LabImage* lab, const procparams::ProcParams* params,
                         const ColorAppearance & customColCurve1, const ColorAppearance & customColCurve, const ColorAppearance & customColCurve3,
                         LUTu &histLCAM, LUTu &histCCAM, LUTf & CAMBrightCurveJ, LUTf & CAMBrightCurveQ, float &mean, int Iterates, int scale, bool execsharp, float &d, float &dj, float &yb, int rtt,
                         bool showSharpMask = false);
-    void chromiLuminanceCurve(PipetteBuffer *pipetteBuffer, int pW, LabImage* lold, LabImage* lnew, LUTf &acurve, LUTf &bcurve, LUTf & satcurve, LUTf & satclcurve, LUTf &clcurve, LUTf &curve, bool utili, bool autili, bool butili, bool ccutili, bool cclutili, bool clcutili, LUTu &histCCurve, LUTu &histLurve);
+    void chromiLuminanceCurve(PipetteBuffer *pipetteBuffer, int pW, LabImage* lold, LabImage* lnew, const LUTf& acurve, const LUTf& bcurve, const LUTf& satcurve, const LUTf& satclcurve, const LUTf& clcurve, LUTf &curve, bool utili, bool autili, bool butili, bool ccutili, bool cclutili, bool clcutili, LUTu &histCCurve, LUTu &histLurve);
     void vibrance(LabImage* lab);         //Jacques' vibrance
 //    void colorCurve       (LabImage* lold, LabImage* lnew);
     void sharpening(LabImage* lab, const procparams::SharpeningParams &sharpenParam, bool showMask = false);
     void sharpeningcam(CieImage* ncie, float** buffer, bool showMask = false);
-    void transform(Imagefloat* original, Imagefloat* transformed, int cx, int cy, int sx, int sy, int oW, int oH, int fW, int fH, const FramesMetaData *metadata, int rawRotationDeg, bool fullImage);
+    void transform(Imagefloat* original, Imagefloat* transformed, int cx, int cy, int sx, int sy, int oW, int oH, int fW, int fH, const FramesMetaData *metadata, int rawRotationDeg, bool fullImage, bool useOriginalBuffer = false);
     float resizeScale(const procparams::ProcParams* params, int fw, int fh, int &imw, int &imh);
     void lab2monitorRgb(LabImage* lab, Image8* image);
     void resize(Imagefloat* src, Imagefloat* dst, float dScale);
@@ -180,6 +194,7 @@ public:
 
     void EPDToneMapResid(float * WavCoeffs_L0, unsigned int Iterates,  int skip, struct cont_params& cp, int W_L, int H_L, float max0, float min0);
     void CompressDR(float *Source, int W_L, int H_L, float Compression, float DetailBoost);
+    void Compresslevels2(float **Source, int W_L, int H_L, float compression, float detailattenuator, float thres, float mean, float maxp, float meanN, float maxN, float madL);
     void ContrastResid(float * WavCoeffs_L0, struct cont_params &cp, int W_L, int H_L, float max0, float min0);
 
     void EPDToneMap(LabImage *lab, unsigned int Iterates = 0, int skip = 1);
@@ -193,30 +208,33 @@ public:
                  int pitch, int scale, const int luma, const int chroma/*, LUTf & Lcurve, LUTf & abcurve*/);
 
     void Tile_calc(int tilesize, int overlap, int kall, int imwidth, int imheight, int &numtiles_W, int &numtiles_H, int &tilewidth, int &tileheight, int &tileWskip, int &tileHskip);
-    void ip_wavelet(LabImage * lab, LabImage * dst, int kall, const procparams::WaveletParams & waparams, const WavCurve & wavCLVCcurve, const WavOpacityCurveRG & waOpacityCurveRG, const WavOpacityCurveBY & waOpacityCurveBY,  const WavOpacityCurveW & waOpacityCurveW, const WavOpacityCurveWL & waOpacityCurveWL, LUTf &wavclCurve, int skip);
+    void ip_wavelet(LabImage * lab, LabImage * dst, int kall, const procparams::WaveletParams & waparams, const WavCurve & wavCLVCcurve, const Wavblcurve & wavblcurve, const WavOpacityCurveRG & waOpacityCurveRG, const WavOpacityCurveBY & waOpacityCurveBY,  const WavOpacityCurveW & waOpacityCurveW, const WavOpacityCurveWL & waOpacityCurveWL, const LUTf &wavclCurve, int skip);
 
-    void WaveletcontAllL(LabImage * lab, float **varhue, float **varchrom, wavelet_decomposition &WaveletCoeffs_L,
+    void WaveletcontAllL(LabImage * lab, float **varhue, float **varchrom, const wavelet_decomposition &WaveletCoeffs_L, const Wavblcurve & wavblcurve,
                          struct cont_params &cp, int skip, float *mean, float *sigma, float *MaxP, float *MaxN,  const WavCurve & wavCLVCcurve, const WavOpacityCurveW & waOpacityCurveW, FlatCurve* ChCurve, bool Chutili);
-    void WaveletcontAllLfinal(wavelet_decomposition &WaveletCoeffs_L, struct cont_params &cp, float *mean, float *sigma, float *MaxP, const WavOpacityCurveWL & waOpacityCurveWL);
-    void WaveletcontAllAB(LabImage * lab, float **varhue, float **varchrom, wavelet_decomposition &WaveletCoeffs_a, const WavOpacityCurveW & waOpacityCurveW,
-                          struct cont_params &cp, const bool useChannelA);
-    void WaveletAandBAllAB(wavelet_decomposition &WaveletCoeffs_a, wavelet_decomposition &WaveletCoeffs_b,
-                           struct cont_params &cp, FlatCurve* hhcurve, bool hhutili);
+    void WaveletcontAllLfinal(const wavelet_decomposition &WaveletCoeffs_L, const cont_params &cp, float *mean, float *sigma, float *MaxP, const WavOpacityCurveWL & waOpacityCurveWL);
+    void WaveletcontAllAB(LabImage * lab, float **varhue, float **varchrom, const wavelet_decomposition &WaveletCoeffs_a, const Wavblcurve & wavblcurve, const WavOpacityCurveW & waOpacityCurveW,
+                          struct cont_params &cp, const bool useChannelA, int skip, float *meanab, float *sigmaab);
+    void WaveletAandBAllAB(const wavelet_decomposition &WaveletCoeffs_a, const wavelet_decomposition &WaveletCoeffs_b,
+                           const cont_params &cp, FlatCurve* hhcurve, bool hhutili);
     void ContAllL(float **koeLi, float *maxkoeLi, bool lipschitz, int maxlvl, LabImage * lab, float **varhue, float **varchrom, float ** WavCoeffs_L, float * WavCoeffs_L0, int level, int dir, struct cont_params &cp,
                   int W_L, int H_L, int skip, float *mean, float *sigma, float *MaxP, float *MaxN,  const WavCurve & wavCLVCcurve, const WavOpacityCurveW & waOpacityCurveW, FlatCurve* ChCurve, bool Chutili);
-    void finalContAllL(float ** WavCoeffs_L, float * WavCoeffs_L0, int level, int dir, struct cont_params &cp,
+    void finalContAllL(float ** WavCoeffs_L, float * WavCoeffs_L0, int level, int dir, const cont_params &cp,
                        int W_L, int H_L, float *mean, float *sigma, float *MaxP, const WavOpacityCurveWL & waOpacityCurveWL);
     void ContAllAB(LabImage * lab, int maxlvl, float **varhue, float **varchrom, float ** WavCoeffs_a, float * WavCoeffs_a0, int level, int dir, const WavOpacityCurveW & waOpacityCurveW, struct cont_params &cp,
                    int W_ab, int H_ab, const bool useChannelA);
-    void Evaluate2(wavelet_decomposition &WaveletCoeffs_L,
+    void Evaluate2(const wavelet_decomposition &WaveletCoeffs_L,
                    float *mean, float *meanN, float *sigma, float *sigmaN, float *MaxP, float *MaxN);
     void Eval2(float ** WavCoeffs_L, int level,
                int W_L, int H_L, float *mean, float *meanN, float *sigma, float *sigmaN, float *MaxP, float *MaxN);
 
+    void calceffect(int level, float *mean, float *sigma, float *mea, float effect, float offs);
+
     void Aver(float * HH_Coeffs, int datalen, float &averagePlus, float &averageNeg, float &max, float &min);
     void Sigma(float * HH_Coeffs, int datalen, float averagePlus, float averageNeg, float &sigmaPlus, float &sigmaNeg);
-    void calckoe(float ** WavCoeffs_LL, const struct cont_params& cp, float ** koeLi, int level, int dir, int W_L, int H_L, float edd, float *maxkoeLi, float **tmC = nullptr);
+    void calckoe(float ** WavCoeffs_LL, const cont_params& cp, float ** koeLi, int level, int dir, int W_L, int H_L, float edd, float *maxkoeLi, float **tmC = nullptr);
 
+    void softproc2(const LabImage* bufcolorig, const LabImage* bufcolfin, float rad, int bfh, int bfw, double epsilmax, double epsilmin, float thres, int sk, bool multiThread, int flag);
 
 
     void Median_Denoise(float **src, float **dst, int width, int height, Median medianType, int iterations, int numThreads, float **buffer = nullptr);
@@ -226,18 +244,22 @@ public:
     void RGB_denoise_info(Imagefloat * src, Imagefloat * provicalc, bool isRAW, const LUTf &gamcurve, float gam, float gamthresh, float gamslope, const procparams::DirPyrDenoiseParams & dnparams, const double expcomp, float &chaut, int &Nb, float &redaut, float &blueaut, float &maxredaut, float & maxblueaut, float &minredaut, float & minblueaut, float &chromina, float &sigma, float &lumema, float &sigma_L, float &redyel, float &skinc, float &nsknc, bool multiThread = false);
     void RGBtile_denoise(float * fLblox, int hblproc, float noisevar_Ldetail);     //for DCT
     void RGBoutput_tile_row(float *bloxrow_L, float ** Ldetail, float ** tilemask_out, int height, int width, int top);
-    bool WaveletDenoiseAllL(const wavelet_decomposition &WaveletCoeffs_L, float *noisevarlum, float madL[8][3], float * vari, int edge);
-    bool WaveletDenoiseAllAB(const wavelet_decomposition &WaveletCoeffs_L, const wavelet_decomposition &WaveletCoeffs_ab, float *noisevarchrom, float madL[8][3], float noisevar_ab, const bool useNoiseCCurve, bool autoch, bool denoiseMethodRgb);
+
     void WaveletDenoiseAll_info(int levwav, const wavelet_decomposition &WaveletCoeffs_a,
                                 const wavelet_decomposition &WaveletCoeffs_b, float **noisevarlum, float **noisevarchrom, float **noisevarhue, float &chaut, int &Nb, float &redaut, float &blueaut, float &maxredaut, float &maxblueaut, float &minredaut, float & minblueaut, int schoice, float &chromina, float &sigma, float &lumema, float &sigma_L, float &redyel, float &skinc, float &nsknc,
                                 float &maxchred, float &maxchblue, float &minchred, float &minchblue, int &nb, float &chau, float &chred, float &chblue, bool denoiseMethodRgb);
 
-    bool WaveletDenoiseAll_BiShrinkL(const wavelet_decomposition &WaveletCoeffs_L, float *noisevarlum, float madL[8][3]);
-    bool WaveletDenoiseAll_BiShrinkAB(const wavelet_decomposition &WaveletCoeffs_L, const wavelet_decomposition &WaveletCoeffs_ab, float *noisevarchrom, float madL[8][3], float noisevar_ab,
-                                      const bool useNoiseCCurve,  bool autoch, bool denoiseMethodRgb);
+    bool WaveletDenoiseAllL(const wavelet_decomposition &WaveletCoeffs_L, float *noisevarlum, float madL[8][3], float * vari, int edge, int denoiseNestedLevels);
+    bool WaveletDenoiseAllAB(const wavelet_decomposition &WaveletCoeffs_L, const wavelet_decomposition &WaveletCoeffs_ab, float *noisevarchrom, float madL[8][3], float *variC, int local, float noisevar_ab, const bool useNoiseCCurve, bool autoch, bool denoiseMethodRgb, int denoiseNestedLevels);
+
+    bool WaveletDenoiseAll_BiShrinkL(const wavelet_decomposition &WaveletCoeffs_L, float *noisevarlum, float madL[8][3], float * vari, int edge, int denoiseNestedLevels);
+    bool WaveletDenoiseAll_BiShrinkAB(const wavelet_decomposition &WaveletCoeffs_L, const wavelet_decomposition &WaveletCoeffs_ab, float *noisevarchrom, float madL[8][3], float *variC, int local, float noisevar_ab, const bool useNoiseCCurve,  bool autoch, bool denoiseMethodRgb, int denoiseNestedLevels);
+
     void ShrinkAllL(const wavelet_decomposition &WaveletCoeffs_L, float **buffer, int level, int dir, float *noisevarlum, float * madL, float * vari, int edge);
     void ShrinkAllAB(const wavelet_decomposition &WaveletCoeffs_L, const wavelet_decomposition &WaveletCoeffs_ab, float **buffer, int level, int dir,
-                     float *noisevarchrom, float noisevar_ab, const bool useNoiseCCurve, bool autoch, bool denoiseMethodRgb, float * madL, float * madaab = nullptr, bool madCalculated = false);
+                     float *noisevarchrom, float noisevar_ab, const bool useNoiseCCurve, bool autoch, bool denoiseMethodRgb, float * madL, float * variC, int local, float * madaab = nullptr, bool madCalculated = false);
+
+
     void ShrinkAll_info(float ** WavCoeffs_a, float ** WavCoeffs_b,
                         int W_ab, int H_ab, float **noisevarlum, float **noisevarchrom, float **noisevarhue, float &chaut, int &Nb, float &redaut, float &blueaut, float &maxredaut, float &maxblueaut, float &minredaut, float &minblueaut, int schoice, int lvl, float &chromina, float &sigma, float &lumema, float &sigma_L, float &redyel, float &skinc, float &nsknc,
                         float &maxchred, float &maxchblue, float &minchred, float &minchblue, int &nb, float &chau, float &chred, float &chblue, bool denoiseMethodRgb);
@@ -263,7 +285,8 @@ public:
     void ToneMapFattal02(Imagefloat *rgb);
     void localContrast(LabImage *lab);
     void colorToningLabGrid(LabImage *lab, int xstart, int xend, int ystart, int yend, bool MultiThread);
-    void shadowsHighlights(LabImage *lab);
+    //void shadowsHighlights(LabImage *lab);
+    void shadowsHighlights(LabImage *lab, bool ena, int labmode, int hightli, int shado, int rad, int scal, int hltonal, int shtonal);
     void softLight(LabImage *lab);
     void labColorCorrectionRegions(LabImage *lab);
 

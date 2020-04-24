@@ -177,7 +177,7 @@ PDAFLinesFilter::PDAFLinesFilter(RawImage *ri):
     gthresh_ = new PDAFGreenEqulibrateThreshold(W_, H_);
 
     CameraConstantsStore* ccs = CameraConstantsStore::getInstance();
-    CameraConst *cc = ccs->get(ri_->get_maker().c_str(), ri_->get_model().c_str());
+    const CameraConst *cc = ccs->get(ri_->get_maker().c_str(), ri_->get_model().c_str());
 
     if (cc) {
         pattern_ = cc->get_pdafPattern();
@@ -206,7 +206,7 @@ std::unique_ptr<RawImageSource::CFALineDenoiseRowBlender> PDAFLinesFilter::lineD
 }
 
 
-int PDAFLinesFilter::markLine(array2D<float> &rawData, PixelsMap &bpMap, int y)
+int PDAFLinesFilter::markLine(const array2D<float> &rawData, PixelsMap &bpMap, int y)
 {
     rowmap_.clear();
     rowmap_.resize((W_+1)/2, false);
@@ -258,7 +258,7 @@ int PDAFLinesFilter::markLine(array2D<float> &rawData, PixelsMap &bpMap, int y)
 }
 
 
-int PDAFLinesFilter::mark(array2D<float> &rawData, PixelsMap &bpMap)
+int PDAFLinesFilter::mark(const array2D<float> &rawData, PixelsMap &bpMap)
 {
 
     if (pattern_.empty()) {

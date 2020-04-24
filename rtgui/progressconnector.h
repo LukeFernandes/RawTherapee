@@ -28,7 +28,7 @@
 
 #undef THREAD_PRIORITY_NORMAL
 
-class PLDBridge :
+class PLDBridge final :
     public rtengine::ProgressListener
 {
 public:
@@ -79,9 +79,9 @@ class ProgressConnector
     static int emitEndSignalUI (void* data)
     {
 
-        sigc::signal0<bool>* opEnd = (sigc::signal0<bool>*) data;
-        int r = opEnd->emit ();
-        delete opEnd;
+        const sigc::signal0<bool>* lopEnd = reinterpret_cast<sigc::signal0<bool>*>(data);
+        const int r = lopEnd->emit ();
+        delete lopEnd;
 
         return r;
     }

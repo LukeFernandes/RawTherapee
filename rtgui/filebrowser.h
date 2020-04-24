@@ -23,7 +23,6 @@
 #include <gtkmm.h>
 
 #include "browserfilter.h"
-#include "exiffiltersettings.h"
 #include "exportpanel.h"
 #include "extprog.h"
 #include "filebrowserentry.h"
@@ -57,7 +56,7 @@ public:
 /*
  * Class handling actions common to all thumbnails of the file browser
  */
-class FileBrowser  : public ThumbBrowserBase,
+class FileBrowser final : public ThumbBrowserBase,
     public LWButtonListener,
     public ExportPanelListener,
     public ProfileStoreListener,
@@ -174,7 +173,7 @@ public:
     void buttonPressed (LWButton* button, int actionCode, void* actionData) override;
     void redrawNeeded  (LWButton* button) override;
     bool checkFilter (ThumbBrowserEntryBase* entry) const override;
-    void rightClicked (ThumbBrowserEntryBase* entry) override;
+    void rightClicked () override;
     void doubleClicked (ThumbBrowserEntryBase* entry) override;
     bool keyPressed (GdkEventKey* event) override;
 

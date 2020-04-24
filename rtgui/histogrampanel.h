@@ -53,7 +53,7 @@ public:
     double log (double vsize, double val);
 };
 
-class HistogramRGBArea : public Gtk::DrawingArea, public BackBuffer, private HistogramScaling, public rtengine::NonCopyable
+class HistogramRGBArea final : public Gtk::DrawingArea, public BackBuffer, private HistogramScaling, public rtengine::NonCopyable
 {
 private:
     typedef const double (*TMatrix)[3];
@@ -116,7 +116,7 @@ public:
     virtual void toggleButtonMode() = 0;
 };
 
-class HistogramArea : public Gtk::DrawingArea, public BackBuffer, private HistogramScaling, public rtengine::NonCopyable
+class HistogramArea final : public Gtk::DrawingArea, public BackBuffer, private HistogramScaling, public rtengine::NonCopyable
 {
 public:
     typedef sigc::signal<void, double> type_signal_factor_changed;
@@ -165,8 +165,8 @@ public:
     type_signal_factor_changed signal_factor_changed();
 
 private:
-    void drawCurve(Cairo::RefPtr<Cairo::Context> &cr, LUTu & data, double scale, int hsize, int vsize);
-    void drawMarks(Cairo::RefPtr<Cairo::Context> &cr, LUTu & data, double scale, int hsize, int & ui, int & oi);
+    void drawCurve(Cairo::RefPtr<Cairo::Context> &cr, const LUTu & data, double scale, int hsize, int vsize);
+    void drawMarks(Cairo::RefPtr<Cairo::Context> &cr, const LUTu & data, double scale, int hsize, int & ui, int & oi);
     Gtk::SizeRequestMode get_request_mode_vfunc () const override;
     void get_preferred_height_vfunc (int& minimum_height, int& natural_height) const override;
     void get_preferred_width_vfunc (int &minimum_width, int &natural_width) const override;
@@ -174,7 +174,7 @@ private:
     void get_preferred_width_for_height_vfunc (int height, int &minimum_width, int &natural_width) const override;
 };
 
-class HistogramPanel : public Gtk::Grid, public PointerMotionListener, public DrawModeListener, public rtengine::NonCopyable
+class HistogramPanel final : public Gtk::Grid, public PointerMotionListener, public DrawModeListener, public rtengine::NonCopyable
 {
 
 protected:

@@ -4,39 +4,67 @@
 #  MESSAGE(STATUS "Found OpenCL.")
 #ENDIF  (${OpenCL_FOUND})
 
+if(EXTRA_INCDIR)
+    include_directories("${EXTRA_INCDIR}")
+endif()
+if(EXPAT_INCLUDE_DIRS)
+    include_directories("${EXPAT_INCLUDE_DIRS}")
+endif()
+if(FFTW3F_INCLUDE_DIRS)
+    include_directories("${FFTW3F_INCLUDE_DIRS}")
+endif()
+if(GLIB2_INCLUDE_DIRS)
+    include_directories("${GLIB2_INCLUDE_DIRS}")
+endif()
+if(GLIBMM_INCLUDE_DIRS)
+    include_directories("${GLIBMM_INCLUDE_DIRS}")
+endif()
+if(GOBJECT_INCLUDE_DIRS)
+    include_directories("${GOBJECT_INCLUDE_DIRS}")
+endif()
+if(GTHREAD_INCLUDE_DIRS)
+    include_directories("${GTHREAD_INCLUDE_DIRS}")
+endif()
+if(GTKMM_INCLUDE_DIRS)
+    include_directories("${GTKMM_INCLUDE_DIRS}")
+endif()
+if(GTK_INCLUDE_DIRS)
+    include_directories("${GTK_INCLUDE_DIRS}")
+endif()
+if(IPTCDATA_INCLUDE_DIRS)
+    include_directories("${IPTCDATA_INCLUDE_DIRS}")
+endif()
+if(LCMS_INCLUDE_DIRS)
+    include_directories("${LCMS_INCLUDE_DIRS}")
+endif()
+if(LENSFUN_INCLUDE_DIRS)
+    include_directories("${LENSFUN_INCLUDE_DIRS}")
+endif()
+if(RSVG_INCLUDE_DIRS)
+    include_directories("${RSVG_INCLUDE_DIRS}")
+endif()
+if(NOT WITH_SYSTEM_KLT)
+    include_directories("${CMAKE_SOURCE_DIR}/rtengine/klt")
+else()
+    include_directories("${KLT_INCLUDE_DIRS}")
+endif()
 
-include_directories(${EXTRA_INCDIR}
-    ${EXPAT_INCLUDE_DIRS}
-    ${FFTW3F_INCLUDE_DIRS}
-    ${GLIB2_INCLUDE_DIRS}
-    ${GLIBMM_INCLUDE_DIRS}
-    ${GOBJECT_INCLUDE_DIRS}
-    ${GTHREAD_INCLUDE_DIRS}
-    ${GTKMM_INCLUDE_DIRS}
-    ${GTK_INCLUDE_DIRS}
-    ${IPTCDATA_INCLUDE_DIRS}
-    ${LCMS_INCLUDE_DIRS}
-    ${LENSFUN_INCLUDE_DIRS}
-    ${RSVG_INCLUDE_DIRS}
-    ${OpenCL_INCLUDE_DIRS}
-    )
-
+include_directories("${OpenCL_INCLUDE_DIRS}")
 
 link_directories("${PROJECT_SOURCE_DIR}/rtexif"
-    ${EXPAT_LIBRARY_DIRS}
-    ${EXTRA_LIBDIR}
-    ${FFTW3F_LIBRARY_DIRS}
-    ${GLIB2_LIBRARY_DIRS}
-    ${GLIBMM_LIBRARY_DIRS}
-    ${GOBJECT_LIBRARY_DIRS}
-    ${GTHREAD_LIBRARY_DIRS}
-    ${IPTCDATA_LIBRARY_DIRS}
-    ${LCMS_LIBRARY_DIRS}
-    ${LENSFUN_LIBRARY_DIRS}
-    ${RSVG_LIBRARY_DIRS}
-    ${OpenCL_LIBRARY}
-    )
-    
+    "${EXPAT_LIBRARY_DIRS}"
+    "${EXTRA_LIBDIR}"
+    "${FFTW3F_LIBRARY_DIRS}"
+    "${GLIB2_LIBRARY_DIRS}"
+    "${GLIBMM_LIBRARY_DIRS}"
+    "${GOBJECT_LIBRARY_DIRS}"
+    "${GTHREAD_LIBRARY_DIRS}"
+    "${IPTCDATA_LIBRARY_DIRS}"
+    "${LCMS_LIBRARY_DIRS}"
+    "${LENSFUN_LIBRARY_DIRS}"
+    "${RSVG_LIBRARY_DIRS}"
+    "${OpenCL_LIBRARY}"
+)
 
 set(CAMCONSTSFILE "camconst.json")
 
@@ -105,6 +133,7 @@ set(RTENGINESOURCEFILES
     ipretinex.cc
     ipshadowshighlights.cc
     ipsharpen.cc
+    ipsharpenedges.cc
     ipsoftlight.cc
     iptransform.cc
     ipvibrance.cc
@@ -114,7 +143,9 @@ set(RTENGINESOURCEFILES
     labimage.cc
     lcp.cc
     lj92.c
+    lmmse_demosaic.cc
     loadinitial.cc
+    munselllch.cc
     myfile.cc
     OpenCL_support.cc 
     panasonic_decoders.cc
@@ -168,12 +199,14 @@ if(NOT WITH_SYSTEM_KLT)
 endif()
 
 include_directories(BEFORE "${CMAKE_CURRENT_BINARY_DIR}")
-add_library(rtengine STATIC ${RTENGINESOURCEFILES})
+
+add_library(rtengine STATIC "${RTENGINESOURCEFILES}")
+
 add_dependencies(rtengine UpdateInfo)
 
 # It may be nice to store library version too
 if(BUILD_SHARED_LIBS)
-    install(TARGETS rtengine DESTINATION ${LIBDIR})
+    install(TARGETS rtengine DESTINATION "${LIBDIR}")
 endif()
 
 set_target_properties(rtengine PROPERTIES COMPILE_FLAGS "${RTENGINE_CXX_FLAGS}")
@@ -194,9 +227,8 @@ target_link_libraries(rtengine rtexif
     ${ZLIB_LIBRARIES}
     ${LENSFUN_LIBRARIES}
     ${RSVG_LIBRARIES}
+    ${KLT_LIBRARIES}
     ${OpenCL_LIBRARY}
     )
-    
-
 
 install(FILES ${CAMCONSTSFILE} DESTINATION "${DATADIR}" PERMISSIONS OWNER_WRITE OWNER_READ GROUP_READ WORLD_READ)

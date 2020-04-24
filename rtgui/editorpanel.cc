@@ -28,15 +28,22 @@
 #include "soundman.h"
 #include "rtimage.h"
 #include "rtwindow.h"
+#include "filepanel.h"
 #include "guiutils.h"
 #include "popupbutton.h"
 #include "options.h"
+#include "navigator.h"
+#include "previewwindow.h"
 #include "progressconnector.h"
 #include "procparamchangers.h"
 #include "placesbrowser.h"
 #include "pathutils.h"
 #include "thumbnail.h"
 #include "toolpanelcoord.h"
+
+#ifdef WIN32
+#include "windows.h"
+#endif
 
 using namespace rtengine::procparams;
 
@@ -54,7 +61,7 @@ void setprogressStrUI(double val, const Glib::ustring str, MyProgressBar* pProgr
     }
 }
 
-
+#if !defined(__APPLE__) // monitor profile not supported on apple
 bool find_default_monitor_profile (GdkWindow *rootwin, Glib::ustring &defprof, Glib::ustring &defprofname)
 {
 #ifdef WIN32
@@ -84,7 +91,7 @@ bool find_default_monitor_profile (GdkWindow *rootwin, Glib::ustring &defprof, G
         ReleaseDC (NULL, hDC);
     }
 
-#elif !defined(__APPLE__)
+#else
     // taken from geeqie (image.c) and adapted
     // Originally licensed as GPL v2+, with the following copyright:
     // * Copyright (C) 2006 John Ellis
@@ -122,7 +129,7 @@ bool find_default_monitor_profile (GdkWindow *rootwin, Glib::ustring &defprof, G
 #endif
     return false;
 }
-
+#endif
 
 }
 
@@ -165,7 +172,7 @@ private:
 
         const std::vector<Glib::ustring> profiles = rtengine::ICCStore::getInstance()->getProfiles (rtengine::ICCStore::ProfileType::MONITOR);
 
-        for (const auto profile : profiles) {
+        for (const auto& profile : profiles) {
             profileBox.append (profile);
         }
 
@@ -2060,6 +2067,7 @@ bool EditorPanel::idle_sentToGimp (ProgressConnector<int> *pc, rtengine::IImagef
 {
     img->free ();
     int errore = pc->returnValue();
+    setProgressState(false);
     delete pc;
 
     if (!errore) {

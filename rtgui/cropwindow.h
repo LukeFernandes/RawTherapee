@@ -30,7 +30,6 @@
 #include "editenums.h"
 #include "lwbutton.h"
 #include "lwbuttonset.h"
-#include "pointermotionlistener.h"
 
 #include "../rtengine/noncopyable.h"
 
@@ -42,6 +41,7 @@ struct Coord;
 }
 
 class CropWindow;
+class PointerMotionListener;
 
 class CropWindowListener
 {
@@ -54,7 +54,7 @@ public:
 };
 
 class ImageArea;
-class CropWindow : public LWButtonListener, public CropDisplayHandler, public EditCoordSystem, public ObjectMOBuffer, public rtengine::NonCopyable
+class CropWindow final : public LWButtonListener, public CropDisplayHandler, public EditCoordSystem, public ObjectMOBuffer, public rtengine::NonCopyable
 {
     static bool initialized;
 
@@ -224,7 +224,7 @@ public:
     void centerCrop            (bool update = true);
     void getCropSize           (int& w, int& h);
     void getCropAnchorPosition (int& w, int& h);
-    void setCropAnchorPosition (int& w, int& h);
+    void setCropAnchorPosition (int w, int h);
 
     // listeners
     void setCropGUIListener       (CropGUIListener* cgl);

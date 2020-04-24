@@ -20,7 +20,6 @@
 #pragma once
 
 #include <array>
-#include <map>
 #include <memory>
 #include <string>
 #include <sstream>
@@ -55,7 +54,6 @@ public:
     LCPModelCommon();
 
     bool empty() const;  // is it empty
-    void print() const;  // printf all values
     void merge(const LCPModelCommon& a, const LCPModelCommon& b, float facA);
     void prepareParams(
         int fullWidth,
@@ -107,7 +105,6 @@ public:
         LCPModelCommon *pCorr3
     ) const; // Interpolates between the persModels frames
 
-    void print() const;
 
 //private:
     // Common data
@@ -172,8 +169,8 @@ public:
     virtual void correctDistortion(double &x, double &y, int cx, int cy, double scale) const = 0;
     virtual bool isCACorrectionAvailable() const = 0;
     virtual void correctCA(double &x, double &y, int cx, int cy, int channel) const = 0;
-    virtual void processVignetteLine(int width, int y, float *line) const = 0;
-    virtual void processVignetteLine3Channels(int width, int y, float *line) const = 0;
+    virtual void processVignette(int width, int height, float** rawData) const = 0;
+    virtual void processVignette3Channels(int width, int height, float** rawData) const = 0;
 };
 
 
@@ -200,8 +197,8 @@ public:
     void correctDistortion(double &x, double &y, int cx, int cy, double scale) const override;  // MUST be the first stage
     bool isCACorrectionAvailable() const override;
     void correctCA(double& x, double& y, int cx, int cy, int channel) const override;
-    void processVignetteLine(int width, int y, float* line) const override;
-    void processVignetteLine3Channels(int width, int y, float* line) const override;
+    void processVignette(int width, int height, float** rawData) const override;
+    void processVignette3Channels(int width, int height, float** rawData) const override;
 
 private:
     bool enableCA;  // is the mapper capable if CA correction?
@@ -210,6 +207,9 @@ private:
     LCPModelCommon mc;
     LCPModelCommon chrom[3];  // in order RedGreen/Green/BlueGreen
     bool isFisheye;
+
+    void processVignetteLine(int width, int y, float* line) const;
+    void processVignetteLine3Channels(int width, int y, float* line) const;
 };
 
 }

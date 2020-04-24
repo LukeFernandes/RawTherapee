@@ -32,6 +32,7 @@
 #include "rtimage.h"
 #include "cachemanager.h"
 #include "multilangmgr.h"
+#include "coarsepanel.h"
 #include "filepanel.h"
 #include "renamedlg.h"
 #include "thumbimageupdater.h"
@@ -40,10 +41,9 @@
 #include "placesbrowser.h"
 #include "pathutils.h"
 #include "thumbnail.h"
+#include "toolbar.h"
 
 using namespace std;
-
-#define CHECKTIME 2000
 
 FileCatalog::FileCatalog (CoarsePanel* cp, ToolBar* tb, FilePanel* filepanel) :
     filepanel(filepanel),
@@ -53,6 +53,8 @@ FileCatalog::FileCatalog (CoarsePanel* cp, ToolBar* tb, FilePanel* filepanel) :
     fslistener(nullptr),
     iatlistener(nullptr),
     hbToolBar1STB(nullptr),
+    progressImage(nullptr),
+    progressLabel(nullptr),
     hasValidCurrentEFS(false),
     filterPanel(nullptr),
     exportPanel(nullptr),
@@ -703,34 +705,37 @@ void FileCatalog::_refreshProgressBar ()
     // The second, usually longer pass is done multithreaded down in the single entries and is NOT measured by this
     if (!inTabMode && (!previewsToLoad || std::floor(100.f * previewsLoaded / previewsToLoad) != std::floor(100.f * (previewsLoaded - 1) / previewsToLoad))) {
         GThreadLock lock; // All GUI access from idle_add callbacks or separate thread HAVE to be protected
-        Gtk::Notebook *nb = (Gtk::Notebook *)(filepanel->get_parent());
-        Gtk::Grid* grid = Gtk::manage(new Gtk::Grid());
-        Gtk::Label *label = nullptr;
 
+        if (!progressImage || !progressLabel) {
+            // create tab label once
+            Gtk::Notebook *nb = (Gtk::Notebook *)(filepanel->get_parent());
+            Gtk::Grid* grid = Gtk::manage(new Gtk::Grid());
+            progressImage = Gtk::manage(new RTImage("folder-closed.png"));
+            progressLabel = Gtk::manage(new Gtk::Label(M("MAIN_FRAME_FILEBROWSER")));
+            grid->attach_next_to(*progressImage, options.mainNBVertical ? Gtk::POS_TOP : Gtk::POS_RIGHT, 1, 1);
+            grid->attach_next_to(*progressLabel, options.mainNBVertical ? Gtk::POS_TOP : Gtk::POS_RIGHT, 1, 1);
+            grid->set_tooltip_markup(M("MAIN_FRAME_FILEBROWSER_TOOLTIP"));
+            grid->show_all();
+            if (options.mainNBVertical) {
+                progressLabel->set_angle(90);
+            }
+            if (nb) {
+                nb->set_tab_label(*filepanel, *grid);
+            }
+        }
         if (!previewsToLoad) {
-            grid->attach_next_to(*Gtk::manage(new RTImage("folder-closed.png")), options.mainNBVertical ? Gtk::POS_TOP : Gtk::POS_RIGHT, 1, 1);
+            progressImage->changeImage("folder-closed.png");
             int filteredCount = min(fileBrowser->getNumFiltered(), previewsLoaded);
-
-            label = Gtk::manage(new Gtk::Label(M("MAIN_FRAME_FILEBROWSER") +
-                                               (filteredCount != previewsLoaded ? " [" + Glib::ustring::format(filteredCount) + "/" : " (")
-                                               + Glib::ustring::format(previewsLoaded) +
-                                               (filteredCount != previewsLoaded ? "]" : ")")));
+            progressLabel->set_text(M("MAIN_FRAME_FILEBROWSER") +
+                                    (filteredCount != previewsLoaded ? " [" + Glib::ustring::format(filteredCount) + "/" : " (")
+                                    + Glib::ustring::format(previewsLoaded) +
+                                    (filteredCount != previewsLoaded ? "]" : ")"));
         } else {
-            grid->attach_next_to(*Gtk::manage(new RTImage("magnifier.png")), options.mainNBVertical ? Gtk::POS_TOP : Gtk::POS_RIGHT, 1, 1);
-            label = Gtk::manage(new Gtk::Label(M("MAIN_FRAME_FILEBROWSER") + " [" + Glib::ustring::format(std::fixed, std::setprecision(0), std::setw(3), (double)previewsLoaded / previewsToLoad * 100 ) + "%]" ));
+            progressImage->changeImage("magnifier.png");
+            progressLabel->set_text(M("MAIN_FRAME_FILEBROWSER") + " ["
+                                    + Glib::ustring::format(previewsLoaded) + "/"
+                                    + Glib::ustring::format(previewsToLoad) + "]" );
             filepanel->loadingThumbs("", (double)previewsLoaded / previewsToLoad);
-        }
-
-        if (options.mainNBVertical) {
-            label->set_angle(90);
-        }
-
-        grid->attach_next_to(*label, options.mainNBVertical ? Gtk::POS_TOP : Gtk::POS_RIGHT, 1, 1);
-        grid->set_tooltip_markup(M("MAIN_FRAME_FILEBROWSER_TOOLTIP"));
-        grid->show_all();
-
-        if (nb) {
-            nb->set_tab_label(*filepanel, *grid);
         }
     }
 }
@@ -1222,9 +1227,8 @@ void FileCatalog::developRequested(const std::vector<FileBrowserEntry*>& tbe, bo
 
             rtengine::ProcessingJob* pjob = rtengine::ProcessingJob::create (fbe->filename, th->getType() == FT_Raw, params, fastmode && options.fastexport_use_fast_pipeline);
 
-            int pw;
-            int ph = BatchQueue::calcMaxThumbnailHeight();
-            th->getThumbnailSize (pw, ph);
+            const int ph = BatchQueue::calcMaxThumbnailHeight();
+            const int pw = th->getThumbnailWidth(ph);
 
             // processThumbImage is the processing intensive part, but adding to queue must be ordered
             //#pragma omp ordered
