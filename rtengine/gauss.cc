@@ -1855,7 +1855,7 @@ template<class T> void OpenCLgauss3x3_all(OpenCL_helper *helper, int iterations,
 	fprintf(stderr, "On gpu side: c0-%f, (c1-%f, c2-%f and b0-%f, b1-%f\n", c0, c1, c2, b0, b1); fflush(stderr);
  
 	//reset_constant_values(divkernel, &b0, &b1, &c0, &c1, &c2);
-	gauss3x3div<float> (tmpSRC, tmpDST, divBuffer, W, H, c0, c1, c2, b0, b1, true);
+	//gauss3x3div<float> (tmpSRC, tmpDST, divBuffer, W, H, c0, c1, c2, b0, b1, true);
 	
 	error_code = clEnqueueNDRangeKernel(helper->command_queue, divkernel, 1, nullptr, &global_item_size2, nullptr, 0, nullptr, &ndevent);
 	cl_int result = clFinish(helper->command_queue);
@@ -1876,7 +1876,7 @@ template<class T> void OpenCLgauss3x3_all(OpenCL_helper *helper, int iterations,
 
 	reset_constant_values(standardkernel, &b0, &b1, &c0, &c1, &c2);
         //standard gauss3x3
-	gauss3x3<float> (tmpSRC, tmpDST, W, H, c0, c1, c2, b0, b1);
+	//gauss3x3<float> (tmpSRC, tmpDST, W, H, c0, c1, c2, b0, b1);
 	     
         error_code = clEnqueueNDRangeKernel(helper->command_queue, standardkernel, 1, nullptr, &global_item_size2, nullptr, 0, nullptr, &ndevent0);
 	cl_int result = clFinish(helper->command_queue);
@@ -1897,7 +1897,7 @@ template<class T> void OpenCLgauss3x3_all(OpenCL_helper *helper, int iterations,
 
 	  reset_constant_values(mulkernel, &b0, &b1, &c0, &c1, &c2);
 
-     gauss3x3mult<float> (tmpDST, tmpSRC, W, H, c0, c1, c2, b0, b1, true);
+	  // gauss3x3mult<float> (tmpDST, tmpSRC, W, H, c0, c1, c2, b0, b1, true);
      
      error_code = clEnqueueNDRangeKernel(helper->command_queue, mulkernel, 1, nullptr, &global_item_size2, nullptr, 1, &ndevent, nullptr);
       cl_int result = clFinish(helper->command_queue);

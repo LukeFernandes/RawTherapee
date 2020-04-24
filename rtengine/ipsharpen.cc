@@ -228,7 +228,7 @@ void OpenCL_intp_2 (OpenCL_helper* helper, int W, int H, cl_mem blend_mem_obj, c
 		 error_code = clSetKernelArg(intp_kernel, 2, sizeof(cl_mem), (void *)&lum_mem_obj);
 		  error_code = clSetKernelArg(intp_kernel, 3, sizeof(cl_mem), (void *)&Xbuffer);
 		   error_code = clSetKernelArg(intp_kernel, 4, sizeof(cl_mem), (void *)&Ybuffer);
-		 error_code = clSetKernelArg(intp_kernel, 5, sizeof(cl_double), (void *)amount);
+		 error_code = clSetKernelArg(intp_kernel, 5, sizeof(cl_float), (void *)amount);
 
 		 error_code = clEnqueueNDRangeKernel(helper->command_queue, intp_kernel, 1, nullptr, &global_item_size, nullptr, 0, nullptr, nullptr); fflush(stderr);
 		 error_code = clEnqueueReadBuffer(helper->command_queue, lum_mem_obj, CL_TRUE, 0, W*H*sizeof(float), _read_storage, 0, nullptr, nullptr); fflush(stderr);	       
@@ -270,6 +270,9 @@ BENCHFUN
   JaggedArray<float> tmpI(W, H); //What are these for?
     JaggedArray<float> tmpI_cpu_compare(W, H);
       JaggedArray<float> blend_cpu_compare(W, H);
+
+    constexpr int sampleJ = 900;
+    constexpr int sampleI = 900;
     
     clock_t diff, diff2;
     clock_t start = clock();
@@ -308,7 +311,7 @@ BENCHFUN
       kernel_tag maxtag = maxkernel; //this is for keeping track of the different kernels we use
       
       mykernel = helper->reuse_or_create_kernel(maxkernel, "opencl_max.cl", "opencl_max"); //this kernel is just using the fmax intrinsic        
-      cl_mem lum_mem_obj, tmpI_mem_obj, blend_mem_obj, blur_mem_obj = nullptr;
+      cl_mem lum_mem_obj, tmpI_mem_obj, blend_mem_obj, blur_mem_obj, tmp_mem_obj = nullptr;
 
       lum_mem_obj = helper->reuse_or_create_buffer(&(helper->luminance_), W, H, CL_MEM_READ_ONLY);
       tmpI_mem_obj =  helper->reuse_or_create_buffer(&(helper->tmpI_), W, H, CL_MEM_READ_WRITE);
@@ -320,6 +323,7 @@ BENCHFUN
 
       //perform the fmax operation on GPU
     OpenCL_max(lum, tmpI, helper, W, H, lum_mem_obj, tmpI_mem_obj, global_item_size, read_storage);
+    free(lum);
     diff2 = clock() - start;
 
     int msec = diff * 1000 / CLOCKS_PER_SEC;
@@ -349,7 +353,7 @@ BENCHFUN
 	*************************************/
 	//if using CPU
         gaussianBlur(tmpI_cpu_compare, blur, W, H, sharpenParam.blurradius);
-	 
+	//if using gPu
 	OpenCLgaussianBlur(helper, 1, tmpI_mem_obj, blend_mem_obj, nullptr, tmpI, blend_cpu_compare, W, H, sharpenParam.blurradius);
 
 	fprintf(stderr, "\n Initial GB CPU 1550, 0 is %f\n", blur[1550][0]);
@@ -373,10 +377,7 @@ BENCHFUN
 		 free(blend1d);
 		 free(blur1d);
 
-		 //turn 2D array into jagged array
-	       OpenCL_helper::d1_array_to_JaggedArray(read_storage, &blend_cpu_compare, W, H);
-
-		 fprintf(stderr, "\nintp result from gPu is %f\n", blend_cpu_compare[1550][0]); fflush(stderr);
+	       fprintf(stderr, "\nintp result from gPu is %f\n", helper->debug_get_value_from_GPU_buffer(blur_mem_obj, sampleI, sampleJ, W, H)); fflush(stderr);
 
 		      
 		}
@@ -398,7 +399,7 @@ BENCHFUN
 	   		   
 
         }
-	  fprintf(stderr, "intp result from CPU is %f\n", blur[1550][0]); fflush(stderr);
+	  fprintf(stderr, "intp result from CPU is %f\n", blur[sampleI][sampleJ]); fflush(stderr);
 
 	  
     }
@@ -412,37 +413,29 @@ BENCHFUN
     #endif */
     //{
 
-    rtengine::JaggedArray<float> gputmpI(W, H);
-    rtengine::JaggedArray<float> gputmp(W, H);
-    rtengine::JaggedArray<float> gpuluminance(W, H);
-
-    cl_mem tmp_mem_obj = helper->reuse_or_create_buffer(&(helper->tmp_), W, H, CL_MEM_READ_WRITE);
+    tmp_mem_obj = helper->reuse_or_create_buffer(&(helper->tmp_), W, H, CL_MEM_READ_WRITE);
     
     float* tmp1d =  (float*) malloc(W*H*sizeof(float));
     OpenCL_helper::ArrayofArrays_to_1d_array(tmp1d, tmp, W, H);
     error_code = clEnqueueWriteBuffer(helper->command_queue, tmp_mem_obj, CL_TRUE, 0, W*H*sizeof(float), tmp1d, 0, NULL, NULL);
+    free(tmp1d);
 
-    constexpr int sampleJ = 900;
-    constexpr int sampleI = 900;
+    fprintf(stderr, "\n|||||||||||||\\n\n\n\nCheck: luminance CPU is %f\n", luminance[sampleI][sampleJ]);
+    fprintf(stderr, "Check: luminance gPu is %f\n", helper->debug_get_value_from_GPU_buffer(lum_mem_obj, sampleI, sampleJ, W, H));
 
-    fprintf(stderr, "Check: gpu tmpI (src) is %d,%d is %f \n", sampleI, sampleJ, tmpI[sampleI][sampleJ]); fflush(stderr);
-    fprintf(stderr, "Check: CPU tmpI (src) is %d,%d is %f \n", sampleI, sampleJ, tmpI_cpu_compare[sampleI][sampleJ]); fflush(stderr);
+    fprintf(stderr, "Check: gPu tmpI (src) is %d,%d is %f \n", sampleI, sampleJ, tmpI[sampleI][sampleJ]);
+    fprintf(stderr, "Check: gPu BUFFER tmpI (src) for %d,%d is %f \n", sampleI, sampleJ, helper->debug_get_value_from_GPU_buffer(tmpI_mem_obj, sampleI, sampleJ, W, H)); 
+    fprintf(stderr, "Check: CPU tmpI (src) is %d,%d is %f \n", sampleI, sampleJ, tmpI_cpu_compare[sampleI][sampleJ]);
+
+    fprintf(stderr, "Check: gPu BUFFER blend for %d,%d is %f \n", sampleI, sampleJ, helper->debug_get_value_from_GPU_buffer(blend_mem_obj, sampleI, sampleJ, W, H));
+    fprintf(stderr, "Check: CPU blend for %d,%d is %f \n", sampleI, sampleJ, blend[sampleI][sampleJ]);
+    
+       fprintf(stderr, "Check: gPu BUFFER Blur for %d,%d is %f \n", sampleI, sampleJ, helper->debug_get_value_from_GPU_buffer(blur_mem_obj, sampleI, sampleJ, W, H));
+       fprintf(stderr, "Check: CPU Blur for %d,%d is %f \n|||||||||||||\\n\n\n\n", sampleI, sampleJ, (*blurbuffer)[sampleI][sampleJ]);
+    
     fflush(stderr);
 
-    //copy
-     for (int i = 0; i < H; i++) {
-        for(int j = 0; j < W; j++) {
-	  gputmpI[i][j] = tmpI[i][j];
-	  gputmp[i][j] = tmp[i][j];
-	  gpuluminance[i][j] = luminance[i][j];
-        }
-    }
-       fprintf(stderr, "gpu tmpI (src) is %d,%d is %f \n", sampleI, sampleJ, gputmpI[sampleI][sampleJ]); fflush(stderr);
-       fprintf(stderr, "CPU tmpI (src) is %d,%d is %f \n", sampleI, sampleJ, tmpI[sampleI][sampleJ]); fflush(stderr);
-       fprintf(stderr, "gpu tmp (DST) is %d,%d is %f \n", sampleI, sampleJ, gputmp[sampleI][sampleJ]); fflush(stderr);
-       fprintf(stderr, "CPU tmp (DST) is %d,%d is %f \n", sampleI, sampleJ, tmp[sampleI][sampleJ]); fflush(stderr);
 
-     fprintf(stderr, "luminance %d,%d is %f \n", sampleI, sampleJ, luminance[sampleI][sampleJ]); fflush(stderr);
      /*CPU**************************/
      for (int k = 0; k < sharpenParam.deconviter; k++) {
         fprintf(stderr, "CPU %d,%d is %f \n", sampleI, sampleJ, tmp[sampleI][sampleJ]); fflush(stderr);
@@ -465,20 +458,18 @@ BENCHFUN
         } // end for
      /*****************************/
      fprintf(stderr, "luminance %d,%d is %f \n", sampleI, sampleJ, luminance[sampleI][sampleJ]); fflush(stderr);
-      fprintf(stderr, "gpu tmpI (src) is %d,%d is %f \n", sampleI, sampleJ, gputmpI[sampleI][sampleJ]); fflush(stderr);
-    
+     
 	      fprintf(stderr, "Checkpoint Cato \n"); fflush(stderr);
                 // apply gaussian blur and divide luminance by result of gaussian blur 
-	      OpenCLgaussianBlur(helper, sharpenParam.deconviter, tmpI_mem_obj, tmp_mem_obj, nullptr,  gputmpI, gputmp, W, H, sigma, false, nullptr, GAUSS_DIV, luminance, damping);
-	      fprintf(stderr, "gpu post iterations is %f \n ", gputmpI[sampleI][sampleJ]); fflush(stderr);
-	      fprintf(stderr, "gpu post iterations is %f \n ", tmpI[sampleI][sampleJ]); fflush(stderr);
+	      OpenCLgaussianBlur(helper, sharpenParam.deconviter, tmpI_mem_obj, tmp_mem_obj, nullptr,  tmpI, tmp, W, H, sigma, false, nullptr, GAUSS_DIV, luminance, damping);
+
 
 JaggedArray<float> lum_gPu(W, H);
  error_code = clEnqueueReadBuffer(helper->command_queue, tmpI_mem_obj, CL_TRUE, 0, W*H*sizeof(float), read_storage, 0, NULL, NULL);
-  fprintf(stderr, "\nBefore intp2: blend result CPU/gPu is %f\n", blend_jagged_array[sampleI][sampleJ]);
+ fprintf(stderr, "\nBefore intp2: blend result CPU/gPu is %f, %f\n", blend_jagged_array[sampleI][sampleJ],  helper->debug_get_value_from_GPU_buffer(blend_mem_obj, sampleI, sampleJ, W, H));
   fprintf(stderr, "\nBefore intp2: tmpI GPU buffer result is %f \n", read_storage[sampleI*W + sampleJ]);
-  fprintf(stderr, "\nBefore intp2: tmpI result CPU, gPu is %f, %f\n", tmpI_cpu_compare[sampleI][sampleJ], gputmpI[sampleI][sampleJ]);
-  fprintf(stderr, "\nBefore intp2: luminance result CPU/gPu is %f, %f\n", luminance[sampleI][sampleJ]);
+  fprintf(stderr, "\nBefore intp2: tmpI result CPU, gPu, gPu Buffer is %f, %f\n", tmpI_cpu_compare[sampleI][sampleJ], tmpI[sampleI][sampleJ],  helper->debug_get_value_from_GPU_buffer(tmpI_mem_obj, sampleI, sampleJ, W, H));
+  fprintf(stderr, "\nBefore intp2: luminance result CPU/gPu is %f, %f\n", luminance[sampleI][sampleJ],  helper->debug_get_value_from_GPU_buffer(lum_mem_obj, sampleI, sampleJ, W, H));
 
   helper->tmpI_ = helper->olddst_;
     int* Xindex = (int*)malloc( W  * H * sizeof(int));
@@ -499,15 +490,8 @@ JaggedArray<float> lum_gPu(W, H);
       
     OpenCL_intp_2(helper, W, H, blend_mem_obj, tmpI_mem_obj, lum_mem_obj,  index_X_mem_obj, index_Y_mem_obj, read_storage, &amount);
 
-for (int i = 0; i < H; i++)
-	       {
-	        for (int j = 0; j < W; j++)
-	         {
-		   lum_gPu[i][j] = read_storage[i*W + j];
-	         }
-             	}
- fprintf(stderr, "\ngPu luminance result after second intp is %f\n", lum_gPu[sampleI][sampleJ]);
- 
+ fprintf(stderr, "\ngPu luminance result after second intp is %f\n", helper->debug_get_value_from_GPU_buffer(lum_mem_obj, sampleI, sampleJ, W, H) );
+ fflush(stderr);
     
 #ifdef _OPENMP
         #pragma omp for
@@ -557,6 +541,7 @@ for (int i = 0; i < H; i++)
 	     fflush(stderr);
         }
 	// } // end parallel
+	free(read_storage);
     delete blurbuffer;
 }
 

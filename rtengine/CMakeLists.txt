@@ -1,5 +1,9 @@
-find_package(OpenCL REQUIRED)
-set( OpenCL_VERSION "1.2" )
+#find_package(OpenCL REQUIRED)
+#set( OpenCL_VERSION "1.2" )
+#IF (${OpenCL_FOUND})
+#  MESSAGE(STATUS "Found OpenCL.")
+#ENDIF  (${OpenCL_FOUND})
+
 
 include_directories(${EXTRA_INCDIR}
     ${EXPAT_INCLUDE_DIRS}
@@ -15,7 +19,6 @@ include_directories(${EXTRA_INCDIR}
     ${LENSFUN_INCLUDE_DIRS}
     ${RSVG_INCLUDE_DIRS}
     ${OpenCL_INCLUDE_DIRS}
-   # "C:/Progra~1/NVIDIAGPUComputingToolkit/CUDA/v10.0/include"
     )
 
 
@@ -32,7 +35,6 @@ link_directories("${PROJECT_SOURCE_DIR}/rtexif"
     ${LENSFUN_LIBRARY_DIRS}
     ${RSVG_LIBRARY_DIRS}
     ${OpenCL_LIBRARY}
-    #"C:/Progra~1/NVIDIAGPUComputingToolkit/CUDA/v10.0/lib/x64"
     )
     
 
@@ -193,7 +195,6 @@ target_link_libraries(rtengine rtexif
     ${LENSFUN_LIBRARIES}
     ${RSVG_LIBRARIES}
     ${OpenCL_LIBRARY}
-    #"C:/Progra~1/NVIDIAGPUComputingToolkit/CUDA/v10.0/lib/x64/OpenCL.lib"
     )
     
 

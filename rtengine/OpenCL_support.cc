@@ -35,6 +35,7 @@ OpenCL_helper::OpenCL_helper() {
      if ( CL_SUCCESS ==  clGetPlatformIDs(1, &platform_id, &ret_num_platforms) )
       {
 	fprintf(stderr, "Checkpoint general new1 reached\n");
+	OpenCl_available = true;
 	fflush(stderr);
 	if (CL_SUCCESS == clGetDeviceIDs(platform_id, CL_DEVICE_TYPE_GPU, 1, &device_id, &ret_num_devices))
 	  {
@@ -51,6 +52,11 @@ OpenCL_helper::OpenCL_helper() {
 	      program = NULL;
 	  }	
   }
+     else {
+       fprintf(stderr, "OpenCL not available on host platform.\n");
+       OpenCl_available = false;
+
+     }
       fprintf(stderr, "OpenCL helper class created. \n");
       fflush(stderr);
  }
@@ -76,9 +82,6 @@ OpenCL_helper::OpenCL_helper() {
             source_str = (char*)malloc(MAX_SOURCE_SIZE);
             source_size = fread( source_str, 1, MAX_SOURCE_SIZE, fp);
             fclose( fp );
-
-            fprintf(stderr, "Checkpoint SK1A reached. \n");
-            fflush(stderr);
 
 	    
             program = clCreateProgramWithSource(context, 1, (const char **)&source_str, (const size_t *)&source_size, &error_code);
@@ -178,6 +181,16 @@ void OpenCL_helper::d1_array_to_JaggedArray(float* d1_array, rtengine::JaggedArr
 		   (*jaggedarray)[i][j] = d1_array[i*W + j];
 	         }
             	}
+}
+
+    float OpenCL_helper::debug_get_value_from_GPU_buffer(cl_mem buffer, int X, int Y, int W, int H) {
+
+      float* temp_store = (float*)malloc(W*H*sizeof(float));
+      int error_code = 0;
+      error_code = clEnqueueReadBuffer(command_queue, buffer, CL_TRUE, 0, W*H*sizeof(float), temp_store, 0, nullptr, nullptr);
+      float ret_value = temp_store[W*Y + X];
+      free(temp_store);
+      return ret_value;
 
 }
    

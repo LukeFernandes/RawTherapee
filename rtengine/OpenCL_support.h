@@ -78,6 +78,7 @@ typedef struct {
    cl_mem div_ = nullptr;
    cl_mem dampfac_ = nullptr;
    cl_mem blend2_ = nullptr;
+   bool OpenCl_available = true;
 
    
     std::vector<kernel_with_tag> kernels;
@@ -89,5 +90,6 @@ typedef struct {
    static void JaggedArray_to_1d_array(float* d1_array, rtengine::JaggedArray<float> *jaggedarray, int W, int H);
    static void ArrayofArrays_to_1d_array(float* d1_array, float** d2_array, int W, int H);
    static void d1_array_to_JaggedArray(float* d1_array, rtengine::JaggedArray<float> *jaggedarray, int W, int H);
+   float debug_get_value_from_GPU_buffer(cl_mem buffer, int X, int Y, int W, int H);
   };
 #endif
