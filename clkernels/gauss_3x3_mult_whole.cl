@@ -70,7 +70,7 @@ int index_equiv = currentY * W + currentX;
 					     );
 
   if ((currentX == checkintX) && (currentY == checkintY)) {
-    /* printf("Topborder check is %d \n", topborder_check);
+    printf("Topborder check is %d \n", topborder_check);
     printf("Bottomborder check is %d \n", bottomborder_check);
     printf("Leftborder check is %d \n", leftborder_check);
     printf("Rightborder check is %d \n", rightborder_check);
@@ -80,15 +80,18 @@ int index_equiv = currentY * W + currentX;
     printf("Bottomleftcorner check is %d \n", bottomleftcorner_check);
     printf("Bottomrightcorner check is %d \n", bottomrightcorner_check);
 
-    printf("Innerpixels check is %d \n", innerpixels_check); */
+    printf("Innerpixels check is %d \n", innerpixels_check); 
 
-    printf("MULT gPu src 900, 900 is %f \n", oldsrc[index_equiv]);;
+    printf("MULT gPu src 900, 900 is %f \n", oldsrc[index_equiv]);
     printf("MULT gPu dst 900, 900 for multiplication value is %f \n", olddst[index_equiv]);
     printf("MULT gPu 900, 900 intermediate result is %f \n", temp);
   }
   
   olddst[index_equiv] = olddst[index_equiv] * temp;
-    if ((currentX == checkintX) && (currentY == checkintY)) printf("MULT gPu final result 900, 900 is %f \n", olddst[index_equiv]);
+  if ((currentX == checkintX) && (currentY == checkintY)) {
+    printf("MULT gPu final result 900, 900 is %f \n", olddst[index_equiv]);
+  }
+    
 		  
 
 }

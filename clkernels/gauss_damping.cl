@@ -1,12 +1,15 @@
 #pragma OPENCL EXTENSION cl_khr_fp64 : enable
 #pragma OPENCL EXTENSION cl_amd_printf : enable
 
-void gauss_damping( __global  float *aI, __global const float *aO,  const int W, const int H, const float dampinFac) {
+__kernel void gauss_damping( __global float *aI, __global const float *aO,  const int W, const int H, const float dampinFac) {
+// Get the index of the current element to be processed
+int index = get_global_id(0);
+}
 
 /* Transposing the (non SSE2) code for damping */
 
 // Get the index of the current element to be processed
-int index = get_global_id(0);
+/*int index = get_global_id(0);
 
 float I = aI(index);
 float O = aO(index);

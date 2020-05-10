@@ -1696,7 +1696,7 @@ template<class T> void OpenCLgauss3x3_all(OpenCL_helper *helper, int iterations,
 {
  
     //turn array of arrays (the pointer to pointer(s)) into 2D array, excluding the outer rows and columns for newsrc,but  keeping them for oldsrc. Also creating dst for writing.
-  float* div;
+  float* div = nullptr;
   if (divBuffer != nullptr)
       div = (float*) malloc( W * H * sizeof(float) ); //allocate the memory for div
     
@@ -1712,7 +1712,7 @@ template<class T> void OpenCLgauss3x3_all(OpenCL_helper *helper, int iterations,
 	    {
 	      oldsrc[i*W + j] = src[i][j];
 	      olddst[i*W + j] = dst[i][j];
-	      if (divBuffer != nullptr) div[i*W + j] = divBuffer[i][j];
+	      if (div != nullptr) div[i*W + j] = divBuffer[i][j];
 	      Xindex[i*W + j] = j;
 	      Yindex[i*W + j] = i;
 	    }
@@ -1805,6 +1805,7 @@ template<class T> void OpenCLgauss3x3_all(OpenCL_helper *helper, int iterations,
 
     rtengine::JaggedArray<float> tmpSRC(W, H);
     rtengine::JaggedArray<float> tmpDST(W, H);
+
 
     for (int i = 0; i < H; i++) {
         for(int j = 0; j < W; j++) {
@@ -1909,27 +1910,28 @@ template<class T> void OpenCLgauss3x3_all(OpenCL_helper *helper, int iterations,
 
     error_code = clEnqueueReadBuffer(helper->command_queue, oldsrc_mem_obj, CL_FALSE, 0, W*H*sizeof(float), oldsrc, 0, nullptr, nullptr);
     error_code = clEnqueueReadBuffer(helper->command_queue, olddst_mem_obj, CL_FALSE, 0, W*H*sizeof(float), olddst, 0, nullptr, nullptr);
-
     
     diff = clock() - start;
      double msec = (double)diff * 1000.0 / (double)CLOCKS_PER_SEC;
      fprintf(stderr, "OpenCL took %f to calculate", msec);
      fflush(stderr);
 
-     free(Xindex); free(Yindex); 
+     free(Xindex); free(Yindex);
 
    //copy the memory back to the inner bit of the destination 2D array
+     // memcpy(src, oldsrc, W*H*sizeof(float));
+     // memcpy(dst, olddst, W*H*sizeof(float));
       
-    for (int i = 0; i < H; i++)
+     /*for (int i = 0; i < H; i++)
 	       {
 	        for (int j = 0; j < W; j++)
 	         {
 		   src[i][j] = oldsrc[i*W + j];
 		   dst[i][j] = olddst[i*W + j]; 
 	         }
-             	}
+		 } */
 
- free(intermediate); if (divBuffer != nullptr) free(div); free(olddst); free(oldsrc); free(b_and_c);
+ free(intermediate); if (div != nullptr) free(div); free(olddst); free(oldsrc); free(b_and_c);
 }
 //my original Nov 2019: template<class T> void gaussianBlurImpl(OpenCL_helper* helper, int iterations, T** src, T** dst, const int W, const int H, const double sigma, T *buffer = nullptr, eGaussType gausstype = GAUSS_STANDARD, T** buffer2 = nullptr, float damping = 0.0f)
   template<class T> void gaussianBlurImpl(int iterations, T** src, T** dst, const int W, const int H, const double sigma, bool useBoxBlur, T *buffer = nullptr, eGaussType gausstype = GAUSS_STANDARD, T** buffer2 = nullptr, float damping = 0.0f, OpenCL_helper* helper = nullptr, cl_mem src_clmem = nullptr, cl_mem dst_clmem = nullptr, cl_mem div_clmem = nullptr)

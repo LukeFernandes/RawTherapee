@@ -467,7 +467,7 @@ BENCHFUN
 	        error_code = clEnqueueReadBuffer(helper->command_queue, tmp_mem_obj, CL_TRUE, 0, W*H*sizeof(float), temp_store_, 0, nullptr, nullptr);
 	      OpenCL_helper::d1_array_to_2d_array(temp_store_, tmp, W, H);
 	       error_code = clEnqueueReadBuffer(helper->command_queue, tmpI_mem_obj, CL_TRUE, 0, W*H*sizeof(float), temp_store_, 0, nullptr, nullptr);
-	       OpenCL_helper::d1_array_to_JaggedArray(temp_store_, tmpI, W, H);
+	       OpenCL_helper::d1_array_to_JaggedArray(temp_store_, &tmpI, W, H);
 	        cl_int result = clFinish(helper->command_queue);
 
 JaggedArray<float> lum_gPu(W, H);
@@ -581,6 +581,7 @@ void ImProcFunctions::sharpening (LabImage* lab, const procparams::SharpeningPar
     JaggedArray<float> b2(W, H);
 
     if (sharpenParam.method == "rld") {
+      lab->
         deconvsharpening (lab->L, b2, blend, lab->W, lab->H, sharpenParam, scale);
         return;
     }

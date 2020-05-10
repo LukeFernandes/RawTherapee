@@ -44,7 +44,7 @@ int index_equiv = currentY * W + currentX;
 
 /**************************************/
 
-   double temp = 2.0;
+   // temp = 2.0;
   
   /*Only one of the right hand terms will be multiplied by 1 rather than 0 - i.e. all of these integer checks but one will be zero.*/
 
@@ -59,7 +59,7 @@ int index_equiv = currentY * W + currentX;
   dst[H - 1][W - 1] *= src[H - 1][W - 1]; */
 
 
-  temp =
+ float tempa =
 
     (1 - ((1 - topleftcorner_check) * (1 - toprightcorner_check) * (1 - bottomborder_check) * (1 - bottomrightcorner_check))) * oldsrc[index_equiv]
   + 
@@ -67,19 +67,26 @@ int index_equiv = currentY * W + currentX;
   +
     leftborder_check * ( b1 * ( oldsrc[clamp(index_equiv - W, 0, H*W)] + oldsrc[clamp(index_equiv + W, 0, H*W)] ) + b0 * oldsrc[index_equiv] )
   +
-    rightborder_check * ( b1 * ( oldsrc[clamp(W*(currentY - 1) + (W - 1), 0, H*W)] + oldsrc[clamp(W*(currentY + 1) + (W - 1), 0, H*W)] ) + b0 * oldsrc[clamp(W*currentY + (W - 1), 0, H*W)] )
+   rightborder_check * ( b1 * ( oldsrc[clamp(index_equiv - 1, 0, H*W)] + oldsrc[clamp(index_equiv + 1, 0, H*W)] ) + b0 * oldsrc[clamp(index_equiv, 0, H*W)] )
   +
-    bottomborder_check * ( b1 * ( oldsrc[clamp(W*(H-1) + (currentX - 1), 0, H*W)] + oldsrc[clamp(W*(H-1) + (currentX + 1), 0, H*W)] ) + b0 * oldsrc[clamp(W*(H-1) + currentX, 0, H*W)] )
+   bottomborder_check * ( b1 * ( oldsrc[clamp(index_equiv - 1, 0, H*W)] + oldsrc[clamp(index_equiv + 1, 0, H*W)] ) + b0 * oldsrc[clamp(index_equiv, 0, H*W)] );
 
-  +
+float temp = tempa + 
 
     innerpixels_check * ( c2 * (oldsrc[clamp(index_equiv - W - 1, 0, H*W)] + oldsrc[clamp(index_equiv - W + 1, 0, H*W)] + oldsrc[clamp(index_equiv + W - 1, 0, H*W)] + oldsrc[clamp(index_equiv + W + 1, 0, H*W)])
 			  + c1 * (oldsrc[clamp(index_equiv - W, 0, H*W)] + oldsrc[clamp(index_equiv - 1, 0, H*W)] + oldsrc[clamp(index_equiv + 1, 0, H*W)] + oldsrc[clamp(index_equiv + W, 0, H*W)])
 					     + c0 * oldsrc[index_equiv]
 					     );
 
+/* if (innerpixels_check == 1) {
+   temp = innerpixels_check * ( c2 * (oldsrc[clamp(index_equiv - W - 1, 0, H*W)] + oldsrc[clamp(index_equiv - W + 1, 0, H*W)] + oldsrc[clamp(index_equiv + W - 1, 0, H*W)] + oldsrc[clamp(index_equiv + W + 1, 0, H*W)])
+			  + c1 * (oldsrc[clamp(index_equiv - W, 0, H*W)] + oldsrc[clamp(index_equiv - 1, 0, H*W)] + oldsrc[clamp(index_equiv + 1, 0, H*W)] + oldsrc[clamp(index_equiv + W, 0, H*W)])
+					     + c0 * oldsrc[index_equiv]
+					     ); } */
+
   if ((currentX == checkintX) && (currentY == checkintY)) {
-    /*printf("DIV Topborder check is %d \n", topborder_check);
+
+    /*  printf("DIV Topborder check is %d \n", topborder_check);
     printf("DIV Bottomborder check is %d \n", bottomborder_check);
     printf("DIV Leftborder check is %d \n", leftborder_check);
     printf("DIV Rightborder check is %d \n", rightborder_check);
@@ -87,11 +94,13 @@ int index_equiv = currentY * W + currentX;
     printf("DIV Topleftcorner check is %d \n", topleftcorner_check);
     printf("DIV Toprightcorner check is %d \n", toprightcorner_check);
     printf("DIV Bottomleftcorner check is %d \n", bottomleftcorner_check);
-    printf("DIV Bottomrightcorner check is %d \n", bottomrightcorner_check); */
+    printf("DIV Bottomrightcorner check is %d \n", bottomrightcorner_check); 
 
-    printf("DIV Innerpixels check is %d \n", innerpixels_check);
+    printf("DIV Innerpixels check is %d \n", innerpixels_check); */
+
 
     printf("DIV gPu src 900, 900 is %f \n", oldsrc[index_equiv]);
+    printf("H is %d, W is %d", H, W);
     printf("c2 value is %f", c2);
   }
  
@@ -100,8 +109,9 @@ int index_equiv = currentY * W + currentX;
   if ((currentX == checkintX) && (currentY == checkintY)) {
     printf("DIV gPu src 900, 900 intermediate result is %f \n", temp);
     printf("DIV gPu final result 900, 900 is %f \n", olddst[index_equiv]);
+      printf("DivBuffer value 900, 900 is %f \n", div[index_equiv]);
   }
-		  
+   
 
 }
 

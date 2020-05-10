@@ -206,7 +206,6 @@ option(TRACE_MYRWMUTEX "Trace custom R/W Mutex (Debug builds only); redirecting 
 option(AUTO_GDK_FLUSH "Use gdk_flush on all gdk_thread_leave other than the GUI thread; set it ON if you experience X Server warning/errors" OFF)
 # option(TARGET32BIT "Build for 32-bit architecture when ON, otherwise 64-bit.
 # Default is OFF" OFF)
->>>>>>> dev
 
 option(ENABLE_TCMALLOC "Use the tcmalloc library if available" OFF)
 set(TCMALLOC_LIB_DIR

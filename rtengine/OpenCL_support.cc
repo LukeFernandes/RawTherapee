@@ -171,19 +171,31 @@ void OpenCL_helper::ArrayofArrays_to_1d_array(float* d1_array, float** d2_array,
 
 }
 
-void OpenCL_helper::d1_array_to_JaggedArray(float* d1_array, rtengine::JaggedArray<float> *jaggedarray, int W, int H)
+void OpenCL_helper::d1_array_to_JaggedArray(float* d1_array, rtengine::JaggedArray<float>& jaggedarray, int W, int H)
 {
   
     for (int i = 0; i < H; i++)
 	       {
 	        for (int j = 0; j < W; j++)
 	         {
-		   (*jaggedarray)[i][j] = d1_array[i*W + j];
+		   jaggedarray[i][j] = d1_array[i*W + j];
 	         }
             	}
 }
 
-    float OpenCL_helper::debug_get_value_from_GPU_buffer(cl_mem buffer, int X, int Y, int W, int H) {
+void OpenCL_helper::d1_array_to_2d_array(float* d1_array, float** d2_array, int W, int H)
+{
+ for (int i = 0; i < H; i++)
+	       {
+	        for (int j = 0; j < W; j++)
+	         {
+		   d2_array[i][j] = d1_array[i*W + j];
+	         }
+            	}
+
+}
+
+float OpenCL_helper::debug_get_value_from_GPU_buffer(cl_mem buffer, int X, int Y, int W, int H) {
 
       float* temp_store = (float*)malloc(W*H*sizeof(float));
       int error_code = 0;
