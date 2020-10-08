@@ -161,6 +161,7 @@ void ParamsEdited::set(bool v)
     sharpening.halocontrol        = v;
     sharpening.halocontrol_amount = v;
     sharpening.method         = v;
+    sharpening.procMethod         = v;
     sharpening.deconvamount   = v;
     sharpening.deconvradius   = v;
     sharpening.deconviter     = v;
@@ -778,6 +779,7 @@ void ParamsEdited::initFrom(const std::vector<rtengine::procparams::ProcParams>&
         sharpening.halocontrol = sharpening.halocontrol && p.sharpening.halocontrol == other.sharpening.halocontrol;
         sharpening.halocontrol_amount = sharpening.halocontrol_amount && p.sharpening.halocontrol_amount == other.sharpening.halocontrol_amount;
         sharpening.method = sharpening.method && p.sharpening.method == other.sharpening.method;
+	sharpening.procMethod = sharpening.procMethod && p.sharpening.procMethod == other.sharpening.procMethod;
         sharpening.deconvamount = sharpening.deconvamount && p.sharpening.deconvamount == other.sharpening.deconvamount;
         sharpening.deconvradius = sharpening.deconvradius && p.sharpening.deconvradius == other.sharpening.deconvradius;
         sharpening.deconviter = sharpening.deconviter && p.sharpening.deconviter == other.sharpening.deconviter;
@@ -1770,6 +1772,10 @@ void ParamsEdited::combine(rtengine::procparams::ProcParams& toEdit, const rteng
 
     if (sharpening.method) {
         toEdit.sharpening.method = mods.sharpening.method;
+    }
+
+    if (sharpening.procMethod) {
+        toEdit.sharpening.procMethod = mods.sharpening.procMethod;
     }
 
     if (sharpening.deconvamount) {

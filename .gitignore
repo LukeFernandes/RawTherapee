@@ -20,6 +20,8 @@ Debug
 RelWithDebInfo
 MinSizeRel
 Release
+.ccls-cache
+.clangd
 
 rtdata/rawtherapee.desktop
 rtengine/librtengine.a

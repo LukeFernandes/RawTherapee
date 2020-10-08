@@ -508,6 +508,7 @@ struct SharpeningParams {
     bool           halocontrol;
     int            halocontrol_amount;
     Glib::ustring  method;
+    Glib::ustring  procMethod;
     int            deconvamount;
     double         deconvradius;
     int            deconviter;

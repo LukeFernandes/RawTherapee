@@ -50,6 +50,17 @@ Sharpening::Sharpening () : FoldableToolPanel(this, "sharpening", M("TP_SHARPENI
     hb->pack_start(*method);
     pack_start (*hb);
 
+    Gtk::Label* mcg = Gtk::manage (new Gtk::Label (M("TP_PROCESSOR_METHOD") + ":"));
+    mcg->show ();
+    procMethod = Gtk::manage (new MyComboBoxText ());
+    procMethod->append (M("CPU"));
+    procMethod->append (M("OpenCl"));
+    procMethod->append (M("Debug"));
+    procMethod->show ();
+    hb->pack_start(*ml, Gtk::PACK_SHRINK, 5);
+    hb->pack_start(*procMethod);
+    pack_start (*hb);
+
     rld = new Gtk::VBox ();
     dradius = Gtk::manage (new Adjuster (M("TP_SHARPENING_EDRADIUS"), 0.4, 2.5, 0.01, 0.75));
     damount = Gtk::manage (new Adjuster (M("TP_SHARPENING_RLD_AMOUNT"), 0.0, 100, 1, 100));
@@ -139,6 +150,7 @@ Sharpening::Sharpening () : FoldableToolPanel(this, "sharpening", M("TP_SHARPENI
     eonlyConn = edgesonly->signal_toggled().connect( sigc::mem_fun(*this, &Sharpening::edgesonly_toggled) );
     hcConn    = halocontrol->signal_toggled().connect( sigc::mem_fun(*this, &Sharpening::halocontrol_toggled) );
     method->signal_changed().connect( sigc::mem_fun(*this, &Sharpening::method_changed) );
+    procMethod->signal_changed().connect( sigc::mem_fun(*this, &Sharpening::procMethod_changed) );
 }
 
 Sharpening::~Sharpening ()
@@ -224,6 +236,17 @@ void Sharpening::read (const ProcParams* pp, const ParamsEdited* pedited)
         method->set_active (1);
     }
 
+    if (pedited && !pedited->sharpening.procMethod) {
+       procMethod->set_active (0);
+    } else if (pp->sharpening.procMethod == "CPU") {
+       procMethod->set_active (0);
+    } else if (pp->sharpening.procMethod == "GPU") {
+       procMethod->set_active (1);
+    }
+      else if (pp->sharpening.procMethod == "Debug") {
+       procMethod->set_active (2);
+    }
+
     enableListener ();
 }
 
@@ -252,6 +275,15 @@ void Sharpening::write (ProcParams* pp, ParamsEdited* pedited)
         pp->sharpening.method = "rld";
     }
 
+    if (procMethod->get_active_row_number() == 0) {
+        pp->sharpening.procMethod = "CPU";
+    } else if (procMethod->get_active_row_number() == 1) {
+        pp->sharpening.procMethod = "GPU";
+    }
+      else if (procMethod->get_active_row_number() == 2) {
+        pp->sharpening.procMethod = "Debug";
+    }
+
     if (pedited) {
         pedited->sharpening.contrast        = contrast->getEditedState ();
         pedited->sharpening.blurradius      = blur->getEditedState ();
@@ -266,6 +298,7 @@ void Sharpening::write (ProcParams* pp, ParamsEdited* pedited)
         pedited->sharpening.deconviter      = diter->getEditedState ();
         pedited->sharpening.deconvdamping   = ddamping->getEditedState ();
         pedited->sharpening.method          =  method->get_active_row_number() != 2;
+	pedited->sharpening.procMethod      =  procMethod->get_active_row_number() != 3;
         pedited->sharpening.halocontrol     =  !halocontrol->get_inconsistent();
         pedited->sharpening.edgesonly       =  !edgesonly->get_inconsistent();
         pedited->sharpening.enabled         =  !get_inconsistent();
@@ -481,6 +514,15 @@ void Sharpening::method_changed ()
 
     if (listener && (multiImage || getEnabled()) ) {
         listener->panelChanged (EvShrMethod, method->get_active_text ());
+    }
+
+}
+
+void Sharpening::procMethod_changed ()
+{
+
+    if (listener && (multiImage || getEnabled()) ) {
+        listener->panelChanged (EvShrprocMethod, procMethod->get_active_text ());
     }
 
 }

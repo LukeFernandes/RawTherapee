@@ -61,6 +61,8 @@ protected:
 
     rtengine::ProcEvent EvSharpenContrast;
     rtengine::ProcEvent EvSharpenBlur;
+
+    MyComboBoxText* procMethod;
 public:
 
     Sharpening ();
@@ -76,6 +78,7 @@ public:
     void edgesonly_toggled ();
     void halocontrol_toggled ();
     void method_changed ();
+    void procMethod_changed ();
 
     void adjusterChanged(ThresholdAdjuster* a, double newBottom, double newTop) override;
     void adjusterChanged(ThresholdAdjuster* a, double newBottomLeft, double newTopLeft, double newBottomRight, double newTopRight) override;

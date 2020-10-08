@@ -204,6 +204,7 @@ struct SharpeningParamsEdited {
     bool halocontrol_amount;
 
     bool method;
+    bool procMethod;
     bool deconvamount;
     bool deconvradius;
     bool deconviter;

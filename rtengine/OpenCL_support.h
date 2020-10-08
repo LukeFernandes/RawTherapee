@@ -1,3 +1,4 @@
+
 /*
  *  This file is part of RawTherapee.
  *
@@ -19,6 +20,8 @@
 
 #include <CL/cl.h>
 #include <vector>
+#include <map>
+#include <iostream>
 #include "jaggedarray.h"
 
 #include "stdio.h"
@@ -52,18 +55,27 @@ typedef struct {
 
 typedef struct {
   cl_mem mem;
-  buffer_tag tag;
-} buffer_with_tag;
-  
+  int W; //we need W and H stored here as we need to chec
+  int H;
+} bufferWithDims;
+
+typedef enum {
+	      true_,
+	      false_,
+	      debug_
+} OpenCL_use;
   
 
- class OpenCL_helper{ 
+ class OpenCL_helper{
+  private:
+    static int OpenCL_available_;
   public:
     cl_context context;
     cl_command_queue command_queue;
     cl_program program;
     cl_device_id device_id = nullptr;
-    cl_mem luminance_ = nullptr;
+   /* string list: luminance, tmpI, tmp, blur, blend, oldsrc, olddst, X, Y, indexX, indexY. */
+   /*  cl_mem luminance_ = nullptr;
     cl_mem tmpI_ = nullptr;
    cl_mem tmp_ = nullptr;
     cl_mem blur_ = nullptr;
@@ -77,20 +89,25 @@ typedef struct {
    cl_mem indexY_ = nullptr;
    cl_mem div_ = nullptr;
    cl_mem dampfac_ = nullptr;
-   cl_mem blend2_ = nullptr;
-   bool OpenCl_available = true;
+   cl_mem blend2_ = nullptr; */
 
    
-    std::vector<kernel_with_tag> kernels;
-    std::vector<buffer_with_tag> buffers;
+   std::map<std::string, cl_kernel> kernels;
+   std::map<std::string, bufferWithDims> buffer_set;
    OpenCL_helper();
-   cl_kernel* setup_kernel(const char* kernel_filename, const char *kernel_name, kernel_tag flag = (kernel_tag)0);
-   cl_kernel reuse_or_create_kernel(kernel_tag desired_tag, const char *kernel_filename, const char *kernel_name);
-   cl_mem reuse_or_create_buffer(cl_mem *buffer_slot, int W, int H, cl_mem_flags flag, float* optionaldata = nullptr); 
+   cl_kernel setup_kernel(const char* kernel_filename, const char *kernel_name);
+   void getLocalWorkGroupSize(size_t* worksize);
+   cl_kernel reuse_or_create_kernel(std::string string, const char *kernel_filename, const char *kernel_name);
+   cl_mem reuse_or_create_buffer( std::string string, int W, int H, cl_mem_flags flag, float* optionaldata = nullptr); 
    static void JaggedArray_to_1d_array(float* d1_array, rtengine::JaggedArray<float> *jaggedarray, int W, int H);
    static void ArrayofArrays_to_1d_array(float* d1_array, float** d2_array, int W, int H);
    static void d1_array_to_JaggedArray(float* d1_array, rtengine::JaggedArray<float>& jaggedarray, int W, int H);
-    static void d1_array_to_2d_array(float* d1_array, float** d2_array, int W, int H);
+   static void d1_array_to_2d_array(float* d1_array, float** d2_array, int W, int H);
+   void gPu_buffer_to_CPU_jagged_array(cl_mem gpuBuffer, rtengine::JaggedArray<float>& jaggedarray, int W, int H);
+   void CPU_jagged_array_to_gPu_buffer(rtengine::JaggedArray<float>& jaggedarray, cl_mem gpuBuffer, int W, int H);
    float debug_get_value_from_GPU_buffer(cl_mem buffer, int X, int Y, int W, int H);
+   static bool OpenCL_available();
+   static OpenCL_use OpenCL_usable(OpenCL_use user_selection);
   };
 #endif
+

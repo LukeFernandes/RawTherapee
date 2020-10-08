@@ -1119,6 +1119,7 @@ SharpeningParams::SharpeningParams() :
     halocontrol(false),
     halocontrol_amount(85),
     method("usm"),
+    procMethod("CPU"),
     deconvamount(100),
     deconvradius(0.75),
     deconviter(30),
@@ -1143,6 +1144,7 @@ bool SharpeningParams::operator ==(const SharpeningParams& other) const
         && halocontrol == other.halocontrol
         && halocontrol_amount == other.halocontrol_amount
         && method == other.method
+        && procMethod == other.procMethod
         && deconvamount == other.deconvamount
         && deconvradius == other.deconvradius
         && deconviter == other.deconviter
@@ -3207,6 +3209,7 @@ int ProcParams::save(const Glib::ustring& fname, const Glib::ustring& fname2, bo
         saveToKeyfile(!pedited || pedited->sharpening.enabled, "Sharpening", "Enabled", sharpening.enabled, keyFile);
         saveToKeyfile(!pedited || pedited->sharpening.contrast, "Sharpening", "Contrast", sharpening.contrast, keyFile);
         saveToKeyfile(!pedited || pedited->sharpening.method, "Sharpening", "Method", sharpening.method, keyFile);
+	saveToKeyfile(!pedited || pedited->sharpening.method, "Sharpening", "ProcMethod", sharpening.method, keyFile);
         saveToKeyfile(!pedited || pedited->sharpening.radius, "Sharpening", "Radius", sharpening.radius, keyFile);
         saveToKeyfile(!pedited || pedited->sharpening.blurradius, "Sharpening", "BlurRadius", sharpening.blurradius, keyFile);
         saveToKeyfile(!pedited || pedited->sharpening.amount, "Sharpening", "Amount", sharpening.amount, keyFile);
