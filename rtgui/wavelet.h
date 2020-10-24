@@ -14,7 +14,7 @@
  *  You should have received a copy of the GNU General Public License
  *  along with RawTherapee.  If not, see <https://www.gnu.org/licenses/>.
  *
- *  2014 Jacques Desmis <jdesmis@gmail.com>
+ *  2014 2020 Jacques Desmis <jdesmis@gmail.com>
  */
 
 #pragma once
@@ -33,6 +33,7 @@ class CurveEditorGroup;
 class DiagonalCurveEditor;
 class EditDataProvider;
 class FlatCurveEditor;
+class LabGrid;
 
 class Wavelet final :
     public ToolParamBlock,
@@ -46,7 +47,6 @@ class Wavelet final :
 public:
     Wavelet();
     ~Wavelet() override;
-
     bool wavComputed_();
     void adjusterChanged(Adjuster* a, double newval) override;
     void autoOpenCurve() override;
@@ -93,8 +93,37 @@ private:
     rtengine::ProcEvent EvWavresblur;
     rtengine::ProcEvent EvWavresblurc;
     rtengine::ProcEvent EvWavedgeffect;
+    rtengine::ProcEvent EvWavsigmafin;
+    rtengine::ProcEvent EvWavsigmaton;
+    rtengine::ProcEvent EvWavsigmacol;
+    rtengine::ProcEvent EvWavsigmadir;
+    rtengine::ProcEvent EvWavLabGridValue;
+    rtengine::ProcEvent EvWavrangeab;
+    rtengine::ProcEvent EvWavprotab;
+    rtengine::ProcEvent EvWavlevelshc;
+    rtengine::ProcEvent EvWavcomplexmet;
+    rtengine::ProcEvent EvWavsigm;
+    rtengine::ProcEvent EvWavdenoise;
+    rtengine::ProcEvent EvWavdenmethod;
+    rtengine::ProcEvent EvWavmixmethod;
+    rtengine::ProcEvent EvWavquamethod;
+    rtengine::ProcEvent EvWavlevden;
+    rtengine::ProcEvent EvWavdenoiseh;
+    rtengine::ProcEvent EvWavstrend;
+    rtengine::ProcEvent EvWavdetend;
+    rtengine::ProcEvent EvWavlevdenois;
+    rtengine::ProcEvent EvWavslimethod;
+    rtengine::ProcEvent EvWavthrend;
+    rtengine::ProcEvent EvWavguid;
+    rtengine::ProcEvent EvWavhue;
+    rtengine::ProcEvent EvWavthrden;
+    rtengine::ProcEvent EvWavlevelsigm;
+    rtengine::ProcEvent EvWavlimden;
+
+    LabGrid *labgrid;
 
     void foldAllButMe(GdkEventButton* event, MyExpander *expander);
+    void setListener(ToolPanelListener *tpl) override;
 
     void colorForValue(double valX, double valY, enum ColorCaller::ElemType elemType, int callerId, ColorCaller* caller) override;
     void BAmethodChanged();
@@ -109,6 +138,11 @@ private:
     void LmethodChanged();
     void MedgreinfChanged();
     void TMmethodChanged();
+    void complexmethodChanged();
+    void denmethodChanged();
+    void mixmethodChanged();
+    void quamethodChanged();
+    void slimethodChanged();
     void TilesmethodChanged();
     void avoidToggled();
     void showmaskToggled ();
@@ -129,7 +163,10 @@ private:
     void updatewavLabel ();
     void wavChanged(double nlevel) override;
     void ushamethodChanged();
-
+    void updateGUI();
+    void updateGUImaxlev();
+    void convertParamToNormal();
+    void updateGUIToMode(int mode);
     void HSmethodUpdateUI();
     void CHmethodUpdateUI();
 //  void CHSLmethodChangedUI();
@@ -153,6 +190,8 @@ private:
     void enableToggled(MyExpander* expander);
 
     CurveEditorGroup* const curveEditorG;
+    CurveEditorGroup* const curveEditorC;
+    FlatCurveEditor* opacityShapeSH;
 
     CurveEditorGroup* const CCWcurveEditorG;
     CurveEditorGroup* const curveEditorbl;
@@ -165,6 +204,14 @@ private:
     FlatCurveEditor* opacityShapeRG;
     CurveEditorGroup* const opacityCurveEditorG;
     FlatCurveEditor* opacityShapeBY;
+    CurveEditorGroup* const CurveEditorwavnoise;
+    FlatCurveEditor* wavdenoise;
+    CurveEditorGroup* const CurveEditorwavnoiseh;
+    FlatCurveEditor* wavdenoiseh;
+    CurveEditorGroup* const CurveEditorwavguid;
+    FlatCurveEditor* wavguidf;
+    CurveEditorGroup* const CurveEditorwavhue;
+    FlatCurveEditor* wavhue;
     CurveEditorGroup* const opacityCurveEditorW;
     CurveEditorGroup* const opacityCurveEditorWL;
     FlatCurveEditor* opacityShape;
@@ -218,7 +265,13 @@ private:
     Adjuster* const strength;
     Adjuster* const balance;
     Adjuster* const iter;
-    
+    Adjuster* const sigmafin;
+    Adjuster* const sigmaton;
+    Adjuster* const sigmacol;
+    Adjuster* const sigmadir;
+    Adjuster* const rangeab;
+    Adjuster* const protab;
+
     Adjuster* greenlow;
     Adjuster* bluelow;
     Adjuster* greenmed;
@@ -237,7 +290,13 @@ private:
     ThresholdAdjuster* const level1noise;
     ThresholdAdjuster* const level2noise;
     ThresholdAdjuster* const level3noise;
+    ThresholdAdjuster* const leveldenoise;
+    ThresholdAdjuster* const levelsigm;
 
+    Adjuster* const sigm;
+    Adjuster* const levden;
+    Adjuster* const thrden;
+    Adjuster* const limden;
     Adjuster* const threshold;
     Adjuster* const threshold2;
     Adjuster* const edgedetect;
@@ -253,6 +312,9 @@ private:
     Adjuster* const mergeC;
     Adjuster* const softrad;
     Adjuster* const softradend;
+    Adjuster* const strend;
+    Adjuster* const detend;
+    Adjuster* const thrend;
     Adjuster* const chrwav;
 
     MyComboBoxText* const Lmethod;
@@ -275,6 +337,8 @@ private:
     sigc::connection  CLmethodconn;
     MyComboBoxText* const Backmethod;
     sigc::connection  Backmethodconn;
+    MyComboBoxText* const complexmethod;
+    sigc::connection  complexmethodconn;
     MyComboBoxText* const Tilesmethod;
     sigc::connection  Tilesmethodconn;
     MyComboBoxText* const daubcoeffmethod;
@@ -285,6 +349,14 @@ private:
     sigc::connection  MedgreinfConn;
     MyComboBoxText* const ushamethod;
     sigc::connection  ushamethodconn;
+    MyComboBoxText* const denmethod;
+    sigc::connection  denmethodconn;
+    MyComboBoxText* const mixmethod;
+    sigc::connection  mixmethodconn;
+    MyComboBoxText* const quamethod;
+    sigc::connection  quamethodconn;
+    MyComboBoxText* const slimethod;
+    sigc::connection  slimethodconn;
 
     Gtk::Frame* const chanMixerHLFrame;
     Gtk::Frame* const chanMixerMidFrame;
@@ -294,6 +366,10 @@ private:
     Gtk::Frame* const blurFrame;
     Gtk::Frame* const chromaFrame;
     Gtk::Frame* const chroFrame;
+    Gtk::Frame* const fincFrame;
+    Gtk::Frame* const dirFrame;
+    Gtk::Frame* const tonFrame;
+    Gtk::Frame* const guidFrame;
 
     Gtk::Label* const wavLabels;
     Gtk::Label* const labmC;
@@ -313,6 +389,12 @@ private:
 
     Gtk::HBox* const neutrHBox;
     Gtk::HBox* const usharpHBox;
+    Gtk::HBox* const ctboxch;
+    Gtk::HBox* const quaHBox;
+    Gtk::HBox* const sliHBox;
+    Gtk::HBox* const denHBox;
+    Gtk::HBox* const mixHBox;
+    Gtk::VBox* const ctboxBA;// = Gtk::manage(new Gtk::VBox());
 
     sigc::connection enableChromaConn, enableContrastConn, enableEdgeConn, enabletmConn, enableFinalConn, enableclariConn;
     sigc::connection enableNoiseConn, enableResidConn, enableToningConn;

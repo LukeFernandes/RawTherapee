@@ -1245,8 +1245,8 @@ IImage8* Thumbnail::processImage (const procparams::ProcParams& params, eSensorT
 
     ipf.firstAnalysis (baseImg, params, hist16);
 
-    ipf.dehaze(baseImg);
-    ipf.ToneMapFattal02(baseImg);
+    ipf.dehaze(baseImg, params.dehaze);
+    ipf.ToneMapFattal02(baseImg, params.fattal, 3, 0, nullptr, 0, 0, 0);
     
     // perform transform
     int origFW;
@@ -1327,10 +1327,10 @@ IImage8* Thumbnail::processImage (const procparams::ProcParams& params, eSensorT
         params.colorToning.getCurves (ctColorCurve, ctOpacityCurve, wp, opautili);
 
         clToningcurve (65536);
-        CurveFactory::curveToning (params.colorToning.clcurve, clToningcurve, scale == 1 ? 1 : 16);
+        CurveFactory::diagonalCurve2Lut (params.colorToning.clcurve, clToningcurve, scale == 1 ? 1 : 16);
 
         cl2Toningcurve (65536);
-        CurveFactory::curveToning (params.colorToning.cl2curve, cl2Toningcurve, scale == 1 ? 1 : 16);
+        CurveFactory::diagonalCurve2Lut (params.colorToning.cl2curve, cl2Toningcurve, scale == 1 ? 1 : 16);
     }
 
     if (params.blackwhite.enabled) {
@@ -1406,23 +1406,23 @@ IImage8* Thumbnail::processImage (const procparams::ProcParams& params, eSensorT
     CurveFactory::complexLCurve (params.labCurve.brightness, params.labCurve.contrast, params.labCurve.lcurve,
                                  hist16, lumacurve, dummy, 16, utili);
 
-    bool clcutili;
-    CurveFactory::curveCL (clcutili, params.labCurve.clcurve, clcurve, 16);
+    const bool clcutili = CurveFactory::diagonalCurve2Lut(params.labCurve.clcurve, clcurve, 16);
 
     bool autili, butili, ccutili, cclutili;
     CurveFactory::complexsgnCurve (autili, butili, ccutili, cclutili, params.labCurve.acurve, params.labCurve.bcurve, params.labCurve.cccurve,
                                    params.labCurve.lccurve, curve1, curve2, satcurve, lhskcurve, 16);
 
-    ipf.chromiLuminanceCurve (nullptr, 1, labView, labView, curve1, curve2, satcurve, lhskcurve, clcurve, lumacurve, utili, autili, butili, ccutili, cclutili, clcutili, dummy, dummy);
 
-    ipf.vibrance (labView);
+	ipf.chromiLuminanceCurve (nullptr, 1, labView, labView, curve1, curve2, satcurve, lhskcurve, clcurve, lumacurve, utili, autili, butili, ccutili, cclutili, clcutili, dummy, dummy);
+
+    ipf.vibrance (labView, params.vibrance, params.toneCurve.hrenabled, params.icm.workingProfile);
     ipf.labColorCorrectionRegions(labView);
 
     if ((params.colorappearance.enabled && !params.colorappearance.tonecie) || !params.colorappearance.enabled) {
         ipf.EPDToneMap (labView, 5, 6);
     }
 
-    ipf.softLight(labView);
+    ipf.softLight(labView, params.softlight);
 
     if (params.colorappearance.enabled) {
         CurveFactory::curveLightBrightColor (

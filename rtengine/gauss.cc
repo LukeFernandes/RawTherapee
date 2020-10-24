@@ -1808,9 +1808,7 @@ N.B. The preparatory work done by the regular gaussianBlur_impl function (e.g. w
 }
 
   template<class T> void gaussianBlurImpl(int iterations, T** src, T** dst, const int W, const int H, const double sigma, bool useBoxBlur, T *buffer = nullptr, eGaussType gausstype = GAUSS_STANDARD, T** buffer2 = nullptr)
-
 {
-
     static constexpr auto GAUSS_SKIP = 0.25;
     static constexpr auto GAUSS_3X3_LIMIT = 0.6;
     static constexpr auto GAUSS_5X5_LIMIT = 0.84;
@@ -1863,6 +1861,9 @@ N.B. The preparatory work done by the regular gaussianBlur_impl function (e.g. w
         if (sigma < GAUSS_SKIP) {
 	  fprintf(stderr, "Checkpoint Marine\n");
             // don't perform filtering
+#ifdef _OPENMP
+#pragma omp single
+#endif
             if (src != dst) {
                 for(int i = 0; i < H; ++i) {
                     memcpy(dst[i], src[i], W * sizeof(T));

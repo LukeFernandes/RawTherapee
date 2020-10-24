@@ -172,11 +172,10 @@ Image8* ImProcFunctions::lab2rgb(LabImage* lab, int cx, int cy, int cw, int ch, 
     Image8* image = new Image8(cw, ch);
     Glib::ustring profile;
 
-    bool standard_gamma;
+    cmsHPROFILE oprof = nullptr;
 
     if (settings->HistogramWorking && consider_histogram_settings) {
         profile = icm.workingProfile;
-        standard_gamma = true;
     } else {
         profile = icm.outputProfile;
 
@@ -184,27 +183,15 @@ Image8* ImProcFunctions::lab2rgb(LabImage* lab, int cx, int cy, int cw, int ch, 
             profile = "sRGB";
         }
 
-        standard_gamma = false;
+        oprof = ICCStore::getInstance()->getProfile(profile);
     }
 
-    cmsHPROFILE oprof = ICCStore::getInstance()->getProfile(profile);
-
     if (oprof) {
-        cmsHPROFILE oprofG = oprof;
-
-        if (standard_gamma) {
-            oprofG = ICCStore::makeStdGammaProfile(oprof);
-        }
-
-        cmsUInt32Number flags = cmsFLAGS_NOOPTIMIZE | cmsFLAGS_NOCACHE;
-
-        if (icm.outputBPC) {
-            flags |= cmsFLAGS_BLACKPOINTCOMPENSATION;
-        }
+        const cmsUInt32Number flags = cmsFLAGS_NOOPTIMIZE | cmsFLAGS_NOCACHE | (icm.outputBPC ? cmsFLAGS_BLACKPOINTCOMPENSATION : 0); // NOCACHE is important for thread safety
 
         lcmsMutex->lock();
         cmsHPROFILE LabIProf  = cmsCreateLab4Profile(nullptr);
-        cmsHTRANSFORM hTransform = cmsCreateTransform (LabIProf, TYPE_Lab_DBL, oprofG, TYPE_RGB_FLT, icm.outputIntent, flags);  // NOCACHE is important for thread safety
+        cmsHTRANSFORM hTransform = cmsCreateTransform (LabIProf, TYPE_Lab_DBL, oprof, TYPE_RGB_FLT, icm.outputIntent, flags);
         cmsCloseProfile(LabIProf);
         lcmsMutex->unlock();
 
@@ -245,9 +232,6 @@ Image8* ImProcFunctions::lab2rgb(LabImage* lab, int cx, int cy, int cw, int ch, 
 
         cmsDeleteTransform(hTransform);
 
-        if (oprofG != oprof) {
-            cmsCloseProfile(oprofG);
-        }
     } else {
         const auto xyz_rgb = ICCStore::getInstance()->workingSpaceInverseMatrix(profile);
         copyAndClamp(lab, image->data, xyz_rgb, multiThread);
@@ -370,7 +354,6 @@ void ImProcFunctions::workingtrc(const Imagefloat* src, Imagefloat* dst, int cw,
     if (transform) {
         hTransform = transform;
     } else {
-
         double pwr = 1.0 / gampos;
         double ts = slpos;
         int five = mul;
@@ -486,8 +469,7 @@ void ImProcFunctions::workingtrc(const Imagefloat* src, Imagefloat* dst, int cw,
         }
 
         GammaValues g_a; //gamma parameters
-        constexpr int mode = 0;
-        Color::calcGamma(pwr, ts, mode, g_a); // call to calcGamma with selected gamma and slope : return parameters for LCMS2
+        Color::calcGamma(pwr, ts, g_a); // call to calcGamma with selected gamma and slope : return parameters for LCMS2
 
 
         cmsFloat64Number gammaParams[7];

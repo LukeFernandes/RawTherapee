@@ -22,6 +22,8 @@
 #include "OpenCL_support.h"
 
 enum eGaussType {GAUSS_STANDARD, GAUSS_MULT, GAUSS_DIV};
+static constexpr auto GAUSS_SKIP = 0.25;
+
 
 typedef enum {
 	      x3x3,

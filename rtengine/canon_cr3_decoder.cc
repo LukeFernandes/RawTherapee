@@ -602,7 +602,9 @@ int DCraw::parseCR3(
                             relpos_inBox += lTag;
                         }
                     }
-
+                    if (!szItem) {
+                        goto fin;
+                    }
                     relpos_inDir += szItem;
                 }
 
@@ -3042,11 +3044,11 @@ bool crxSetupImageData(
 
 void crxFreeImageData(CrxImage* img)
 {
-    CrxTile* tile = img->tiles;
-    const int nTiles = img->tileRows * img->tileCols;
-
     if (img->tiles) {
-        for (std::int32_t curTile = 0; curTile < nTiles; curTile++, tile++) {
+        CrxTile* const tile = img->tiles;
+        const int nTiles = img->tileRows * img->tileCols;
+
+        for (std::int32_t curTile = 0; curTile < nTiles; ++curTile) {
             if (tile[curTile].comps) {
                 for (std::int32_t curPlane = 0; curPlane < img->nPlanes; ++curPlane) {
                     crxFreeSubbandData(img, tile[curTile].comps + curPlane);
@@ -3130,7 +3132,8 @@ void DCraw::crxLoadRaw()
         hdr.tileHeight >>= 1;
     }
 
-//  /*imgdata.color.*/maximum = (1 << hdr.nBits) - 1;
+    //  /*imgdata.color.*/maximum = (1 << hdr.nBits) - 1;
+    tiff_bps = hdr.nBits;
 
     std::uint8_t* const hdrBuf = static_cast<std::uint8_t*>(malloc(hdr.mdatHdrSize));
 

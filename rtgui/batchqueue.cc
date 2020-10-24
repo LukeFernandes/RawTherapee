@@ -390,7 +390,7 @@ Glib::ustring BatchQueue::getTempFilenameForParams( const Glib::ustring &filenam
     timeval tv;
     gettimeofday(&tv, nullptr);
     char mseconds[11];
-    sprintf(mseconds, "%d", (int)(tv.tv_usec / 1000));
+    snprintf(mseconds, sizeof(mseconds), "%d", (int)(tv.tv_usec / 1000));
     time_t rawtime;
     struct tm *timeinfo;
     char stringTimestamp [80];
@@ -699,7 +699,7 @@ rtengine::ProcessingJob* BatchQueue::imageReady(rtengine::IImagefloat* img)
             err = img->saveAsJPEG (fname, saveFormat.jpegQuality, saveFormat.jpegSubSamp);
         }
 
-        img->free ();
+        delete img;
 
         if (err) {
             throw Glib::FileError(Glib::FileError::FAILED, M("MAIN_MSG_CANNOTSAVE") + "\n" + fname);
