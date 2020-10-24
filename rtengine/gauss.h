@@ -23,20 +23,10 @@
 
 enum eGaussType {GAUSS_STANDARD, GAUSS_MULT, GAUSS_DIV};
 
-typedef struct {
-  double c0;
-  double c1;
-  double c2;
-  double b0;
-  double b1;
-  //bool already_done_on_CPU;
-} reprocess_data;
-
 typedef enum {
 	      x3x3,
 	      x5x5,
 	      x7x7
-  //bool already_done_on_CPU;
 } size;
 
 typedef struct {
@@ -50,15 +40,15 @@ typedef struct {
   float c11;
   float c10;
   float c00;
-  bool already_done_on_CPU;
+  bool to_be_done_on_CPU;
   size _size;
-} reprocess_data2;
+} reprocess_data;
 
 void gaussianBlur(float** src, float** dst, const int W, const int H, const double sigma, bool useBoxBlur = false, float *buffer = nullptr, eGaussType gausstype = GAUSS_STANDARD, float** buffer2 = nullptr);
 
-int OpenCLgaussianBlur(OpenCL_use use, OpenCL_helper *helper, int iterations, cl_mem src_clmem, cl_mem dst_clmem, cl_mem div_clmem,  float** src, float**  dst, const int W, const int H, float sigma = -1, bool useBoxBlur = false, float* buffer = nullptr, eGaussType gausstype = GAUSS_STANDARD, float** divBuffer = nullptr,  float damping = -1, void (*dampingMethod)(float**, float**, float, int, int) = nullptr);
+/* the additional parameters used in the below function are explained in the implementation */
 
-/* void OpenCLgaussianBlur(OpenCL_helper* helper, int iterations, cl_mem src_clmem, cl_mem dst_clmem, cl_mem div_clmem, float** src, float** dst, const int W, const int H, const double sigma, bool useBoxBlur = false, float *buffer = nullptr, eGaussType gausstype = GAUSS_STANDARD, float** buffer2 = nullptr, float damping = 0.0f); */
+int OpenCLgaussianBlur(float** src, float**  dst, OpenCL_use use, OpenCL_helper *helper, int iterations, cl_mem src_clmem, cl_mem dst_clmem, const int W, const int H, const double sigma,  cl_mem div_mem = nullptr, bool useBoxBlur = false, float* buffer = nullptr, eGaussType gausstype = GAUSS_STANDARD,  float** buffer2 = nullptr, float damping = -1, void (*dampingMethod)(float**, float**, float, int, int) = nullptr);
 
 
 

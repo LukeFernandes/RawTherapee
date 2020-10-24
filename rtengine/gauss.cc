@@ -286,161 +286,6 @@ template<class T> void gauss3x3div (T** RESTRICT src, T** RESTRICT dst, T** REST
     }
 }
 
-template <class T> void dcdamping (T** RESTRICT aI, T** RESTRICT aO, float damping, int W, int H) {
-  
-   const float dampingFac = -2.0 / (damping * damping);
-   
-
-}
-
-template<class T> void mult_firstrow_and_firstcolumn(T* srcmapped, T* dstmapped,
-						    const int W, const int H, const double b0, const double b1)
-{
-  /** Replicates the first row and first column parts of the gauss3x3mult algorithm above **/
-  //First row:
-  dstmapped[0]  *=  srcmapped[0];
-
-        for (int j = 1; j < W - 1; j++)
-        { 
-            dstmapped[j] *= (b1 * (srcmapped[j - 1] + srcmapped[j + 1]) + b0 * srcmapped[j]);
-        }
-
-  dstmapped[W - 1] *= srcmapped[W - 1];
-
-
-  //First column, minus the first and last pixels
-        for (int i = 1; i < H - 1; i++)
-	{
-    dstmapped[W*i] *= (b1 * (srcmapped[W*(i - 1)] + srcmapped[W*(i + 1)]) + b0 * srcmapped[W*i]);;
-        }
-
-
-}
-
-template<class T> void mult_lastcolumn_and_lastrow(T* srcmapped, T* dstmapped,
-						    const int W, const int H, const double b0, const double b1)
-{
-    /** Replicates the last column row and last row parts of the gauss3x3mult standard algorithm above **/
-  
-  //Last column, minus the first and last pixels
-        for (int i = 1; i < H - 1; i++)
-	{
-          dstmapped[W*i + (W - 1)] *= (b1 * (srcmapped[W*(i - 1) + (W - 1)] + srcmapped[W*(i + 1) + (W - 1)]) + b0 * srcmapped[W*i + (W - 1)]);
-        }
-  //Last row:
-	
-	dstmapped[(H-1)*W] *= srcmapped[(H-1)*W] ;
-
-        for (int j = 1; j < W - 1; j++)
-        {
-	  dstmapped[(H-1)*W + j] *= (b1 * (srcmapped[(H-1)*W + (j - 1)] + srcmapped[(H-1)*W + (j + 1)]) + b0 * srcmapped[(H-1)*W + j]);;
-        }
-
-	dstmapped[(H-1)*W + (W-1)] *= srcmapped[(H-1)*W + (W-1)];
-
-
-}
-
-template<class T> void standard_firstrow_and_firstcolumn(T* srcmapped, T* dstmapped,
-						    const int W, const int H, const double b0, const double b1)
-{
-  /** Replicates the first row and first column parts of the gauss3x3 algorithm above **/
-  //First row:
-  dstmapped[0]  =  srcmapped[0];
-
-        for (int j = 1; j < W - 1; j++)
-        { 
-            dstmapped[j] = (b1 * (srcmapped[j - 1] + srcmapped[j + 1]) + b0 * srcmapped[j]);
-        }
-
-  dstmapped[W - 1] = srcmapped[W - 1];
-
-
-  //First column, minus the first and last pixels
-        for (int i = 1; i < H - 1; i++)
-	{
-    dstmapped[W*i] = (b1 * (srcmapped[W*(i - 1)] + srcmapped[W*(i + 1)]) + b0 * srcmapped[W*i]);;
-        }
-
-
-}
-
-template<class T> void standard_lastcolumn_and_lastrow(T* srcmapped, T* dstmapped,
-						    const int W, const int H, const double b0, const double b1)
-{
-    /** Replicates the last column row and last row parts of the gauss3x3 standard algorithm above **/
-  
-  //Last column, minus the first and last pixels
-        for (int i = 1; i < H - 1; i++)
-	{
-          dstmapped[W*i + (W - 1)] = (b1 * (srcmapped[W*(i - 1) + (W - 1)] + srcmapped[W*(i + 1) + (W - 1)]) + b0 * srcmapped[W*i + (W - 1)]);
-        }
-  //Last row:
-	
-	dstmapped[(H-1)*W]  = srcmapped[(H-1)*W] ;
-
-        for (int j = 1; j < W - 1; j++)
-        {
-	  dstmapped[(H-1)*W + j] = (b1 * (srcmapped[(H-1)*W + (j - 1)] + srcmapped[(H-1)*W + (j + 1)]) + b0 * srcmapped[(H-1)*W + j]);;
-        }
-
-	dstmapped[(H-1)*W + (W-1)] = srcmapped[(H-1)*W + (W-1)];
-
-
-}
-
-template<class T> void div_firstrow_and_firstcolumn(T* srcmapped, T* dstmapped, T** RESTRICT divbuff,
-						    const int W, const int H, const double b0, const double b1)
-{
-  /** Replicates the first row and first column parts of the gauss3x3div algorithm above **/
-  //First row:
-   dstmapped[0]  = rtengine::max(divbuff[0][0] / (srcmapped[0] > 0.f ? srcmapped[0] : 1.f), 0.f);
-
-        for (int j = 1; j < W - 1; j++)
-        {
-            float tmp = (b1 * (srcmapped[j - 1] + srcmapped[j + 1]) + b0 * srcmapped[j]);
-            dstmapped[j] = rtengine::max(divbuff[0][j] / (tmp > 0.f ? tmp : 1.f), 0.f);
-        }
-
-    dstmapped[W - 1] = rtengine::max(divbuff[0][W - 1] / (srcmapped[W - 1] > 0.f ? srcmapped[W - 1] : 1.f), 0.f);
-
-
-  //First column, minus the first and last pixels
-        for (int i = 1; i < H - 1; i++)
-	{
-	  float tmp = (b1 * (srcmapped[W*(i - 1)] + srcmapped[W*(i + 1)]) + b0 * srcmapped[W*i]);
-    dstmapped[W*i] = rtengine::max(divbuff[i][0] / (tmp > 0.f ? tmp : 1.f), 0.f);
-        }
-
-
-}
-
-template<class T> void div_lastcolumn_and_lastrow(T* srcmapped, T* dstmapped, T** RESTRICT divbuff,
-						    const int W, const int H, const double b0, const double b1)
-{
-    /** Replicates the last column row and last row parts of the gauss3x3div algorithm above **/
-  
-  //Last column, minus the first and last pixels
-        for (int i = 1; i < H - 1; i++)
-	{
-	  float tmp = (b1 * (srcmapped[W*(i - 1) + (W - 1)] + srcmapped[W*(i + 1) + (W - 1)]) + b0 * srcmapped[W*i + (W - 1)]);
-          dstmapped[W*i + (W - 1)] = rtengine::max(divbuff[i][W - 1] / (tmp > 0.f ? tmp : 1.f), 0.f);
-        }
-  //Last row:
-	
-	dstmapped[(H-1)*W]  = rtengine::max(divbuff[H - 1][0] / (srcmapped[(H-1)*W] > 0.f ? srcmapped[(H-1)*W] : 1.f), 0.f);
-
-        for (int j = 1; j < W - 1; j++)
-        {
-	  float tmp = (b1 * (srcmapped[(H-1)*W + (j - 1)] + srcmapped[(H-1)*W + (j + 1)]) + b0 * srcmapped[(H-1)*W + j]);
-	  dstmapped[(H-1)*W + j] = rtengine::max(divbuff[H - 1][j] / (tmp > 0.f ? tmp : 1.f), 0.f);
-        }
-
-	dstmapped[(H-1)*W + (W-1)] = rtengine::max(divbuff[H - 1][W - 1] / (srcmapped[(H-1)*W + (W-1)] > 0.f ? srcmapped[(H-1)*W + (W-1)] : 1.f), 0.f);
-
-}
-
-
 template<class T> void gauss7x7div (T** RESTRICT src, T** RESTRICT dst, T** RESTRICT divBuffer, const int W, const int H, float sigma)
 {
 
@@ -1542,7 +1387,7 @@ template<class T> void gaussVerticalmult (T** src, T** dst, const int W, const i
 #endif
 
 
-template <class T> void reprocess2(T**  src, T**  dst, const int W, const int H, const double sigma,  bool useBoxBlur, eGaussType gausstype,  reprocess_data2 &data, T** buffer2 = nullptr) {
+template <class T> void reprocess(T** RESTRICT src, T** RESTRICT dst, const int W, const int H, const double sigma,  bool useBoxBlur, eGaussType gausstype,  reprocess_data &data, T** buffer2 = nullptr) {
 
     static constexpr auto GAUSS_SKIP = 0.25;
     static constexpr auto GAUSS_3X3_LIMIT = 0.6;
@@ -1558,60 +1403,13 @@ template <class T> void reprocess2(T**  src, T**  dst, const int W, const int H,
     c11 = square5[1][1]; c10 = square5[1][2];
     c00 = square5[2][2];
 
-    if (useBoxBlur) { // new from dev version Nov 2019
-        // special variant for very large sigma, currently only used by retinex algorithm
-        // use iterated boxblur to approximate gaussian blur
-        // Compute ideal averaging filter width and number of iterations
-        int n = 1;
-        double wIdeal = sqrt((12 * sigma * sigma) + 1);
-
-        while(wIdeal > W || wIdeal > H) {
-            n++;
-            wIdeal = sqrt((12 * sigma * sigma / n) + 1);
-        }
-
-        if(n < 3) {
-            n = 3;
-            wIdeal = sqrt((12 * sigma * sigma / n) + 1);
-        } else if(n > 6) {
-            n = 6;
-        }
-
-        int wl = wIdeal;
-
-        if(wl % 2 == 0) {
-            wl--;
-        }
-
-        int wu = wl + 2;
-
-        double mIdeal = (12 * sigma * sigma - n * wl * wl - 4 * n * wl - 3 * n) / (-4 * wl - 4);
-        int m = round(mIdeal);
-
-        int sizes[n];
-
-        for(int i = 0; i < n; i++) {
-            sizes[i] = ((i < m ? wl : wu) - 1) / 2;
-        }
-
-        rtengine::boxblur(src, dst, sizes[0], W, H, true);
-
-        for(int i = 1; i < n; i++) {
-            rtengine::boxblur(dst, dst, sizes[i], W, H, true);
-        }
-        data.already_done_on_CPU = true;
+    if (useBoxBlur) { 
+        data.to_be_done_on_CPU = true;
         return;
+	
     } else {
         if (sigma < GAUSS_SKIP) {
-            // don't perform filtering
-            if (src != dst) {
-                for(int i = 0; i < H; ++i) {
-                    memcpy(dst[i], src[i], W * sizeof(T));
-		    data.already_done_on_CPU = true;
-		    return;
-                }
-            }
-	    data.already_done_on_CPU = true;
+	    data.to_be_done_on_CPU = true;
 	    return;
         } else if (sigma < GAUSS_3X3_LIMIT) {
             if(src != dst) {
@@ -1632,27 +1430,29 @@ template <class T> void reprocess2(T**  src, T**  dst, const int W, const int H,
                 b1 /= bsum;
                 double b0 = 1.0 / bsum;
 
-		data = reprocess_data2{.c0 = c0, .c1 = c1, .c2 = c2, .b0 = b0, .b1 = b1,
+	  data = reprocess_data{.c0 = c0, .c1 = c1, .c2 = c2, .b0 = b0, .b1 = b1,
 				       c21 = 1.0, c20 = 1.0, c11 = 1.0, c10 = 1.0, c00 = 1.0,
 				       false, size::x3x3};
-		return;
+	  return;
   
             } else {
-                // compute kernel values for separated 3x3 gaussian blur
-                double c1 = exp (-1.0 / (2.0 * sigma * sigma));
-                double csum = 2.0 * c1 + 1.0;
-                c1 /= csum;
-                double c0 = 1.0 / csum;
+	   //we don't do anything with these constants now, as we're currently defaulting to CPU
+	      // compute kernel values for separated 3x3 gaussian blur
+	      double c1 = exp (-1.0 / (2.0 * sigma * sigma));
+	      double csum = 2.0 * c1 + 1.0;
+	      c1 /= csum;
+	      double c0 = 1.0 / csum;
+	   // can't currently do the following lines via gPu
                 //gaussHorizontal3<T> (src, dst, W, H, c0, c1);
                 //gaussVertical3<T>   (dst, dst, W, H, c0, c1);
 		
-		data.c0 = c0; data.c1 = c1;
-		data.already_done_on_CPU = true;
-		data._size = size::x3x3;
-		return;
+	  //data.c0 = c0; data.c1 = c1;
+	  //data._size = size::x3x3;
+	  data.to_be_done_on_CPU = true;
+	  
+	  return;
             }
         } else {
-#ifdef __SSE2__
  	    
 	          if (sigma < GAUSS_DOUBLE) {
                 switch (gausstype) {
@@ -1661,14 +1461,16 @@ template <class T> void reprocess2(T**  src, T**  dst, const int W, const int H,
 		      data.c21 = c21; data.c20 = c20; data.c11 = c11;
 		      data.c10 = c10; data.c00 = c00;
 		      data._size = size::x5x5;
-		      data.already_done_on_CPU = false;
+		      data.to_be_done_on_CPU = false;
                     } else if (sigma <= GAUSS_7X7_LIMIT && src != dst) {
+	        // can't currently do the following via gPu
                       //gauss7x7mult(src, dst, W, H, sigma);
-		      data.already_done_on_CPU = true;
+		      data.to_be_done_on_CPU = true;
                     } else {
+	        // can't currently do the following via gPu
                       // gaussHorizontalSse<T> (src, src, W, H, sigma);
-		      //gaussVerticalSsemult<T> (src, dst, W, H, sigma);
-		       data.already_done_on_CPU = true;
+	        //gaussVerticalSsemult<T> (src, dst, W, H, sigma);
+	       data.to_be_done_on_CPU = true;
                     }
                     return;
                 }
@@ -1676,16 +1478,18 @@ template <class T> void reprocess2(T**  src, T**  dst, const int W, const int H,
                 case GAUSS_DIV : {
                     if (sigma <= GAUSS_5X5_LIMIT && src != dst) {
 		      	data.c21 = c21; data.c20 = c20; data.c11 = c11;
-		        data.c10 = c10; data.c00 = c00;
+		              data.c10 = c10; data.c00 = c00;
 			data._size = size::x5x5;
-			data.already_done_on_CPU = false;
+			data.to_be_done_on_CPU = false;
                     } else if (sigma <= GAUSS_7X7_LIMIT && src != dst) {
+		      // can't currently do the following via gPu
 		      //gauss7x7div (src, dst, buffer2, W, H, sigma);
-			data.already_done_on_CPU = true;
+		      data.to_be_done_on_CPU = true;
                     } else {
+		      // can't currently do the following via gPu
 		      // gaussHorizontalSse<T> (src, dst, W, H, sigma);
 		      // gaussVerticalSsediv<T> (dst, dst, buffer2, W, H, sigma);
-			data.already_done_on_CPU = true;
+		      data.to_be_done_on_CPU = true;
                     }
                      return;
                 }
@@ -1693,206 +1497,60 @@ template <class T> void reprocess2(T**  src, T**  dst, const int W, const int H,
                 case GAUSS_STANDARD : {
 		  // gaussHorizontalSse<T> (src, dst, W, H, sigma);
 		  // gaussVerticalSse<T> (dst, dst, W, H, sigma);
-		    data.already_done_on_CPU = true;
+		    data.to_be_done_on_CPU = true;
                     return;
                 }
                 }
             } else { // large sigma only with double precision
+		    // can't currently do the following via gPu
 		    //gaussHorizontal<T> (src, dst, W, H, sigma);
 		    // gaussVertical<T>   (dst, dst, W, H, sigma);
-	        data.already_done_on_CPU = true;
+	        data.to_be_done_on_CPU = true;
                 return;
             } 
 
-#else
-
-            if (sigma < GAUSS_DOUBLE) {
-                switch (gausstype) {
-                case GAUSS_MULT : {
-                    if (sigma <= GAUSS_5X5_LIMIT && src != dst) {
-                         data.already_done_on_CPU = false;
-                    } else if (sigma <= GAUSS_7X7_LIMIT && src != dst) {
-		      //gauss7x7mult(src, dst, W, H, sigma);
-			 data.already_done_on_CPU = true;
-                    } else {
-		      //gaussHorizontal<T> (src, src, W, H, sigma);
-		      // gaussVerticalmult<T> (src, dst, W, H, sigma);
-			 data.already_done_on_CPU = true;
-                    }
-                    return;
-                }
-
-                case GAUSS_DIV : {
-                    if (sigma <= GAUSS_5X5_LIMIT && src != dst) {
-			 data.already_done_on_CPU = false;
-                    } else if (sigma <= GAUSS_7X7_LIMIT && src != dst) {
-		      //gauss7x7div (src, dst, buffer2, W, H, sigma);
-			 data.already_done_on_CPU = true;
-                    } else {
-		      // gaussHorizontal<T> (src, dst, W, H, sigma);
-		      // gaussVerticaldiv<T> (dst, dst, buffer2, W, H, sigma);
-			 data.already_done_on_CPU = true;
-                    }
-                    return;
-                }
-
-                case GAUSS_STANDARD : {
-		  //gaussHorizontal<T> (src, dst, W, H, sigma);
-		  // gaussVertical<T> (dst, dst, W, H, sigma);
-		    data.already_done_on_CPU = true;
-                    return;
-                }
-                }
-            } else { // large sigma only with double precision  
-	      //gaussHorizontal<T> (src, dst, W, H, sigma);
-	      // gaussVertical<T>   (dst, dst, W, H, sigma);
-		data.already_done_on_CPU = true;
-                return;
-            }
-
-#endif
         }
     }
-}
-
-
-
-template <class T> void reprocess(T** RESTRICT src, T** RESTRICT dst, const int W, const int H, const double sigma,  eGaussType gausstype,  reprocess_data* data, T** buffer2 = nullptr, float damping = 0.0f) {
- fprintf(stderr, "\nCheckpoint reprocess Rex\n"); fflush(stderr);
-    static constexpr auto GAUSS_SKIP = 0.25;
-    static constexpr auto GAUSS_3X3_LIMIT = 0.6;
-    static constexpr auto GAUSS_DOUBLE = 25.0;
-    /*Mimic decision process of GaussianBlurImpl below, ignoring the possible existence of buffer (note that it isn't a parameter, unlike with the original version below) since if that had been present, the OpenCL void OpenCLgauss3x3_ALL would not havd been triggered in the first place. 
-We can also remove the < GAUSS_SKIP case since that will have been dealt with in the initial Impl filter */
-
-    if ( (sigma > GAUSS_SKIP) && (sigma < GAUSS_3X3_LIMIT) ) {
-            if(src != dst) {
-                // If src != dst we can take the fast way
-                // compute 3x3 kernel values
-                double c0 = 1.0;
-                double c1 = exp( -0.5 * (rtengine::SQR(1.0 / sigma)) );
-                double c2 = exp( -rtengine::SQR(1.0 / sigma) );
-
-                // normalize kernel values
-                double sum = c0 + 4.0 * (c1 + c2);
-                c0 /= sum;
-                c1 /= sum;
-                c2 /= sum;
-                // compute kernel values for border pixels
-                double b1 = exp (-1.0 / (2.0 * sigma * sigma));
-                double bsum = 2.0 * b1 + 1.0;
-                b1 /= bsum;
-                double b0 = 1.0 / bsum;
-		
-		*data =  reprocess_data{.c0 = c0, .c1 = c1, .c2 = c2, .b0 = b0, .b1 = b1};
-		return;
-		/* OpenCLgauss3x3_ALL will take the b and c double values and feed them into the appropriate
-		kernels, depending on GaussType. */
-
-            } else {
-                // compute kernel values for separated 3x3 gaussian blur
-                double c1 = exp (-1.0 / (2.0 * sigma * sigma));
-                double csum = 2.0 * c1 + 1.0;
-                c1 /= csum;
-                double c0 = 1.0 / csum;
-                gaussHorizontal3<T> (src, dst, W, H, c0, c1);
-                gaussVertical3<T>   (dst, dst, W, H, c0, c1);
-
-		
-		data = nullptr;
-		return;
-		
-            }
-        }
-#ifdef __SSE2__
-
-            if (sigma < GAUSS_DOUBLE) {
-	       fprintf(stderr, "Checkpoint reprocess Double\n"); fflush(stderr);
-                switch (gausstype) {
-                case GAUSS_MULT : {
-                    gaussHorizontalSse<T> (src, src, W, H, sigma);
-                    gaussVerticalSsemult<T> (src, dst, W, H, sigma);
-                    data = nullptr;
-		    return;
-                }
-
-                case GAUSS_DIV : {
-                    gaussHorizontalSse<T> (src, dst, W, H, sigma);
-                    gaussVerticalSsediv<T> (dst, dst, buffer2, W, H, sigma);
-                    data = nullptr;
-		    return;
-                }
-
-                case GAUSS_STANDARD : {
-                    gaussHorizontalSse<T> (src, dst, W, H, sigma);
-                    gaussVerticalSse<T> (dst, dst, W, H, sigma);
-                    data = nullptr;
-		    return;
-                }
-                }
-            } else { // large sigma only with double precision
-	       fprintf(stderr, "Checkpoint reprocess Large\n"); fflush(stderr);
-                gaussHorizontal<T> (src, dst, W, H, sigma);
-                gaussVertical<T>   (dst, dst, W, H, sigma);
-		data = nullptr;
-		return;
-            }
-
-#else
-      else {
-
-            if (sigma < GAUSS_DOUBLE) {
-                switch (gausstype) {
-                case GAUSS_MULT : {
-                    gaussHorizontal<T> (src, src, W, H, sigma);
-                    gaussVerticalmult<T> (src, dst, W, H, sigma);
-                    data = nullptr;
-		    return;
-                }
-
-                case GAUSS_DIV : {
-                    gaussHorizontal<T> (src, dst, W, H, sigma);
-                    gaussVerticaldiv<T> (dst, dst, buffer2, W, H, sigma);
-                    data = nullptr;
-		    return;
-                }
-
-                case GAUSS_STANDARD : {
-                    gaussHorizontal<T> (src, dst, W, H, sigma);
-                    gaussVertical<T> (dst, dst, W, H, sigma);
-                    data = nullptr;
-		    return;
-                }
-		}
-            } else { // large sigma only with double precision  
-                gaussHorizontal<T> (src, dst, W, H, sigma);
-                gaussVertical<T>   (dst, dst, W, H, sigma);
-	        data = nullptr;
-		return;
-            }
-
-        }
-#endif
 }
 
 int round_cl(int n, int m) 
 { 
    n = ( ( n - 1 ) | ( m - 1 ) ) + 1;
   return n;
-} 
+}
 
-/*template<class T> void OpenCLgauss3x3_all(OpenCL_helper *helper, int iterations, eGaussType gausstype, cl_mem src_clmem, cl_mem dst_clmem, cl_mem div_clmem,  T** RESTRICT src, T** RESTRICT dst, T** RESTRICT divBuffer, const int W, const int H,  double c0,  double c1,  double c2,  double b0,  double b1, size _size, float sigma = -1, float damping = -1) */
-template<class T> int OpenCLgaussianBlur_impl(OpenCL_use use, OpenCL_helper *helper, int iterations, cl_mem src_clmem, cl_mem dst_clmem, cl_mem div_clmem,  T** RESTRICT src, T** RESTRICT dst,  int W,  int H, float sigma = -1, bool useBoxBlur = false, float* buffer = nullptr, eGaussType gausstype = GAUSS_STANDARD, float** divBuffer = nullptr,  float damping = -1, void (*dampingMethod)(float** aI, float** aO, float damping, int W, int H) = nullptr)
+template<class T> int OpenCLgaussianBlur_impl(OpenCL_use use, OpenCL_helper *helper, int iterations, cl_mem src_clmem, cl_mem dst_clmem,  T** RESTRICT src, T** RESTRICT dst, int W,  int H, const double sigma, cl_mem div_clmem = nullptr, bool useBoxBlur = false, float* buffer = nullptr, eGaussType gausstype = GAUSS_STANDARD,  float** divBuffer = nullptr, float damping = -1, void (*dampingMethod)(float** aI, float** aO, float damping, int W, int H) = nullptr)
   
-/*sigma is an optional variable because it will not be used in the case of a 1 iteration pass, since the type of gaussian processing has been determined by gaussianBlurImpl. It is needed for recalculation every iteration*/
+/*
+use - the caller tells us whether this is debug mode or not
+helper - the OpenCL helper object to use
+iterations - unlike in the CPU version, for obvious reasons, we need to know the number of iterations to do them all on gPu
+src_clmem - the source, in the multi iteration blur it's tmpI
+dst_clmem - the dest, in the multi iteration blur it's tmp
+div_clmem - corresponds to buffer2 in the original version
+damping - as damping needs to be done in this function, we pass on the level of damping here, if any
+dampingMethod - this is a hack to do the damping on CPU while it's still not implemented on gPu
+
+N.B. The preparatory work done by the regular gaussianBlur_impl function (e.g. work out which kernels to apply, what the constant values are) is done by the function reprocess, which is called at the start of this function. It only needs to be called once.
+*/
+  
 {
-  bool debug = (OpenCL_helper::OpenCL_usable(use) == debug_) ? true : false;
-  /*figure out constant values. These will not change even over repeated iterations on the same image*/
-  reprocess_data2 constant_data = {0,0,0,0,0,0,0,0,0,0,false,x3x3};
-   reprocess2(src, dst, W, H, sigma, useBoxBlur, gausstype, constant_data, divBuffer);
-   if (constant_data.already_done_on_CPU == true)
+   int error_code;
+   bool debug = (OpenCL_helper::OpenCL_usable(use) == debug_) ? true : false;
+   /*figure out constant values. These will not change even over repeated iterations on the same image*/
+   reprocess_data constant_data = {0,0,0,0,0,0,0,0,0,0,false,x3x3};
+   // we pass the struct constant_data by reference
+   reprocess(src, dst, W, H, sigma, useBoxBlur, gausstype, constant_data);
+
+   //  if we need to exit and fall back to CPU
+   if (constant_data.to_be_done_on_CPU == true)
 		      return -1;
+   
    if (iterations > 1) printf("\n\nMulti iteration gaussian blur commencing on GPU\n");
+
+   // is the size of the gauss kernel 3x3 or 5x5? 7x7 yet to be implemented
+   size _size = constant_data._size;
+   // set constants. If _size is 5x5, we'll use c21-c00 and c0-b1 will just be 0 and won't be used. Equally, if _size is 3x3, we'll use c0-b1 and c21-c00 won't be used
    double c0,  c1, c2, b0, b1;
    float c21, c20, c11, c10, c00;
 
@@ -1902,32 +1560,22 @@ template<class T> int OpenCLgaussianBlur_impl(OpenCL_use use, OpenCL_helper *hel
    c21 = constant_data.c21; c20 = constant_data.c20; c11 = constant_data.c11;
    c10 = constant_data.c10; c00 = constant_data.c00;
 
-   size _size = constant_data._size;
+   // we're going to feed the gPu arrays with the X and Y position of each pixel
+   int* Xindex = new int[W  * H]();
+   int* Yindex = new int[W  * H]();
 
-  //turn array of arrays (the pointer to pointer(s)) into 2D array, excluding the outer rows and columns for newsrc,but  keeping them for oldsrc. Also creating dst for writing.
-  float* div = nullptr;
-  if (divBuffer != nullptr)
-    div = new float[W * H](); //allocate the memory for div
-  float* oldsrc = new float[W * H](); //allocate the memory for src, this will be pinned/mapped and will be manilated by the CPU
-  float* olddst = new float[W * H](); //allocate the memory for dst, this will be pinned/mapped
-   
-  int* Xindex = new int[W  * H]();
-  int* Yindex = new int[W  * H]();
-
-    
     for (int i = 0; i < H; i++)
 	{
 	  for (int j = 0; j < W; j++)
 	    {
-	      oldsrc[i*W + j] = src[i][j];
-	      olddst[i*W + j] = dst[i][j];
-	      if (div != nullptr) div[i*W + j] = divBuffer[i][j];
 	      Xindex[i*W + j] = j;
 	      Yindex[i*W + j] = i;
 	    }
 	}
 
-    cl_kernel divkernel, standardkernel , mulkernel;
+    // generic OpenCL kernel handles for each gauss type, aliases for the actual kernels below 
+    cl_kernel divkernel, standardkernel, mulkernel;
+    // actual kernels by gauss kernel size
     cl_kernel div3kernel, div5kernel, mul3kernel, mul5kernel;
 
 
@@ -1936,22 +1584,22 @@ template<class T> int OpenCLgaussianBlur_impl(OpenCL_use use, OpenCL_helper *hel
     div5kernel = helper->reuse_or_create_kernel("gauss5x5divnew", "gauss_5x5_div_whole.cl", "gauss_5x5_div_whole");
     mul3kernel = helper->reuse_or_create_kernel("gauss3x3mul", "gauss_3x3_mult_whole.cl", "gauss_3x3_mult_whole");
     mul5kernel = helper->reuse_or_create_kernel("gauss5x5mul", "gauss_5x5_mult_whole.cl", "gauss_5x5_mult_whole");
-    cl_kernel dampingkernel = helper->reuse_or_create_kernel("damping", "gauss_damping.cl", "gauss_damping");
-    
-     int error_code;
 
-     cl_mem oldsrc_mem_obj = helper->reuse_or_create_buffer("tmpI", W, H,  CL_MEM_READ_WRITE);
-     oldsrc_mem_obj = src_clmem;
-     cl_mem olddst_mem_obj = helper->reuse_or_create_buffer("tmp", W, H, CL_MEM_READ_WRITE);
-     olddst_mem_obj = dst_clmem;
-    cl_mem div_mem_obj; //will use if needed, see below
+    // this doesn't build yet, work in progress
+    cl_kernel dampingkernel = helper->reuse_or_create_kernel("damping", "gauss_damping.cl", "gauss_damping");
+
+     cl_mem oldsrc_mem_obj = src_clmem;
+     cl_mem olddst_mem_obj = dst_clmem;
+     cl_mem div_mem_obj = div_clmem; //will use for the div part of the multi-iteration blur, see below
 
     cl_mem index_X_mem_obj = helper->reuse_or_create_buffer("indexX", W, H, CL_MEM_READ_ONLY);
     cl_mem index_Y_mem_obj = helper->reuse_or_create_buffer("indexY", W, H, CL_MEM_READ_ONLY);
-         
-      error_code = clEnqueueWriteBuffer(helper->command_queue, index_X_mem_obj, CL_TRUE, 0, W*H*sizeof(int), Xindex, 0, nullptr, nullptr);
-      error_code = clEnqueueWriteBuffer(helper->command_queue, index_Y_mem_obj, CL_TRUE, 0, W*H*sizeof(int), Yindex, 0, nullptr, nullptr);
-      
+
+    // write the X and Y data
+    error_code = clEnqueueWriteBuffer(helper->command_queue, index_X_mem_obj, CL_TRUE, 0, W*H*sizeof(int), Xindex, 0, nullptr, nullptr);
+    error_code = clEnqueueWriteBuffer(helper->command_queue, index_Y_mem_obj, CL_TRUE, 0, W*H*sizeof(int), Yindex, 0, nullptr, nullptr);
+
+    /* OpenCL kernel argument setting. Arguments are set by position. See the .cl files in the clkernels folder */
 
      error_code = clSetKernelArg(standardkernel, 0, sizeof(cl_mem), (void *)&oldsrc_mem_obj);
      error_code = clSetKernelArg(standardkernel, 1, sizeof(cl_mem), (void *)&index_X_mem_obj);
@@ -1988,11 +1636,9 @@ template<class T> int OpenCLgaussianBlur_impl(OpenCL_use use, OpenCL_helper *hel
      error_code = clSetKernelArg(mul5kernel, 8, sizeof(cl_float), (void *)&c10);
      error_code = clSetKernelArg(mul5kernel, 9, sizeof(cl_float), (void *)&c00);
      error_code = clSetKernelArg(mul5kernel, 10, sizeof(cl_mem), (void *)&oldsrc_mem_obj);
-     
-     
-     if (divBuffer != nullptr) {
-       div_mem_obj = helper->reuse_or_create_buffer("div", W, H, CL_MEM_READ_WRITE); 
-     error_code = clEnqueueWriteBuffer(helper->command_queue, div_mem_obj, CL_TRUE, 0, W*H*sizeof(float), div, 0, NULL, NULL);
+
+     // only set the arguments for the division kernel if we're doing division
+     if (div_clmem != nullptr) {
      error_code = clSetKernelArg(div3kernel, 0, sizeof(cl_mem), (void *)&oldsrc_mem_obj);
      error_code = clSetKernelArg(div3kernel, 1, sizeof(cl_mem), (void *)&index_X_mem_obj);
      error_code = clSetKernelArg(div3kernel, 2, sizeof(cl_mem), (void *)&index_Y_mem_obj);
@@ -2026,6 +1672,9 @@ template<class T> int OpenCLgaussianBlur_impl(OpenCL_use use, OpenCL_helper *hel
      error_code = clSetKernelArg(dampingkernel, 3, sizeof(cl_int), (void *)&H);
      error_code = clSetKernelArg(dampingkernel, 4, sizeof(cl_float), (void *)&damping);
 
+     /************************/
+
+     // set up temporary main memory stores for transferring back to CPU to do damping, this is just a hack
      rtengine::JaggedArray<float> tempSRC(W, H);
      rtengine::JaggedArray<float> tempDST(W, H);
      rtengine::JaggedArray<float> tempDiv(W, H);
@@ -2034,9 +1683,10 @@ template<class T> int OpenCLgaussianBlur_impl(OpenCL_use use, OpenCL_helper *hel
        {
      helper->gPu_buffer_to_CPU_jagged_array(oldsrc_mem_obj, tempSRC, W, H);
      helper->gPu_buffer_to_CPU_jagged_array(olddst_mem_obj, tempDST, W, H);
-     if (divBuffer != nullptr) helper->gPu_buffer_to_CPU_jagged_array(div_mem_obj, tempDiv, W, H);
+     if (div_clmem != nullptr) helper->gPu_buffer_to_CPU_jagged_array(div_mem_obj, tempDiv, W, H);
        }
 
+     // make the generic handles point to the right kernels
      switch (_size)
        {
        case size::x3x3 :
@@ -2055,60 +1705,55 @@ template<class T> int OpenCLgaussianBlur_impl(OpenCL_use use, OpenCL_helper *hel
 	 break;
        }
      
-
+     /* figure out local work group size */
      size_t local_item_size; //256;
      helper->getLocalWorkGroupSize(&local_item_size);
 
-     size_t global_item_size2 = round_cl(H*W, local_item_size);//5624064; //H*W; //
+     size_t global_item_size2 = round_cl(H*W, local_item_size);
      printf("global size is %d\n", (int)global_item_size2);
      printf("local size is %d\n", (int)local_item_size);
-    clock_t diff, diff2;
-    clock_t start = clock();
-      
+     /******************************/
+           
       cl_event ndevent0, ndevent; /*allows us to wait for events, so gauss operations are performed in sequence*/
       
       /* */
-    
+
+     // the Y and X coordinates we wish to sample
     constexpr int sampleJ = 100;
     constexpr int sampleI = 100;
 
 
+    // no iteration, just do a straight operation
     if (iterations == 1 || 0) {
-      //no iteration
       cl_kernel kernel = standardkernel;
-      int s = 0;
       switch (gausstype)
 	{
 	case GAUSS_STANDARD :
 	  kernel = standardkernel;
-	  s = 5;
 	  break;
 	case GAUSS_DIV :
 	  kernel = divkernel;
-	  s = 10;
 	  break;
 	case GAUSS_MULT :
 	  kernel = mulkernel;
-	  s = 15;
 	  break;
 	}
-      if (OpenCL_helper::OpenCL_usable(use) == debug_) printf("\n Kernel is %d \n", s); 
       error_code = clEnqueueNDRangeKernel(helper->command_queue, kernel, 1, nullptr, &global_item_size2,  &local_item_size, 0, nullptr, &ndevent);
     }
+    // if this is a multi-iteration blur
     else {
-    fprintf(stderr, "\nBeginning iteration cycles\n"); fflush(stderr);
+    printf("\nBeginning iteration cycles\n");
 
     for (int u = 0; u < iterations; u++)
       {
-      
 	if (debug) printf("\nNew iteration cycle: %d\n", u);
       
 	if (damping == 0.0f) {
-	  if (debug) printf("Checkpoint Div \n On gpu side: c0-%f, (c1-%f, c2-%f and b0-%f, b1-%f\n", c0, c1, c2, b0, b1);
+	  if (debug) printf("Div \n On gpu side: c0-%f, c1-%f, c2-%f and b0-%f, b1-%f\n", c0, c1, c2, b0, b1);
   
 	  error_code = clEnqueueNDRangeKernel(helper->command_queue, divkernel, 1, nullptr, &global_item_size2,  &local_item_size, 0, nullptr, &ndevent);
 	
-	  if (debug) printf("\nCheckpoint 44, error code is %d\n", error_code);
+	  if (debug) printf("\nDiv error code is %d\n", error_code);
    
 	
 	}
@@ -2118,23 +1763,29 @@ template<class T> int OpenCLgaussianBlur_impl(OpenCL_use use, OpenCL_helper *hel
 	  {
 	    if (debug) printf("Checkpoint Standard\n On gpu side: c0-%f, c1-%f, c2-%f and b0-%f, b1-%f\n Initiating CPU Damping \n", c0, c1, c2, b0, b1);
 
+	    /* if the kernel is 3x3, we have an OpenCL kernel for that */
 	    if (_size == size::x3x3) {
 	      error_code = clEnqueueNDRangeKernel(helper->command_queue, standardkernel, 1, nullptr, &global_item_size2,  &local_item_size, 0, nullptr, nullptr);
 	    }
 
+	    // to CPU
 	    helper->gPu_buffer_to_CPU_jagged_array(oldsrc_mem_obj, tempSRC, W, H);
 	    helper->gPu_buffer_to_CPU_jagged_array(olddst_mem_obj, tempDST, W, H);
 	    helper->gPu_buffer_to_CPU_jagged_array(div_mem_obj, tempDiv, W, H);
+	    
 	    if (debug)
 	      printf("Transferred GPU buffer to main memory for Damping\n ");
-       
+
+	    /* we haven't yet implemented the following in an OpenCL kernel */
 	    if (_size == size::x5x5) {
 	      gaussHorizontalSse<T> (tempSRC, tempDST, W, H, sigma);
+	      gaussVerticalSse<T> (tempDST, tempDST, W, H, sigma);
 	    }
 	    /****damping****/
-	    //error_code = clEnqueueReadBuffer(helper->command_queue, olddst_mem_obj, CL_TRUE, 0, W*H*sizeof(float), tempCPUbuffer_dst, 0, nullptr, nullptr);
+
 	    dampingMethod(tempDST, tempDiv, damping, W, H);
 
+	    // to gPu
 	    helper->CPU_jagged_array_to_gPu_buffer(tempSRC, oldsrc_mem_obj, W, H);
 	    helper->CPU_jagged_array_to_gPu_buffer(tempDST, olddst_mem_obj, W, H);
 	    helper->CPU_jagged_array_to_gPu_buffer(tempDiv, div_mem_obj, W, H);
@@ -2146,35 +1797,17 @@ template<class T> int OpenCLgaussianBlur_impl(OpenCL_use use, OpenCL_helper *hel
 
 	if (debug) printf("Checkpoint Mult\n"); 
 	error_code = clEnqueueNDRangeKernel(helper->command_queue, mulkernel, 1, nullptr, &global_item_size2,  &local_item_size, 0, nullptr, nullptr);
-	//printf("Error code is %d\n ", error_code);
      
       }
     }
     
-    diff = clock() - start;
-     double msec = (double)diff * 1000.0 / (double)CLOCKS_PER_SEC;
-      if (debug) printf("OpenCL took %f to calculate", msec);
-
-   //copy the memory back to the inner bit of the destination 2D array
-     // memcpy(src, oldsrc, W*H*sizeof(float));
-     // memcpy(dst, olddst, W*H*sizeof(float));
-      
-     /*for (int i = 0; i < H; i++)
-	       {
-	        for (int j = 0; j < W; j++)
-	         {
-		   src[i][j] = oldsrc[i*W + j];
-		   dst[i][j] = olddst[i*W + j]; 
-	         }
-		 } */
  delete[] Xindex; delete[] Yindex;
- if (div != nullptr) delete[] div;
- delete[] olddst; delete[] oldsrc;
+
  printf("End of OpenCl gaussian blur\n"); 
      return 1;
 }
-//my original Nov 2019: template<class T> void gaussianBlurImpl(OpenCL_helper* helper, int iterations, T** src, T** dst, const int W, const int H, const double sigma, T *buffer = nullptr, eGaussType gausstype = GAUSS_STANDARD, T** buffer2 = nullptr, float damping = 0.0f)
-  template<class T> void gaussianBlurImpl(int iterations, T** src, T** dst, const int W, const int H, const double sigma, bool useBoxBlur, T *buffer = nullptr, eGaussType gausstype = GAUSS_STANDARD, T** buffer2 = nullptr, float damping = 0.0f, OpenCL_helper* helper = nullptr, cl_mem src_clmem = nullptr, cl_mem dst_clmem = nullptr, cl_mem div_clmem = nullptr)
+
+  template<class T> void gaussianBlurImpl(int iterations, T** src, T** dst, const int W, const int H, const double sigma, bool useBoxBlur, T *buffer = nullptr, eGaussType gausstype = GAUSS_STANDARD, T** buffer2 = nullptr)
 
 {
 
@@ -2184,7 +1817,7 @@ template<class T> int OpenCLgaussianBlur_impl(OpenCL_use use, OpenCL_helper *hel
     static constexpr auto GAUSS_7X7_LIMIT = 1.15;
     static constexpr auto GAUSS_DOUBLE = 25.0;
 
-    if (useBoxBlur) { // new from dev version Nov 2019
+    if (useBoxBlur) { 
         fprintf(stderr, "Checkpoint Quincy\n"); 
         // special variant for very large sigma, currently only used by retinex algorithm
         // use iterated boxblur to approximate gaussian blur
@@ -2264,12 +1897,6 @@ template<class T> int OpenCLgaussianBlur_impl(OpenCL_use use, OpenCL_helper *hel
                     break;
 
                 case GAUSS_STANDARD :
-		  //printf("Engaging gauss 3x3 standard\n");
-		    /* if (helper!= nullptr)
-		      //OpenCLgauss3x3<T> (helper, src, dst, W, H, c0, c1, c2, b0, b1);
-		      
-		      OpenCLgauss3x3_all<T> (helper, 1, gausstype, src_clmem, dst_clmem, div_clmem, src, dst, nullptr, W, H, c0, c1, c2, b0, b1, x3x3); 
-		      else */
 		    gauss3x3<T> (src, dst, W, H, c0, c1, c2, b0, b1);
                     break;
                 }
@@ -2289,10 +1916,6 @@ template<class T> int OpenCLgaussianBlur_impl(OpenCL_use use, OpenCL_helper *hel
                 switch (gausstype) {
                 case GAUSS_MULT : {
                     if (sigma <= GAUSS_5X5_LIMIT && src != dst) {
-		      /*  if (helper!= nullptr)
-		      //OpenCLgauss3x3<T> (helper, src, dst, W, H, c0, c1, c2, b0, b1);
-				      OpenCLgauss3x3_all<T> (helper, 1, gausstype, src_clmem, dst_clmem, div_clmem, src, dst, buffer2, W, H, 1.f, 1.f, 1.f, 1.f, 1.f, x5x5, sigma, damping);
-				      else */
                         gauss5x5mult(src, dst, W, H, sigma);
                     } else if (sigma <= GAUSS_7X7_LIMIT && src != dst) {
                         gauss7x7mult(src, dst, W, H, sigma);
@@ -2305,10 +1928,6 @@ template<class T> int OpenCLgaussianBlur_impl(OpenCL_use use, OpenCL_helper *hel
 
                 case GAUSS_DIV : {
                     if (sigma <= GAUSS_5X5_LIMIT && src != dst) {
-		      /*   if (helper!= nullptr)
-		      //OpenCLgauss3x3<T> (helper, src, dst, W, H, c0, c1, c2, b0, b1);
-			 OpenCLgauss3x3_all<T> (helper, iterations, gausstype, src_clmem, dst_clmem, div_clmem, src, dst, buffer2, W, H, 1.f, 1.f, 1.f, 1.f, 1.f, x5x5, sigma, damping);
-			 else */
                         gauss5x5div (src, dst, buffer2, W, H, sigma);
                     } else if (sigma <= GAUSS_7X7_LIMIT && src != dst) {
                         gauss7x7div (src, dst, buffer2, W, H, sigma);
@@ -2380,13 +1999,10 @@ void gaussianBlur(float** src, float** dst, const int W, const int H, const doub
   gaussianBlurImpl<float>(1, src, dst, W, H, sigma, useBoxBlur, buffer, gausstype, buffer2);
 }
 
-/*void OpenCLgaussianBlur(OpenCL_helper* helper, int iterations, cl_mem src_clmem, cl_mem dst_clmem, cl_mem div_clmem, float** src, float** dst, const int W, const int H, const double sigma, bool useBoxBlur, float *buffer, eGaussType gausstype, float** buffer2, float damping)
-{
-  gaussianBlurImpl<float>(iterations, src, dst,  W, H, sigma, useBoxBlur, buffer, gausstype, buffer2, damping, helper, src_clmem, dst_clmem, div_clmem);
-  } */
-
-int OpenCLgaussianBlur(OpenCL_use use, OpenCL_helper *helper, int iterations, cl_mem src_clmem, cl_mem dst_clmem, cl_mem div_clmem,  float** src, float**  dst, const int W, const int H, float sigma, bool useBoxBlur, float* buffer, eGaussType gausstype, float** divBuffer, float damping, void (*dampingMethod)(float**, float**, float, int, int) ) {
-  int ret = OpenCLgaussianBlur_impl(use, helper,  iterations,  src_clmem, dst_clmem,  div_clmem,  src, dst, W, H, sigma, useBoxBlur, buffer,  gausstype, divBuffer, damping, dampingMethod);
+int OpenCLgaussianBlur(float** src, float** dst, OpenCL_use use, OpenCL_helper *helper, int iterations, cl_mem src_clmem, cl_mem dst_clmem,const int W, const int H, const double sigma, cl_mem div_clmem,  bool useBoxBlur, float* buffer, eGaussType gausstype, float** buffer2, float damping, void (*dampingMethod)(float**, float**, float, int, int) ) {
+  
+  int ret = OpenCLgaussianBlur_impl(use, helper,  iterations,  src_clmem, dst_clmem,  src, dst, W, H, sigma, div_clmem, useBoxBlur, buffer,  gausstype, buffer2, damping, dampingMethod);
+  
   return ret;
 }
 

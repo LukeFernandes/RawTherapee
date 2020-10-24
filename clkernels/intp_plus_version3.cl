@@ -1,9 +1,7 @@
-__kernel void intp_plus_version3(__global const float *blend, __global float *lum, __global const float *blur, __global const int *X, __global const int *Y) {
+__kernel void intp_plus_version3(__global const float *blend, __global float *lum, __global const float *blur) {
  
     // Get the index of the current element to be processed
-    int index = get_global_id(0);
-    int currentY = Y[index]; int currentX = X[index];
-    
+    int index = get_global_id(0);    
     //from rt_math
     //return a * (b - c) + c;
 
