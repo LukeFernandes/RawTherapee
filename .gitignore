@@ -46,3 +46,4 @@ clean
 *.xz
 *.zip
 
+WindowsInnoSetup.iss

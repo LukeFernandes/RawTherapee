@@ -1546,7 +1546,9 @@ N.B. The preparatory work done by the regular gaussianBlur_impl function (e.g. w
    if (constant_data.to_be_done_on_CPU == true)
 		      return -1;
    
-   if (iterations > 1) printf("\n\nMulti iteration gaussian blur commencing on GPU\n");
+
+    if (iterations <= 1) printf("\n\n->Single iteration gaussian blur commencing on GPU\n");
+    if (iterations > 1) printf("\n\n->Multi iteration gaussian blur commencing on GPU\n");
 
    // is the size of the gauss kernel 3x3 or 5x5? 7x7 yet to be implemented
    size _size = constant_data._size;
@@ -1585,8 +1587,8 @@ N.B. The preparatory work done by the regular gaussianBlur_impl function (e.g. w
     mul3kernel = helper->reuse_or_create_kernel("gauss3x3mul", "gauss_3x3_mult_whole.cl", "gauss_3x3_mult_whole");
     mul5kernel = helper->reuse_or_create_kernel("gauss5x5mul", "gauss_5x5_mult_whole.cl", "gauss_5x5_mult_whole");
 
-    // this doesn't build yet, work in progress
-    cl_kernel dampingkernel = helper->reuse_or_create_kernel("damping", "gauss_damping.cl", "gauss_damping");
+    // gPu damping is a work in progress
+    //cl_kernel dampingkernel = helper->reuse_or_create_kernel("damping", "gauss_damping.cl", "gauss_damping");
 
      cl_mem oldsrc_mem_obj = src_clmem;
      cl_mem olddst_mem_obj = dst_clmem;
@@ -1666,11 +1668,13 @@ N.B. The preparatory work done by the regular gaussianBlur_impl function (e.g. w
      error_code = clSetKernelArg(div5kernel, 11, sizeof(cl_mem), (void *)&olddst_mem_obj);
      }
 
+     /*
      error_code = clSetKernelArg(dampingkernel, 0, sizeof(cl_mem), (void *)&olddst_mem_obj);
      error_code = clSetKernelArg(dampingkernel, 1, sizeof(cl_mem), (void *)&div_mem_obj);
      error_code = clSetKernelArg(dampingkernel, 2, sizeof(cl_int), (void *)&W);
      error_code = clSetKernelArg(dampingkernel, 3, sizeof(cl_int), (void *)&H);
      error_code = clSetKernelArg(dampingkernel, 4, sizeof(cl_float), (void *)&damping);
+     */
 
      /************************/
 
@@ -1743,29 +1747,25 @@ N.B. The preparatory work done by the regular gaussianBlur_impl function (e.g. w
     // if this is a multi-iteration blur
     else {
     printf("\nBeginning iteration cycles\n");
+    printf("\n\n******************************\nProcessing %d iterations via OpenCL. For more debugging information, please uncomment the printf lines in the OpenCL kernels.\n******************************\n\n", iterations);
 
     for (int u = 0; u < iterations; u++)
       {
-	if (debug) printf("\nNew iteration cycle: %d\n", u);
+	//if (debug) printf("\nNew iteration cycle: %d\n", u);
       
-	if (damping == 0.0f) {
-	  if (debug) printf("Div \n On gpu side: c0-%f, c1-%f, c2-%f and b0-%f, b1-%f\n", c0, c1, c2, b0, b1);
-  
-	  error_code = clEnqueueNDRangeKernel(helper->command_queue, divkernel, 1, nullptr, &global_item_size2,  &local_item_size, 0, nullptr, &ndevent);
-	
-	  if (debug) printf("\nDiv error code is %d\n", error_code);
-   
-	
-	}
+	if (damping == 0.0f)
+	  {
+  	  error_code = clEnqueueNDRangeKernel(helper->command_queue, divkernel, 1, nullptr, &global_item_size2,  &local_item_size, 0, nullptr, &ndevent);
+	   if (debug && error_code != 0) printf("\nDiv error code is %d\n", error_code); 
+	  }
 	
             
 	else if (damping > 0.0f)
 	  {
-	    if (debug) printf("Checkpoint Standard\n On gpu side: c0-%f, c1-%f, c2-%f and b0-%f, b1-%f\n Initiating CPU Damping \n", c0, c1, c2, b0, b1);
-
 	    /* if the kernel is 3x3, we have an OpenCL kernel for that */
 	    if (_size == size::x3x3) {
 	      error_code = clEnqueueNDRangeKernel(helper->command_queue, standardkernel, 1, nullptr, &global_item_size2,  &local_item_size, 0, nullptr, nullptr);
+	       if (debug && error_code != 0) printf("\nStandard error code is %d\n", error_code); 
 	    }
 
 	    // to CPU
@@ -1794,12 +1794,11 @@ N.B. The preparatory work done by the regular gaussianBlur_impl function (e.g. w
 	      printf("Transferred main memory buffer back to GPU\n ");
 	  } 
 
-
-	if (debug) printf("Checkpoint Mult\n"); 
 	error_code = clEnqueueNDRangeKernel(helper->command_queue, mulkernel, 1, nullptr, &global_item_size2,  &local_item_size, 0, nullptr, nullptr);
-     
+	 if (debug && error_code != 0) printf("\nMult error code is %d\n", error_code); 
       }
     }
+    if (iterations > 1) printf("\n****End of  gaussian blur iteration cycles. ****\n"); 
     
  delete[] Xindex; delete[] Yindex;
 

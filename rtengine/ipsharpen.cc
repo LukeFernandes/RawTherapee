@@ -341,7 +341,7 @@ void ImProcFunctions::deconvsharpening (float** luminance, float** tmp, const fl
   // Record start time
   auto start_ch= std::chrono::high_resolution_clock::now();
   
-  printf("Checkpoint 1. W is %d and H is %d\n", W, H);
+  printf("\n\nDeconvolution sharpening\n\nW is %d and H is %d\n\n", W, H);
   OpenCL_use gpuSelected;
   /*procMethod records the drop down selection. This drop down will need to be removed in production code, but it is useful for debugging/comparison
   GPU - OpenCL is used, no printing for speed comparison
@@ -390,7 +390,7 @@ BENCHFUN
     //Timing how long it took to setup
     auto finish = std::chrono::high_resolution_clock::now();
     std::chrono::duration<double> elapsed = finish - start_ch;
-    std::cout << "Chrono OpenCL setup time: " << elapsed.count() << " s\n";
+    std::cout << "OpenCL setup time: " << elapsed.count() << " s\n";
     
     /*OpenCL definitions ***************** */
     float* lum;
@@ -473,17 +473,17 @@ BENCHFUN
 	//if using debug mode - check results        
         if (OpenCL_helper::OpenCL_usable(gpuSelected) == debug_)
 	  {
-	    //sample and compare blend
-	   printf("Blend gPu sample is %f, CPU sample is %f", helper->debug_get_value_from_GPU_buffer(blend_mem_obj, sampleI, sampleJ, W, H), blend_jagged_array[sampleI][sampleJ]);
 	   //sample and compare blur over a range
 	    error_code = clEnqueueReadBuffer(helper->command_queue, blur_mem_obj, CL_TRUE, 0, W*H*sizeof(float), read_storage, 0, nullptr, nullptr);
-	    for (int i = 195; i < 206; i++)
+	    printf("\n\nSample and compare what is in the blur buffer over the 197-203 square after the first gaussian blur\n\n**********************\n");
+	    for (int i = 197; i < 203; i++)
 	      {
-	        for (int j = 195; j < 206; j++)
+	        for (int j = 197; j < 203; j++)
 		  {
-		   printf("OpenCl GPU Difference: CPU is %f, gPu is %f at %d,%d\n", blur[i][j], read_storage[i*W + j], i, j);  
+		   printf("\n   OpenCl GPU Difference: CPU is %f, gPu is %f at %d,%d", blur[i][j], read_storage[i*W + j], i, j);  
 		  }
 	      }
+	    printf("\n\n**********************");
 	  }
 	
 	    /**** OpenCL section 3 ***************** 
@@ -515,13 +515,15 @@ BENCHFUN
 	  {
 	    //sample and compare blur over a range
 	    error_code = clEnqueueReadBuffer(helper->command_queue, blur_mem_obj, CL_TRUE, 0, W*H*sizeof(float), read_storage, 0, nullptr, nullptr);
-	    for (int i = 195; i < 206; i++)
+	    printf("\n\nSample and compare what is in the blur buffer over the 197-203 square after the intp operation\n\n**********************\n");
+	    for (int i = 197; i < 203; i++)
 	      {
-	        for (int j = 195; j < 206; j++)
+	        for (int j = 197; j < 203; j++)
 		  {
-		      printf("intp Difference: CPU is %f, CPU blend is %f, GPU is %f at %d,%d\n", blur[i][j], blend_jagged_array[i][j], read_storage[i*W + j], i, j); 
+		      printf("\n   intp Difference: CPU is %f, CPU blend is %f, GPU is %f at %d,%d", blur[i][j], blend_jagged_array[i][j], read_storage[i*W + j], i, j); 
 		  }
-	      }  
+	      }
+	    printf("\n\n**********************");
 	  }
 
 	  
@@ -530,7 +532,6 @@ BENCHFUN
     const bool needdamp = sharpenParam.deconvdamping > 0;
     const double sigma = sharpenParam.deconvradius / Scale;
     const float amount = sharpenParam.deconvamount / 100.f;
-    printf("\n\n\nsigma is %f\n\n\n", sigma);
     
     //if using gPu, need to write tmp into a gPu buffer
     if (OpenCL_helper::OpenCL_usable(gpuSelected) == true_ || OpenCL_helper::OpenCL_usable(gpuSelected) == debug_)
@@ -551,7 +552,7 @@ BENCHFUN
 	printf("Check: gPu BUFFER blend for %d,%d is %f \n", sampleI, sampleJ, helper->debug_get_value_from_GPU_buffer(blend_mem_obj, sampleI, sampleJ, W, H)); printf("Check: CPU blend for %d,%d is %f \n", sampleI, sampleJ, blend_jagged_array[sampleI][sampleJ]);
     
 	if (blur_mem_obj != nullptr) printf("Check: gPu BUFFER Blur for %d,%d is %f \n", sampleI, sampleJ, helper->debug_get_value_from_GPU_buffer(blur_mem_obj, sampleI, sampleJ, W, H));
-	if (blurbuffer != nullptr) printf("Check: CPU Blur for %d,%d is %f \n\\n\n\n\n", sampleI, sampleJ, (*blurbuffer)[sampleI][sampleJ]);
+	if (blurbuffer != nullptr) printf("Check: CPU Blur for %d,%d is %f \n\n\n", sampleI, sampleJ, (*blurbuffer)[sampleI][sampleJ]);
       }
 
     /**** CPU section 4 - multi iteration blur *****************/
@@ -559,14 +560,13 @@ BENCHFUN
      {
     finish = std::chrono::high_resolution_clock::now();
     elapsed = finish - start_ch;
-    std::cout << "Chrono time before CPU multiple gauss: " << elapsed.count() << " s\n";
+    printf("**********CPU multi-iteration blur**********\n\n");
+    std::cout << "   Time before CPU multiple gauss: " << elapsed.count() << " s\n\n";
     #ifdef _OPENMP
     #pragma omp parallel
     #endif
     {
        for (int k = 0; k < sharpenParam.deconviter; k++) {
-	 if (OpenCL_helper::OpenCL_usable(gpuSelected) == debug_)
-	   printf("CPU %d,%d is %f \n", sampleI, sampleJ, tmp[sampleI][sampleJ]); 
 	   if (!needdamp) {
 	     // apply gaussian blur and divide luminance by result of gaussian blur
 	     gaussianBlur(tmpI, tmp, W, H, sigma, false, nullptr, GAUSS_DIV, luminance); 
@@ -574,25 +574,26 @@ BENCHFUN
 	   // apply gaussian blur + damping
 	     gaussianBlur(tmpI, tmp, W, H, sigma);
 	     dcdamping(tmp, luminance, damping, W, H);
-	     if (OpenCL_helper::OpenCL_usable(gpuSelected) == debug_)
-	       printf( "No. %d: CPU damping result %d,%d is %f \n", k, sampleI, sampleJ, tmp[sampleI][sampleJ]);
 	 }
-	 gaussianBlur(tmp, tmpI, W, H, sigma, false, nullptr, GAUSS_MULT); 
+	 gaussianBlur(tmp, tmpI, W, H, sigma, false, nullptr, GAUSS_MULT);
+	 #pragma omp master
+	 {
 	 if (OpenCL_helper::OpenCL_usable(gpuSelected) == debug_)
-	   printf("No. %d: Post mult CPU tmpI/src %d,%d is %f \n", k, sampleI, sampleJ, tmpI[sampleI][sampleJ]);
+	   printf("   CPU iteration no. %d: Post mult  tmpI/src %d,%d is %f \n", k, sampleI, sampleJ, tmpI[sampleI][sampleJ]);
+	 }
        } // end for
     }
        /*****************************/
     finish = std::chrono::high_resolution_clock::now();
     elapsed = finish - start_ch;
-    std::cout << "Chrono time after CPU multiple gauss: " << elapsed.count() << " s\n";
+    std::cout << "\n   Time after CPU multiple gauss: " << elapsed.count() << " s\n********************\n";
        fflush(stdout);
      }
      /***************************/
 
     finish = std::chrono::high_resolution_clock::now();
     elapsed = finish - start_ch;
-    std::cout << "Chrono time before gPu multiple gauss: " << elapsed.count() << " s\n";
+    std::cout << "Time before gPu multiple gauss: " << elapsed.count() << " s\n";
    
      /**** OpenCL section 4 ***************** 
       Transposition of above loop into OpenCL
@@ -626,7 +627,7 @@ BENCHFUN
     /* test how long the multi-iteration blur took */
     finish = std::chrono::high_resolution_clock::now();
     elapsed = finish - start_ch;
-    std::cout << "Chrono time after multiple gauss: " << elapsed.count() << " s\n";
+    std::cout << "Time after multiple gauss: " << elapsed.count() << " s\n";
   
 	
     if (OpenCL_helper::OpenCL_usable(gpuSelected) == debug_)
@@ -636,14 +637,14 @@ BENCHFUN
 	 */
 	 float* temp_store_ = new float[W*H]();
 	 error_code = clEnqueueReadBuffer(helper->command_queue, tmpI_mem_obj, CL_TRUE, 0, W*H*sizeof(float), temp_store_, 0, nullptr, nullptr);
-	 printf("Before is %f, Temp is %f\n", tmpI[sampleI][sampleJ], temp_store_[sampleI*W + sampleJ]);
-	 for (int i = 195; i < 205; i++)
+	 printf("Before is %f, Temp is %f\n\n", tmpI[sampleI][sampleJ], temp_store_[sampleI*W + sampleJ]);
+	 for (int i = (H - 3); i < H; i++)
 	   {
-	     for (int j = 195; j < 205; j++)
+	     for (int j = (W - 3); j < W; j++)
 	     {
-	        printf("Difference: CPU is %f, gPu is %f at %d,%d\n", tmpI[i][j], temp_store_[i*W + j], i, j);
-		if (tmpI[i][j] == temp_store_[i*W + j])  printf("\nCPU and OpenCL results are the same\n");
-		else if (fabs(temp_store_[i*W + j] - tmpI[i][j]) < 0.01)  printf("\nDifference is less than one in one hundred\n");	    
+	        printf("Difference: CPU is %f, gPu is %f at %d,%d", tmpI[i][j], temp_store_[i*W + j], i, j);
+		if (tmpI[i][j] == temp_store_[i*W + j])  printf(" -- CPU and OpenCL results are the same\n");
+		else if (fabs(temp_store_[i*W + j] - tmpI[i][j]) < 0.01)  printf("-- Difference is less than one in one hundred\n");	    
 	     }
 	    }  
 	 delete[] temp_store_;
@@ -711,7 +712,7 @@ BENCHFUN
 
     finish = std::chrono::high_resolution_clock::now();
     elapsed = finish - start_ch;
-    std::cout << "Chrono time before read back from gPu: " << elapsed.count() << " s\n";
+    std::cout << "Time before read back from gPu: " << elapsed.count() << " s\n";
     /* read gPu buffer back into luminance */
     if (OpenCL_helper::OpenCL_usable(gpuSelected) == true_ || OpenCL_helper::OpenCL_usable(gpuSelected) == debug_)
       {
@@ -733,10 +734,115 @@ BENCHFUN
 
     finish = std::chrono::high_resolution_clock::now();
      elapsed = finish - start_ch;
-    std::cout << "Chrono time: " << elapsed.count() << " s\n";
+    std::cout << "Time: " << elapsed.count() << " s\n";
 	// } // end parallel
     delete blurbuffer;
 }
+
+void ImProcFunctions::deconvsharpeningloc (float** luminance, float** tmp, int W, int H, float** loctemp, int damp, double radi, int ite, int amo, int contrast, double blurrad, int sk)
+{
+    // BENCHFUN
+
+    if (amo < 1) {
+        return;
+    }
+    JaggedArray<float> blend(W, H);
+    float contras = contrast / 100.f;
+    buildBlendMask(luminance, blend, W, H, contras, 1.f);
+
+
+    JaggedArray<float> tmpI(W, H);
+
+
+#ifdef _OPENMP
+    #pragma omp parallel for
+#endif
+    for (int i = 0; i < H; i++) {
+        for (int j = 0; j < W; j++) {
+            tmpI[i][j] = max(luminance[i][j], 0.f);
+        }
+    }
+
+    // calculate contrast based blend factors to reduce sharpening in regions with low contrast
+
+    JaggedArray<float>* blurbuffer = nullptr;
+
+    if (blurrad >= 0.25) {
+        blurbuffer = new JaggedArray<float>(W, H);
+        JaggedArray<float> &blur = *blurbuffer;
+#ifdef _OPENMP
+        #pragma omp parallel
+#endif
+        {
+            gaussianBlur(tmpI, blur, W, H, blurrad);
+#ifdef _OPENMP
+            #pragma omp for
+#endif
+            for (int i = 0; i < H; ++i) {
+                for (int j = 0; j < W; ++j) {
+                    blur[i][j] = intp(blend[i][j], luminance[i][j], std::max(blur[i][j], 0.0f));
+                }
+            }
+        }
+    }
+
+    float damping = (float) damp / 5.0;
+    bool needdamp = damp > 0;
+    double sigma = radi / sk;
+    const float amount = (float) amo / 100.f;
+
+    if (sigma < 0.26f) {
+        sigma = 0.26f;
+    }
+
+    int itera = ite;
+
+#ifdef _OPENMP
+    #pragma omp parallel
+#endif
+    {
+        for (int k = 0; k < itera; k++) {
+            if (!needdamp) {
+                // apply gaussian blur and divide luminance by result of gaussian blur
+            //    gaussianBlur (tmpI, tmp, W, H, sigma, nullptr, GAUSS_DIV, luminance);
+	      gaussianBlur(tmpI, tmp, W, H, sigma, false, nullptr, GAUSS_DIV, luminance);
+            } else {
+                // apply gaussian blur + damping
+                gaussianBlur (tmpI, tmp, W, H, sigma);
+                dcdamping (tmp, luminance, damping, W, H);
+            }
+
+            gaussianBlur (tmp, tmpI, W, H, sigma, false, nullptr, GAUSS_MULT);
+        } // end for
+
+
+#ifdef _OPENMP
+        #pragma omp for
+#endif
+
+        for (int i = 0; i < H; i++)
+            for (int j = 0; j < W; j++) {
+                loctemp[i][j] = intp(blend[i][j] * amount, max(tmpI[i][j], 0.0f), luminance[i][j]);
+            }
+            
+        if (blurrad >= 0.25) {
+            JaggedArray<float> &blur = *blurbuffer;
+#ifdef _OPENMP
+        #pragma omp for
+#endif
+            for (int i = 0; i < H; ++i) {
+                for (int j = 0; j < W; ++j) {
+                    loctemp[i][j] = intp(blend[i][j], loctemp[i][j], max(blur[i][j], 0.0f));
+                }
+            }
+        }
+            
+    } // end parallel
+    delete blurbuffer;
+
+
+}
+
 
 void ImProcFunctions::sharpening (LabImage* lab, const procparams::SharpeningParams &sharpenParam, bool showMask)
 {
@@ -772,7 +878,7 @@ void ImProcFunctions::sharpening (LabImage* lab, const procparams::SharpeningPar
         deconvsharpening(lab->L, b2, blend, lab->W, lab->H, sharpenParam, scale);
         auto finish = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> elapsed = finish - start_ch;
-        std::cout << "Chrono overall time: " << elapsed.count() << " s\n";
+        std::cout << "Overall time: " << elapsed.count() << " s\n";
         return;
     }
 BENCHFUN

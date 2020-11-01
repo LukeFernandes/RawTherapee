@@ -44,12 +44,10 @@ OpenCL_helper::OpenCL_helper() {
 	     printf("Get Device error code is (0 is success):%d\n", error_code);
 	if (CL_SUCCESS == error_code)
 	  {
-	    fflush(stderr);
-
 	    context = clCreateContext(NULL, 1, &device_id, NULL, NULL, &error_code);
-	    printf("OpenCL Context Error code 1 (0 is success):%d\n", error_code);
+	    printf("OpenCL Context error code (0 is success):%d\n", error_code);
 	    command_queue = clCreateCommandQueue(context, device_id, 0, &error_code);
-	    printf("OpenCL Command Queue Error code 2 (0 is success):%d\n", error_code);
+	    printf("OpenCL Command Queue error code (0 is success):%d\n", error_code);
 	      // kernels.reserve(MAX_NO_KERNELS);
 	      program = NULL;
 	  }	
@@ -70,16 +68,18 @@ cl_kernel  OpenCL_helper::setup_kernel(const char *kernel_filename, const char *
             char *source_str;
             size_t source_size;
             cl_int error_code = 0;
-            char full_kernel_filename[80];
-            strcpy(full_kernel_filename, "..\\..\\clkernels\\");
-            strncat(full_kernel_filename, kernel_filename, 61);
-            printf(full_kernel_filename);
+            char full_kernel_filename[80]; char alt_full_kernel_filename[80];
+            strcpy(full_kernel_filename, "..\\..\\clkernels\\"); strcpy(alt_full_kernel_filename, "clkernels\\");
+            strncat(full_kernel_filename, kernel_filename, 61); strncat(alt_full_kernel_filename, kernel_filename, 61);
 
             fp = fopen(full_kernel_filename, "r");
-                if (!fp) {
+            if (!fp) {
+	     fp = fopen(alt_full_kernel_filename, "r");
+	     if (!fp) {
 	        printf("Failed to load kernel.\n");
-                   exit(1);
-                         }
+	        exit(1);
+	               }	                        
+                      }
     
             source_str = (char*)malloc(MAX_SOURCE_SIZE);
             source_size = fread( source_str, 1, MAX_SOURCE_SIZE, fp);
@@ -147,7 +147,7 @@ cl_mem OpenCL_helper::reuse_or_create_buffer(std::string string, int W, int H, c
 			// if there's data supplied by the caller, try to write it
 			 if (optionaldata != nullptr) {
 			    error_code = clEnqueueWriteBuffer(command_queue, input_buffer, CL_TRUE, 0, W*H*sizeof(float), optionaldata, 0, NULL, NULL);
-			    if (error_code == 0)  std::cout << "\nThe old buffer has been rewritten successfully\n";
+			    if (error_code == 0)  std::cout << "\nThe old buffer " << string << " has been rewritten successfully";
 			    else std::cout << "\nOpenCL error " << error_code;
 			  }
 			 // std::cout << "OpenCL Old memory object " << string << " reused\n";
@@ -163,9 +163,10 @@ cl_mem OpenCL_helper::reuse_or_create_buffer(std::string string, int W, int H, c
 			  // if there's data supplied by the caller, try to write it
 			  if (optionaldata != nullptr) {
 			    error_code = clEnqueueWriteBuffer(command_queue, input_buffer, CL_TRUE, 0, W*H*sizeof(float), optionaldata, 0, NULL, NULL);
-			   if (error_code == 0)  std::cout << "\nThe new buffer has been written successfully\n";
-			    else std::cout << "\nOpenCL error " << error_code << " with writing data to " << string << " buffer\n";
+			    if (error_code == 0)  std::cout << "\nThe buffer " << string << " has been created and written successfully";
+			    else std::cout << "\nOpenCL error " << error_code << " with writing data to " << string << " buffer";
 			  }
+			  else  std::cout << "\nThe buffer " << string << " has been created";
 		   }
  
   return input_buffer;
