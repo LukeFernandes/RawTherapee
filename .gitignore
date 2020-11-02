@@ -49,3 +49,4 @@ clean
 WindowsInnoSetup.iss
 *.cl#
 *.cl~
+clkernels/.#gauss_5x5_div_whole.cl
