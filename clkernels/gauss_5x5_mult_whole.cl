@@ -20,13 +20,13 @@ int index_equiv = currentY * W + currentX;
  
 // Check if on the borders
  int topborder_check = (1 - clamp(Y[index], 0, 1)); // 1 if the top border, 0 if anything else. If the top left corner or top right corner is 1, the result is 0.
- int top_but_one_border_check = (1 - clamp(Y[index] - 1, 0, 1)); // 1 if the top border, 0 if anything else. If the top left corner or top right corner is 1, the result is 0.
+ int top_but_one_border_check = (1 - clamp(Y[index] - 1, 0, 1)); // 1 if the top border but one, 0 if anything else. If the top left corner or top right corner is 1, the result is 0.
  int leftborder_check = (1 - clamp(X[index], 0, 1)); // 1 if the left border, 0 if anything else. If the top left corner or bottom left corner is 1, the result is 0.
- int left_but_one_border_check = (1 - clamp(X[index] - 1, 0, 1)); // 1 if the left border, 0 if anything else. If the top left corner or bottom left corner is 1, the result is 0.
+ int left_but_one_border_check = (1 - clamp(X[index] - 1, 0, 1)); // 1 if the left border but one, 0 if anything else. If the top left corner or bottom left corner is 1, the result is 0.
  int rightborder_check = (1 - clamp((W - 1 - X[index]), 0, 1)); // 1 if the right border, 0 if anything else. If the top right corner or bottom right corner is 1, the result is 0.
- int right_but_one_border_check = (1 - clamp((W - 1 - X[index] + 1), 0, 1)); // 1 if the right border, 0 if anything else. If the top right corner or bottom right corner is 1, the result is 0.
+ int right_but_one_border_check = (1 - clamp(( W - 1 - (X[index] + 1) ), 0, 1)); // 1 if the right border but one, 0 if anything else. If the top right corner or bottom right corner is 1, the result is 0.
  int bottomborder_check = (1 - clamp((H - 1 - Y[index]), 0, 1)); // 1 if the bottom border, 0 if anything else. If the bottom left corner or bottom left corner is 1, the result is 0.
- int bottom_but_one_border_check = (1 - clamp((H - 1 - Y[index] + 1), 0, 1)); // 1 if the bottom border, 0 if anything else. If the bottom left corner or bottom left corner is 1, the result is 0.
+ int bottom_but_one_border_check = (1 - clamp(( H - 1 - (Y[index] + 1) ), 0, 1)); // 1 if the bottom border but one, 0 if anything else. If the bottom left corner or bottom left corner is 1, the result is 0.
 
 
    int innerpixels_check = (1 - top_but_one_border_check)*(1 - left_but_one_border_check)*(1 - right_but_one_border_check)*(1 - bottom_but_one_border_check)*(1 - topborder_check)*(1 - leftborder_check)*(1 - rightborder_check)*(1 - bottomborder_check); 
