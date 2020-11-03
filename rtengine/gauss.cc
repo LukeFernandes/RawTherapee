@@ -196,14 +196,14 @@ template<class T> void gauss3x3 (T** RESTRICT src, T** RESTRICT dst, const int W
 
         for (int j = 1; j < W - 1; j++) {
 	  
-	   if ((i == 900) && (j == 900) && OClcompare == true) {
+	  /*  if ((i == 900) && (j == 900) && OClcompare == true) {
 	    float temp =  c2 * (src[i - 1][j - 1] + src[i - 1][j + 1] + src[i + 1][j - 1] + src[i + 1][j + 1]) + c1 * (src[i - 1][j] + src[i][j - 1] + src[i][j + 1] + src[i + 1][j]) + c0 * src[i][j];
 	    fprintf(stderr, "\n CPU MULT 900 900 src (really dst) value is %f", src[i][j]);
 	    fprintf(stderr, "\n CPU MULT 900 900 base value is %f", temp);
 	    fprintf(stderr, "\n CPU MULT 900 900 dst for multiplication value is %f", dst[i][j]);
 	    fprintf(stderr, "\n CPU MULT 900 900 final value is %f", dst[i][j]*temp);
 	    fflush(stderr);
-	  }
+	    } */
 	  float temp = c2 * (src[i - 1][j - 1] + src[i - 1][j + 1] + src[i + 1][j - 1] + src[i + 1][j + 1]) + c1 * (src[i - 1][j] + src[i][j - 1] + src[i][j + 1] + src[i + 1][j]) + c0 * src[i][j];
 	  dst[i][j] *= temp; /* c2 * (src[i - 1][j - 1] + src[i - 1][j + 1] + src[i + 1][j - 1] + src[i + 1][j + 1]) + c1 * (src[i - 1][j] + src[i][j - 1] + src[i][j + 1] + src[i + 1][j]) + c0 * src[i][j]; */
 	 
@@ -259,11 +259,11 @@ template<class T> void gauss3x3div (T** RESTRICT src, T** RESTRICT dst, T** REST
         for (int j = 1; j < W - 1; j++) {
             tmp = (c2 * (src[i - 1][j - 1] + src[i - 1][j + 1] + src[i + 1][j - 1] + src[i + 1][j + 1]) + c1 * (src[i - 1][j] + src[i][j - 1] + src[i][j + 1] + src[i + 1][j]) + c0 * src[i][j]);
             dst[i][j] = rtengine::max(divBuffer[i][j] / (tmp > 0.f ? tmp : 1.f), 0.f);
-	  if ((i == 900) && (j == 900) && OCl_compare == true) {
+	    /* if ((i == 900) && (j == 900) && OCl_compare == true) {
 	    fprintf(stderr, "\n CPU DIV 900 900 src value is %f", src[i][j]);
 	    fprintf(stderr, "\n CPU DIV 900 900 final value is %f", dst[i][j]);
 	    fflush(stderr);
-	  }
+	    } */
         }
 
         tmp = (b1 * (src[i - 1][W - 1] + src[i + 1][W - 1]) + b0 * src[i][W - 1]);
@@ -1513,6 +1513,7 @@ template <class T> void reprocess(T** RESTRICT src, T** RESTRICT dst, const int 
     }
 }
 
+ /* this is to figure out what the global work group size should be. This will be the multiple of the max local item size (usually 512/1024 units) which equals, or is closest too and above, the number of pixels to be computed */
 int round_cl(int n, int m) 
 { 
    n = ( ( n - 1 ) | ( m - 1 ) ) + 1;
@@ -1709,13 +1710,12 @@ N.B. The preparatory work done by the regular gaussianBlur_impl function (e.g. w
 	 break;
        }
      
-     /* figure out local work group size */
-     size_t local_item_size; //256;
+     /* figure out max local item size and use that. The gPu determined maximum is usually 512 or 1024 */
+     size_t local_item_size; 
      helper->getLocalWorkGroupSize(&local_item_size);
 
+      /* figure out what the global work group size should be. This will be the multiple of the max local item size which equals, or is closest too and above, the number of pixels to be computed */
      size_t global_item_size2 = round_cl(H*W, local_item_size);
-     printf("global size is %d\n", (int)global_item_size2);
-     printf("local size is %d\n", (int)local_item_size);
      /******************************/
            
       cl_event ndevent0, ndevent; /*allows us to wait for events, so gauss operations are performed in sequence*/

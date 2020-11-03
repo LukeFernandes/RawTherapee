@@ -10,7 +10,7 @@ __kernel void intp_plus_version3(__global const float *blend, __global float *lu
 
     // Do the operation *intp*
     lum[index] =  blend[index] * (lum[index] - maxresult) + maxresult;
-    /* if (currentX == 900 && currentY == 900) {
+    /*if (currentX == 900 && currentY == 900) {
     printf("\n in gpu blend is %f", blend[index]);
     printf("\n in gpu lum is %f", lum[index]);
      printf("\n in gpu blur is %f", blur[index]);

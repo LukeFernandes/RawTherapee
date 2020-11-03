@@ -58,13 +58,14 @@ float temp_pre_mult = ( c21 * ( oldsrc[clamp(index_equiv - (2 * W) - 1, 0, total
 			    + c00  *  oldsrc[index_equiv]
 					     );
 
- float mult = 1.f*(1 - innerpixels_check) + temp_pre_mult*innerpixels_check;
+ float mult = 1.f*(1 - innerpixels_check) +
+   temp_pre_mult*innerpixels_check;
   olddst[index_equiv] = olddst[index_equiv] * mult;
 
   
   /*if ((currentX == checkintX) && (currentY == checkintY)) {
     printf("Source is %f\n", oldsrc[index_equiv]);
-    printf("MULT 5x5 gPu src %d, %d  intermediate is %f \n", checkintY, checkintX, temp_pre_mult);
+    printf("MULT 5x5 gPu src %d, %d  intermbgaediate is %f \n", checkintY, checkintX, temp_pre_mult);
     printf("MULT 5x5 gPu final result %d, %d is %f \n", checkintY, checkintX, olddst[index_equiv]);
    
     }*/

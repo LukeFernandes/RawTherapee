@@ -14,7 +14,7 @@ __kernel void intp_plus(__global const float *blend, __global const float *lum, 
 
     // max the blur
     float maxresult = fmax(blur[index], 0.0f);
-    float max2 = cmax(blur[index], 0.0f);
+    float max2 = cmax(blur[index], 0.0f); //not using fmax intrinsic
 
     // Do the operation *intp*
     blur[index] =  blend[index] * (lum[index] - max2) + max2;

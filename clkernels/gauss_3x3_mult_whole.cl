@@ -70,7 +70,7 @@ int index_equiv = currentY * W + currentX;
 					     + c0 * oldsrc[index_equiv]
 					     );
 
-  if ((currentX == checkintX) && (currentY == checkintY)) {
+  //if ((currentX == checkintX) && (currentY == checkintY)) {
     /* printf("Topborder check is %d \n", topborder_check);
     printf("Bottomborder check is %d \n", bottomborder_check);
     printf("Leftborder check is %d \n", leftborder_check);
@@ -86,7 +86,7 @@ int index_equiv = currentY * W + currentX;
     /*printf("MULT gPu src %d, %d is %f \n", checkintY, checkintX, oldsrc[index_equiv]);
     printf("MULT gPu dst %d, %d for multiplication value is %f \n", checkintY, checkintX, olddst[index_equiv]);
     printf("MULT gPu %d, %d intermediate result is %f \n", checkintY, checkintX, temp); */
-  }
+  //}
   
   olddst[index_equiv] = olddst[index_equiv] * temp;
   /*if ((currentX == checkintX) && (currentY == checkintY)) {

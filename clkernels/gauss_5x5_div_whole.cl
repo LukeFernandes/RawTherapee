@@ -24,7 +24,7 @@ int index_equiv = currentY * W + currentX;
  int leftborder_check = (1 - clamp(X[index], 0, 1)); // 1 if the left border, 0 if anything else. If the top left corner or bottom left corner is 1, the result is 0.
  int left_but_one_border_check = (1 - clamp(X[index] - 1, 0, 1)); // 1 if the left border but one, 0 if anything else. If the top left corner or bottom left corner is 1, the result is 0.
  int rightborder_check = (1 - clamp((W - 1 - X[index]), 0, 1)); // 1 if the right border, 0 if anything else. If the top right corner or bottom right corner is 1, the result is 0.
- int right_but_one_border_check = (1 - clamp(( W - 1 - (X[index] + 1) ), 0, 1)); // 1 if the right border but one, 0 if anything else. If the top right corner or bottom right corner is 1, the result is 0.
+ int right_but_one_border_check = (1 - clamp(W - 1 - (X[index] + 1), 0, 1)); // 1 if the right borderx but one, 0 if anything else. If the top right corner or bottom right corner is 1, the result is 0.
  int bottomborder_check = (1 - clamp((H - 1 - Y[index]), 0, 1)); // 1 if the bottom border, 0 if anything else. If the bottom left corner or bottom left corner is 1, the result is 0.
  int bottom_but_one_border_check = (1 - clamp(( H - 1 - (Y[index] + 1) ), 0, 1)); // 1 if the bottom border but one, 0 if anything else. If the bottom left corner or bottom left corner is 1, the result is 0.
 
@@ -61,10 +61,11 @@ float temp_pre_division = ( c21 * ( oldsrc[clamp(index_equiv - (2 * W) - 1, 0, t
 					     );
 
 
-  float temp = div[index_equiv] / fmax(temp_pre_division, 0.00001f);
+ double small_no =  0.00001;
+ float temp = div[index_equiv] / fmax((double)temp_pre_division, small_no); 
 
   olddst[index_equiv] =
-    borders_check
+     borders_check
     *
     1.f
 
@@ -76,10 +77,11 @@ float temp_pre_division = ( c21 * ( oldsrc[clamp(index_equiv - (2 * W) - 1, 0, t
     printf("Source is %f\n", oldsrc[index_equiv]);
     printf("DIV 5x5 gPu src %d, %d inner intermediate is %f \n", checkintY, checkintX, innerpixels_check*temp_pre_division);
     printf("DIV 5x5 gPu src %d, %d final is %f \n", checkintY, checkintX, innerpixels_check*(div[index_equiv] / fmax(temp_pre_division, 0.00001f)) );
+    printf("DIV 5x5 gPu src %d, %d final alt in use is %f \n", checkintY, checkintX, innerpixels_check*(div[index_equiv] / max_func(temp_pre_division, small_no)));
     printf("DIV 5x5 gPu final result %d, %d is %f \n", checkintY, checkintX, olddst[index_equiv]);
     printf("DivBuffer value %d, %d is %f \n", checkintY, checkintX, div[index_equiv]);
    
-    }*/
+    } */
 
 }
 

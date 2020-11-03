@@ -105,11 +105,20 @@ cl_kernel  OpenCL_helper::setup_kernel(const char *kernel_filename, const char *
 void OpenCL_helper::getLocalWorkGroupSize(size_t* worksize)
      {
        /* each device has its own maximum local work group size, a power of two. Generally, the bigger the better, so we want to use the maximum, We need to work this out so we get the best performance. The caller will use this when determining the number of work groups we need given the dimensions of our image */
+       if (max_local_item_size == 0)
+         {
        cl_device_id* devices = &device_id;
-       if (devices != nullptr) {
-       clGetDeviceInfo(devices[0], CL_DEVICE_MAX_WORK_GROUP_SIZE, sizeof(size_t), (void*)worksize, NULL);
-       }
-       else  printf("No device id; cannot get information about device \n");
+          if (devices != nullptr)
+	    {
+	 clGetDeviceInfo(devices[0], CL_DEVICE_MAX_WORK_GROUP_SIZE, sizeof(size_t), &max_local_item_size, NULL);
+	 *worksize = max_local_item_size;
+	    }
+          else  {
+	    printf("No device id; cannot get information about device \n");
+	    *worksize  = 0;
+                  }
+         }
+       else *worksize  = max_local_item_size;
      }
 
 cl_kernel OpenCL_helper::reuse_or_create_kernel(std::string string, const char *kernel_filename, const char *kernel_name ) {

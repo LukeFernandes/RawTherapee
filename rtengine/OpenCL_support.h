@@ -69,28 +69,12 @@ typedef enum {
  class OpenCL_helper{
   private:
     static int OpenCL_available_;
+    int max_local_item_size = 0;
   public:
     cl_context context;
     cl_command_queue command_queue;
     cl_program program;
-    cl_device_id device_id = nullptr;
-   /* string list: luminance, tmpI, tmp, blur, blend, oldsrc, olddst, X, Y, indexX, indexY. */
-   /*  cl_mem luminance_ = nullptr;
-    cl_mem tmpI_ = nullptr;
-   cl_mem tmp_ = nullptr;
-    cl_mem blur_ = nullptr;
-    cl_mem blend_ = nullptr;
-   cl_mem oldsrc_ = nullptr;
-   cl_mem olddst_ = nullptr;
-   cl_mem gaussret_ = nullptr;
-   cl_mem X_ = nullptr;
-   cl_mem Y_ = nullptr;
-   cl_mem indexX_ = nullptr;
-   cl_mem indexY_ = nullptr;
-   cl_mem div_ = nullptr;
-   cl_mem dampfac_ = nullptr;
-   cl_mem blend2_ = nullptr; */
-
+    cl_device_id device_id = nullptr;  
    
    std::map<std::string, cl_kernel> kernels;
    std::map<std::string, bufferWithDims> buffer_set;

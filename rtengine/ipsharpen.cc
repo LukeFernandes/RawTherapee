@@ -336,6 +336,13 @@ BENCHFUN
     delete blurbuffer;
 }
 
+ /* this is to figure out what the global work group size should be. This will be the multiple of the max local item size (usually 512/1024 units) which equals, or is closest too and above, the number of pixels to be computed */
+  int round_cl(int n, int m) 
+{ 
+   n = ( ( n - 1 ) | ( m - 1 ) ) + 1;
+  return n;
+}
+
 void ImProcFunctions::deconvsharpening (float** luminance, float** tmp, const float * const * blend, int W, int H, const procparams::SharpeningParams &sharpenParam, double Scale)
 {
   // Record start time
@@ -358,8 +365,10 @@ void ImProcFunctions::deconvsharpening (float** luminance, float** tmp, const fl
 BENCHFUN
   JaggedArray<float> tmpI(W, H); 
 
-     int sampleJ = 100;
-     int sampleI = 100;
+    const int sampleJ = 100;
+    const int sampleI = 100;
+    const int lowersamplebound = 197;
+    const int uppersamplebound = 204;
 
      //first CPU - max operation
     if (OpenCL_helper::OpenCL_usable(gpuSelected) == false_ || debug_)
@@ -397,8 +406,16 @@ BENCHFUN
     cl_kernel max_kernel; // provides a handle to the fmax kernel we are going to create on GPU
     cl_mem lum_mem_obj, tmpI_mem_obj, blend_mem_obj, blur_mem_obj, tmp_mem_obj, index_X_mem_obj, index_Y_mem_obj = nullptr; //Produces GPU equivalents in memory - just empty handles at the moment - will be initialised later
 
-    int *Xindex, *Yindex;  float *read_storage; 
-    size_t global_item_size = H*W; size_t local_item_size = 64;
+    int *Xindex, *Yindex;  float *read_storage;
+     /* figure out local work group size. The gPu determined maximum  is usually 512 and 1024 */
+     size_t local_item_size; 
+     helper->getLocalWorkGroupSize(&local_item_size);
+
+     size_t global_item_size = round_cl(H*W, local_item_size);
+     
+     printf("global size is %d\n", (int)global_item_size);
+     printf("local size is %d\n", (int)local_item_size);
+  
     cl_int error_code = 1;  
 
     float *blend1d;  float *blur1d;
@@ -476,9 +493,9 @@ BENCHFUN
 	   //sample and compare blur over a range
 	    error_code = clEnqueueReadBuffer(helper->command_queue, blur_mem_obj, CL_TRUE, 0, W*H*sizeof(float), read_storage, 0, nullptr, nullptr);
 	    printf("\n\nSample and compare what is in the blur buffer over the 197-203 square after the first gaussian blur\n\n**********************\n");
-	    for (int i = 197; i < 203; i++)
+	    for (int i = lowersamplebound; i < uppersamplebound; i++)
 	      {
-	        for (int j = 197; j < 203; j++)
+	        for (int j = lowersamplebound; j < uppersamplebound; j++)
 		  {
 		   printf("\n   OpenCl GPU Difference: CPU is %f, gPu is %f at %d,%d", blur[i][j], read_storage[i*W + j], i, j);  
 		  }
@@ -516,9 +533,9 @@ BENCHFUN
 	    //sample and compare blur over a range
 	    error_code = clEnqueueReadBuffer(helper->command_queue, blur_mem_obj, CL_TRUE, 0, W*H*sizeof(float), read_storage, 0, nullptr, nullptr);
 	    printf("\n\nSample and compare what is in the blur buffer over the 197-203 square after the intp operation\n\n**********************\n");
-	    for (int i = 197; i < 203; i++)
+	    for (int i = lowersamplebound; i < uppersamplebound; i++)
 	      {
-	        for (int j = 197; j < 203; j++)
+	        for (int j = lowersamplebound; j < uppersamplebound; j++)
 		  {
 		      printf("\n   intp Difference: CPU is %f, CPU blend is %f, GPU is %f at %d,%d", blur[i][j], blend_jagged_array[i][j], read_storage[i*W + j], i, j); 
 		  }
@@ -569,7 +586,12 @@ BENCHFUN
        for (int k = 0; k < sharpenParam.deconviter; k++) {
 	   if (!needdamp) {
 	     // apply gaussian blur and divide luminance by result of gaussian blur
-	     gaussianBlur(tmpI, tmp, W, H, sigma, false, nullptr, GAUSS_DIV, luminance); 
+	     gaussianBlur(tmpI, tmp, W, H, sigma, false, nullptr, GAUSS_DIV, luminance);
+	     #pragma omp master
+	     {
+	      if (OpenCL_helper::OpenCL_usable(gpuSelected) == debug_)
+	     printf("   CPU iteration no. %d: Post div tmpI/src %d,%d is %f, tmp/dst is %f \n", k, sampleI, sampleJ, tmpI[sampleI][sampleJ], tmp[sampleI][sampleJ]);
+	     }
 	   } else {
 	   // apply gaussian blur + damping
 	     gaussianBlur(tmpI, tmp, W, H, sigma);
@@ -579,7 +601,7 @@ BENCHFUN
 	 #pragma omp master
 	 {
 	 if (OpenCL_helper::OpenCL_usable(gpuSelected) == debug_)
-	   printf("   CPU iteration no. %d: Post mult  tmpI/src %d,%d is %f \n", k, sampleI, sampleJ, tmpI[sampleI][sampleJ]);
+	   printf("   CPU iteration no. %d: Post mult  tmpI/src %d,%d is %f, tmp/dst is %f  \n", k, sampleI, sampleJ, tmpI[sampleI][sampleJ], tmp[sampleI][sampleJ]);
 	 }
        } // end for
     }
@@ -638,9 +660,9 @@ BENCHFUN
 	 float* temp_store_ = new float[W*H]();
 	 error_code = clEnqueueReadBuffer(helper->command_queue, tmpI_mem_obj, CL_TRUE, 0, W*H*sizeof(float), temp_store_, 0, nullptr, nullptr);
 	 printf("Before is %f, Temp is %f\n\n", tmpI[sampleI][sampleJ], temp_store_[sampleI*W + sampleJ]);
-	 for (int i = (H - 3); i < H; i++)
+	 for (int i = lowersamplebound; i < uppersamplebound; i++)
 	   {
-	     for (int j = (W - 3); j < W; j++)
+	     for (int j = lowersamplebound; j < uppersamplebound; j++)
 	     {
 	        printf("Difference: CPU is %f, gPu is %f at %d,%d", tmpI[i][j], temp_store_[i*W + j], i, j);
 		if (tmpI[i][j] == temp_store_[i*W + j])  printf(" -- CPU and OpenCL results are the same\n");
@@ -878,7 +900,7 @@ void ImProcFunctions::sharpening (LabImage* lab, const procparams::SharpeningPar
         deconvsharpening(lab->L, b2, blend, lab->W, lab->H, sharpenParam, scale);
         auto finish = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> elapsed = finish - start_ch;
-        std::cout << "Overall time: " << elapsed.count() << " s\n";
+        std::cout << "\n********************\nOverall time for this method: " << elapsed.count() << " s\n********************\n";
         return;
     }
 BENCHFUN
