@@ -165,7 +165,7 @@ void dcdamping (float** aI, float** aO, float damping, int W, int H)
     }
 }
 
-void OpenCL_intial_setup_and_max(float* lum, JaggedArray<float> &tmpA, OpenCL_helper* helper, int W, int H, cl_mem input_mem_obj, cl_mem ret_mem_obj,  size_t _global_item_size, float* _read_storage)
+void OpenCL_intial_setup_and_max(float* lum, JaggedArray<float> &tmpA, OpenCL_helper* helper, int W, int H, cl_mem input_mem_obj, cl_mem ret_mem_obj,  size_t* global_item_size, size_t* local_item_size)
 {
 
       cl_kernel mykernel;
@@ -183,46 +183,29 @@ void OpenCL_intial_setup_and_max(float* lum, JaggedArray<float> &tmpA, OpenCL_he
     if (error_code != 0) printf("OpenCL Error code (0 is success):%d\n", error_code);  
       error_code = clSetKernelArg(mykernel, 1, sizeof(cl_mem), (void *)&ret_mem_obj);
     if (error_code != 0) printf("OpenCL Error code (0 is success):%d\n", error_code); 
-      size_t global_item_size = H*W; 
     
-      error_code = clEnqueueNDRangeKernel(helper->command_queue, mykernel, 1, NULL, &global_item_size, NULL, 0, NULL, NULL);
+      error_code = clEnqueueNDRangeKernel(helper->command_queue, mykernel, 1, NULL, global_item_size, local_item_size, 0, NULL, NULL);
       
     if (error_code != 0) printf("OpenCL Error code (0 is success):%d\n", error_code);
- 
-       error_code = clEnqueueReadBuffer(helper->command_queue, ret_mem_obj, CL_TRUE, 0, W*H*sizeof(float), _read_storage, 0, NULL, NULL);
-    if (error_code != 0) printf("OpenCL Error code (0 is success):%d\n", error_code);
- 
-       //turn 2D array into jagged array
-
-       /* for (int i = 0; i < H; i++)
-	   {
-	    for (int j = 0; j < W; j++)
-	       {
-		 tmpA[i][j] = _read_storage[i*W + j];
-	       }
-	       } */
 
 }
 
-void OpenCL_intp_1 (OpenCL_helper* helper, int W, int H, cl_mem input_mem_obj, cl_mem blur_mem_obj, cl_mem blend_mem_obj, float* _read_storage) {
+void OpenCL_intp_1 (OpenCL_helper* helper, int W, int H, cl_mem input_mem_obj, cl_mem blur_mem_obj, cl_mem blend_mem_obj, size_t* global_item_size, size_t* local_item_size) {
 
                  cl_int error_code = 0;
-	   size_t global_item_size = H*W;
                  cl_kernel intp_kernel = helper->reuse_or_create_kernel("intp1", "intp_plus.cl", "intp_plus");
 
 	    error_code = clSetKernelArg(intp_kernel, 0, sizeof(cl_mem), (void *)&blend_mem_obj);
 	    error_code = clSetKernelArg(intp_kernel, 1, sizeof(cl_mem), (void *)&input_mem_obj);
 	    error_code = clSetKernelArg(intp_kernel, 2, sizeof(cl_mem), (void *)&blur_mem_obj);
 
-	    error_code = clEnqueueNDRangeKernel(helper->command_queue, intp_kernel, 1, nullptr, &global_item_size, nullptr, 0, nullptr, nullptr); 
-	    error_code = clEnqueueReadBuffer(helper->command_queue, blur_mem_obj, CL_TRUE, 0, W*H*sizeof(float), _read_storage, 0, nullptr, nullptr); 	       
+	    error_code = clEnqueueNDRangeKernel(helper->command_queue, intp_kernel, 1, nullptr, global_item_size, local_item_size, 0, nullptr, nullptr); 
 		      
 }
 
-void OpenCL_intp_2 (OpenCL_helper* helper, int W, int H, cl_mem blend_mem_obj, cl_mem tmpI_mem_obj, cl_mem lum_mem_obj, const float* amount) {
+void OpenCL_intp_2 (OpenCL_helper* helper, int W, int H, cl_mem blend_mem_obj, cl_mem tmpI_mem_obj, cl_mem lum_mem_obj, const float* amount, size_t* global_item_size, size_t* local_item_size) {
 
                 cl_int error_code = 0;
-	  size_t global_item_size = H*W; 
                 cl_kernel intp_kernel = helper->reuse_or_create_kernel("intp2", "intp_plus_version2.cl", "intp_plus_version2");
 
 	   error_code = clSetKernelArg(intp_kernel, 0, sizeof(cl_mem), (void *)&blend_mem_obj);
@@ -230,20 +213,19 @@ void OpenCL_intp_2 (OpenCL_helper* helper, int W, int H, cl_mem blend_mem_obj, c
 	   error_code = clSetKernelArg(intp_kernel, 2, sizeof(cl_mem), (void *)&lum_mem_obj);
 	   error_code = clSetKernelArg(intp_kernel, 3, sizeof(cl_float), (void *)amount);
 
-	   error_code = clEnqueueNDRangeKernel(helper->command_queue, intp_kernel, 1, nullptr, &global_item_size, nullptr, 0, nullptr, nullptr);		      
+	   error_code = clEnqueueNDRangeKernel(helper->command_queue, intp_kernel, 1, nullptr, global_item_size, local_item_size, 0, nullptr, nullptr);		      
 }
 
-void OpenCL_intp_3 (OpenCL_helper* helper, int W, int H, cl_mem blend_mem_obj, cl_mem lum_mem_obj, cl_mem blur_mem_obj) {
+void OpenCL_intp_3 (OpenCL_helper* helper, int W, int H, cl_mem blend_mem_obj, cl_mem lum_mem_obj, cl_mem blur_mem_obj, size_t* global_item_size, size_t* local_item_size) {
 
                  cl_int error_code = 0;
-	   size_t global_item_size = H*W; 
                  cl_kernel intp_kernel = helper->reuse_or_create_kernel("intp3", "intp_plus_version3.cl", "intp_plus_version3");
 
 	   error_code = clSetKernelArg(intp_kernel, 0, sizeof(cl_mem), (void *)&blend_mem_obj);
 	   error_code = clSetKernelArg(intp_kernel, 1, sizeof(cl_mem), (void *)&lum_mem_obj);
 	   error_code = clSetKernelArg(intp_kernel, 2, sizeof(cl_mem), (void *)&blur_mem_obj);
 
-	   error_code = clEnqueueNDRangeKernel(helper->command_queue, intp_kernel, 1, nullptr, &global_item_size, nullptr, 0, nullptr, nullptr); 	      
+	   error_code = clEnqueueNDRangeKernel(helper->command_queue, intp_kernel, 1, nullptr, global_item_size, local_item_size, 0, nullptr, nullptr); 	      
 }
 
 
@@ -435,7 +417,7 @@ BENCHFUN
 	read_storage = new float[W*H]();
 
 	//perform the fmax operation on GPU
-	OpenCL_intial_setup_and_max(lum, tmpI, helper, W, H, lum_mem_obj, tmpI_mem_obj, global_item_size, read_storage);
+	OpenCL_intial_setup_and_max(lum, tmpI, helper, W, H, lum_mem_obj, tmpI_mem_obj, &global_item_size, &local_item_size);
 	delete[] lum;
       
       }
@@ -509,7 +491,7 @@ BENCHFUN
 	 if (OpenCL_helper::OpenCL_usable(gpuSelected) == true_ || OpenCL_helper::OpenCL_usable(gpuSelected) == debug_)
 	   {
 	    assert(helper->buffer_set.find("luminance") != helper->buffer_set.end());
-	    OpenCL_intp_1(helper, W, H, lum_mem_obj, blur_mem_obj, blend_mem_obj, read_storage);		      
+	    OpenCL_intp_1(helper, W, H, lum_mem_obj, blur_mem_obj, blend_mem_obj, &global_item_size, &local_item_size);		      
 	  }
 	
 	    /**** CPU section 3 *****************/
@@ -680,7 +662,7 @@ BENCHFUN
      ****************************************/	
     if (OpenCL_helper::OpenCL_usable(gpuSelected) == true_ || OpenCL_helper::OpenCL_usable(gpuSelected) == debug_)
       {
-	OpenCL_intp_2(helper, W, H, blend_mem_obj, tmpI_mem_obj, lum_mem_obj, &amount);	
+	OpenCL_intp_2(helper, W, H, blend_mem_obj, tmpI_mem_obj, lum_mem_obj, &amount, &global_item_size, &local_item_size);	
       }
 
       if (OpenCL_helper::OpenCL_usable(gpuSelected) == debug_)
@@ -715,7 +697,7 @@ BENCHFUN
 		 Transposition of ' intp(blend_jagged_array[i][j], luminance[i][j], max(blur[i][j], 0.0f))' into OpenCL
 	   ****************************************/
 	   if (OpenCL_helper::OpenCL_usable(gpuSelected) == true_ || OpenCL_helper::OpenCL_usable(gpuSelected) == debug_)
-	    OpenCL_intp_3(helper, W, H, blend_mem_obj, lum_mem_obj, blur_mem_obj);
+	     OpenCL_intp_3(helper, W, H, blend_mem_obj, lum_mem_obj, blur_mem_obj, &global_item_size, &local_item_size);
 	     
 	   if (OpenCL_helper::OpenCL_usable(gpuSelected) == false_ || OpenCL_helper::OpenCL_usable(gpuSelected) == debug_)
 	      {

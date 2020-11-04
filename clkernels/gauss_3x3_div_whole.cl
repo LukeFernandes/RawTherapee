@@ -46,21 +46,8 @@ int index_equiv = currentY * W + currentX;
 
 /**************************************/
 
-   // temp = 2.0;
-  
-  /*Only one of the right hand terms will be multiplied by 1 rather than 0 - i.e. all of these integer checks but one will be zero.*/
-
-  /*dst[0][0] *= src[0][0];
-  dst[0][W - 1] *= src[0][W - 1];
-  dst[H - 1][0] *= src[H - 1][0];
-  dst[H - 1][W - 1] *= src[H - 1][W - 1];
-  
-  dst[0][0] *= src[0][0];
-  dst[0][W - 1] *= src[0][W - 1];
-  dst[H - 1][0] *= src[H - 1][0];
-  dst[H - 1][W - 1] *= src[H - 1][W - 1]; */
-
-
+ /*All of these integer checks but one will be zero.*/
+   
  float tempa =
 
     (1 - ((1 - topleftcorner_check) * (1 - toprightcorner_check) * (1 - bottomleftcorner_check) * (1 - bottomrightcorner_check))) * oldsrc[index_equiv]
