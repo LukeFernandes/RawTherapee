@@ -44,7 +44,6 @@ clean
 *.rar
 *.tar
 *.xz
-*.zip
 
 WindowsInnoSetup.iss
 *.cl#
