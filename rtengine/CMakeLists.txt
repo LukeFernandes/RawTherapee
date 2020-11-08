@@ -49,8 +49,11 @@ if(NOT WITH_SYSTEM_KLT)
 else()
     include_directories("${KLT_INCLUDE_DIRS}")
 endif()
+if(OPENMP_FOUND)
+  include_directories("${OpenCL_INCLUDE_DIRS}")
+ endif()
 
-include_directories("/c/Progra~1/NVIDIAGPUComputingToolkit/CUDA/v10.0/include")
+#include_directories("/c/Progra~1/NVIDIAGPUComputingToolkit/CUDA/v10.0/include")
 #include_directories("/c/msys64/mingw64/x86_64-w64-mingw32/include")
 #include_directories("C:/msys64/mingw64/include/c++/10.1.0/x86_64-w64-mingw32")
 #include_directories("C:/msys64/mingw64/include/c++/10.1.0/backward2")
@@ -73,8 +76,7 @@ link_directories("${PROJECT_SOURCE_DIR}/rtexif"
     "${LCMS_LIBRARY_DIRS}"
     "${LENSFUN_LIBRARY_DIRS}"
     "${RSVG_LIBRARY_DIRS}"
-    "C:/Progra~1/NVIDIAGPUComputingToolkit/CUDA/v10.0/lib/x64"
-    #"${OpenCL_LIBRARY}"
+    "${OpenCL_LIBRARY}"
 )
 
 set(CAMCONSTSFILE "camconst.json")
@@ -243,8 +245,7 @@ target_link_libraries(rtengine rtexif
     ${LENSFUN_LIBRARIES}
     ${RSVG_LIBRARIES}
     ${KLT_LIBRARIES}
-    "c:/Progra~1/NVIDIAGPUComputingToolkit/CUDA/v10.0/lib/x64/OpenCL.lib"
-    #${OpenCL_LIBRARY}
+    ${OpenCL_LIBRARY}
     )
 
 install(FILES ${CAMCONSTSFILE} DESTINATION "${DATADIR}" PERMISSIONS OWNER_WRITE OWNER_READ GROUP_READ WORLD_READ)

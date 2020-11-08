@@ -457,7 +457,7 @@ BENCHFUN
 	    //perform the gaussian blur, 1 iteration
 	   int ret = OpenCLgaussianBlur(tmpI, blur, gpuSelected, helper, 1, tmpI_mem_obj, blur_mem_obj, W, H, sharpenParam.blurradius, nullptr, false);
 	   if (ret == -1)
-	     //in this case, we have to transfer the gPu buffers back to CPU and just do the blur as normal. This is a placeholder until it's all done on gPu.
+	     //in this case, we have to transfer the gPu buffers back to CPU and just do the  blur as normal. This is a placeholder until it's all done on gPu.
 	 {
 	  JaggedArray<float> tmpI_gPu_mirror(W, H), blur_gPu_mirror(W, H); 
           helper->gPu_buffer_to_CPU_jagged_array(tmpI_mem_obj, tmpI_gPu_mirror, W, H);
@@ -466,7 +466,7 @@ BENCHFUN
           #pragma omp parallel
           #endif
           {
-	 gaussianBlur(tmpI_gPu_mirror, blur_gPu_mirror, W, H, sharpenParam.blurradius);
+	 gaussianBlur(tmpI, blur, W, H, sharpenParam.blurradius);
            }
 	 helper->CPU_jagged_array_to_gPu_buffer(tmpI_gPu_mirror, tmpI_mem_obj, W, H);
          helper->CPU_jagged_array_to_gPu_buffer(blur_gPu_mirror, blur_mem_obj, W, H);

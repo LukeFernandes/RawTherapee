@@ -28,7 +28,8 @@ static constexpr auto GAUSS_SKIP = 0.25;
 typedef enum {
 	      x3x3,
 	      x5x5,
-	      x7x7
+	      x7x7,
+	      large
 } size;
 
 typedef struct {
@@ -42,6 +43,7 @@ typedef struct {
   float c11;
   float c10;
   float c00;
+  double b1a, b2, b3, B, M[4][4];
   bool to_be_done_on_CPU;
   size _size;
 } reprocess_data;

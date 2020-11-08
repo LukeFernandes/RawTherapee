@@ -111,6 +111,40 @@ template<class T> void calculateYvVFactors( const T sigma, T &b1, T &b2, T &b3, 
 
 }
 
+template<class T> void calculateYvVFactors2( const T sigma, T &b1, T &b2, T &b3, T &B, T M[4][4])
+{
+    // coefficient calculation
+    T q;
+
+    if (sigma < 2.5) {
+        q = 3.97156 - 4.14554 * sqrt (1.0 - 0.26891 * sigma);
+    } else {
+        q = 0.98711 * sigma - 0.96330;
+    }
+
+    T b0 = 1.57825 + 2.44413 * q + 1.4281 * q * q + 0.422205 * q * q * q;
+    b1 = 2.44413 * q + 2.85619 * q * q + 1.26661 * q * q * q;
+    b2 = -1.4281 * q * q - 1.26661 * q * q * q;
+    b3 = 0.422205 * q * q * q;
+    B = 1.0 - (b1 + b2 + b3) / b0;
+
+    b1 /= b0;
+    b2 /= b0;
+    b3 /= b0;
+
+    // From: Bill Triggs, Michael Sdika: Boundary Conditions for Young-van Vliet Recursive Filtering
+    M[0][0] = -b3 * b1 + 1.0 - b3 * b3 - b2;
+    M[0][1] = (b3 + b1) * (b2 + b3 * b1);
+    M[0][2] = b3 * (b1 + b3 * b2);
+    M[1][0] = b1 + b3 * b2;
+    M[1][1] = -(b2 - 1.0) * (b2 + b3 * b1);
+    M[1][2] = -(b3 * b1 + b3 * b3 + b2 - 1.0) * b3;
+    M[2][0] = b3 * b1 + b2 + b1 * b1 - b2 * b2;
+    M[2][1] = b1 * b2 + b3 * b2 * b2 - b1 * b3 * b3 - b3 * b3 * b3 - b3 * b2 + b3;
+    M[2][2] = b3 * (b1 + b3 * b2);
+
+}
+
 // classical filtering if the support window is small and src != dst
 template<class T> void gauss3x3 (T** RESTRICT src, T** RESTRICT dst, const int W, const int H, const double c0, const double c1, const double c2, const double b0, const double b1) //const T c0, const T c1, const T c2, const T b0, const T b1)
 {
@@ -1431,8 +1465,9 @@ template <class T> void reprocess(T** RESTRICT src, T** RESTRICT dst, const int 
                 double b0 = 1.0 / bsum;
 
 	  data = reprocess_data{.c0 = c0, .c1 = c1, .c2 = c2, .b0 = b0, .b1 = b1,
-				       c21 = 1.0, c20 = 1.0, c11 = 1.0, c10 = 1.0, c00 = 1.0,
-				       false, size::x3x3};
+				       .c21 = 1.0, .c20 = 1.0, .c11 = 1.0, .c10 = 1.0, .c00 = 1.0,
+				.b1a = 1.0, .b2 = 1.0, .b3 = 1.0, .B = 1.0, .M = {1.0},
+				       . to_be_done_on_CPU = false, ._size = size::x3x3};
 	  return;
   
             } else {
@@ -1497,6 +1532,9 @@ template <class T> void reprocess(T** RESTRICT src, T** RESTRICT dst, const int 
                 case GAUSS_STANDARD : {
 		  // gaussHorizontalSse<T> (src, dst, W, H, sigma);
 		  // gaussVerticalSse<T> (dst, dst, W, H, sigma);
+		  double b1a, b2, b3, B, M[4][4];
+		    calculateYvVFactors2<double>(sigma, b1a, b2, b3, B, M);
+		    data._size = size::large;
 		    data.to_be_done_on_CPU = true;
                     return;
                 }
@@ -1539,7 +1577,7 @@ N.B. The preparatory work done by the regular gaussianBlur_impl function (e.g. w
    int error_code;
    bool debug = (OpenCL_helper::OpenCL_usable(use) == debug_) ? true : false;
    /*figure out constant values. These will not change even over repeated iterations on the same image*/
-   reprocess_data constant_data = {0,0,0,0,0,0,0,0,0,0,false,x3x3};
+   reprocess_data constant_data = {0,0,0,0,0,0,0,0,0,0,0,0,0,0,{0},false,x3x3};
    // we pass the struct constant_data by reference
    reprocess(src, dst, W, H, sigma, useBoxBlur, gausstype, constant_data);
 
@@ -1556,12 +1594,16 @@ N.B. The preparatory work done by the regular gaussianBlur_impl function (e.g. w
    // set constants. If _size is 5x5, we'll use c21-c00 and c0-b1 will just be 0 and won't be used. Equally, if _size is 3x3, we'll use c0-b1 and c21-c00 won't be used
    double c0,  c1, c2, b0, b1;
    float c21, c20, c11, c10, c00;
+   double b1a, b2, b3, B, M[4][4];
 
    c0 = constant_data.c0; c1 = constant_data.c1; c2 = constant_data.c2;
    b0 = constant_data.b0; b1 = constant_data.b1;
 
    c21 = constant_data.c21; c20 = constant_data.c20; c11 = constant_data.c11;
    c10 = constant_data.c10; c00 = constant_data.c00;
+
+    b1a  = constant_data.b1; b2 = constant_data.b2; b3 = constant_data.b3;
+    B  = constant_data.B; memcpy(M, constant_data.M, sizeof(double)*16);
 
    // we're going to feed the gPu arrays with the X and Y position of each pixel
    int* Xindex = new int[W  * H]();
@@ -1579,7 +1621,7 @@ N.B. The preparatory work done by the regular gaussianBlur_impl function (e.g. w
     // generic OpenCL kernel handles for each gauss type, aliases for the actual kernels below 
     cl_kernel divkernel, standardkernel, mulkernel;
     // actual kernels by gauss kernel size
-    cl_kernel div3kernel, div5kernel, mul3kernel, mul5kernel;
+    cl_kernel div3kernel, div5kernel, mul3kernel, mul5kernel, horizontalkernel;
 
 
     standardkernel = helper->reuse_or_create_kernel("gauss3x3stdnew", "gauss_3x3_standard_whole.cl", "gauss_3x3_standard_whole");
@@ -1587,6 +1629,11 @@ N.B. The preparatory work done by the regular gaussianBlur_impl function (e.g. w
     div5kernel = helper->reuse_or_create_kernel("gauss5x5divnew", "gauss_5x5_div_whole.cl", "gauss_5x5_div_whole");
     mul3kernel = helper->reuse_or_create_kernel("gauss3x3mul", "gauss_3x3_mult_whole.cl", "gauss_3x3_mult_whole");
     mul5kernel = helper->reuse_or_create_kernel("gauss5x5mul", "gauss_5x5_mult_whole.cl", "gauss_5x5_mult_whole");
+
+    horizontalkernel = helper->reuse_or_create_kernel("gaussHorizontal", "gauss_horizontal.cl", "gauss_horizontal");
+
+    cl_mem double16 = clCreateBuffer(helper->context, CL_MEM_READ_ONLY, sizeof(cl_double16), M, &error_code);
+    error_code = clEnqueueWriteBuffer(helper->command_queue, double16, CL_TRUE, 0, sizeof(cl_double16), M, 0, nullptr, nullptr);
 
     // gPu damping is a work in progress
     //cl_kernel dampingkernel = helper->reuse_or_create_kernel("damping", "gauss_damping.cl", "gauss_damping");
@@ -1601,6 +1648,7 @@ N.B. The preparatory work done by the regular gaussianBlur_impl function (e.g. w
     // write the X and Y data
     error_code = clEnqueueWriteBuffer(helper->command_queue, index_X_mem_obj, CL_TRUE, 0, W*H*sizeof(int), Xindex, 0, nullptr, nullptr);
     error_code = clEnqueueWriteBuffer(helper->command_queue, index_Y_mem_obj, CL_TRUE, 0, W*H*sizeof(int), Yindex, 0, nullptr, nullptr);
+    cl_mem intermediate_mem_obj = helper->reuse_or_create_buffer("intermediate", W, H, CL_MEM_READ_WRITE);
 
     /* OpenCL kernel argument setting. Arguments are set by position. See the .cl files in the clkernels folder */
 
@@ -1669,6 +1717,19 @@ N.B. The preparatory work done by the regular gaussianBlur_impl function (e.g. w
      error_code = clSetKernelArg(div5kernel, 11, sizeof(cl_mem), (void *)&olddst_mem_obj);
      }
 
+     error_code = clSetKernelArg(horizontalkernel, 0, sizeof(cl_mem), (void *)&oldsrc_mem_obj);
+     error_code = clSetKernelArg(horizontalkernel, 1, sizeof(cl_mem), (void *)&index_X_mem_obj);
+     error_code = clSetKernelArg(horizontalkernel, 2, sizeof(cl_mem), (void *)&index_Y_mem_obj);
+     error_code = clSetKernelArg(horizontalkernel, 3, sizeof(cl_int), (void *)&W);
+     error_code = clSetKernelArg(horizontalkernel, 4, sizeof(cl_int), (void *)&H);
+     error_code = clSetKernelArg(horizontalkernel, 5, sizeof(cl_double), (void *)&b1a);
+     error_code = clSetKernelArg(horizontalkernel, 6, sizeof(cl_double), (void *)&b2);
+     error_code = clSetKernelArg(horizontalkernel, 7, sizeof(cl_double), (void *)&b3);
+     error_code = clSetKernelArg(horizontalkernel, 8, sizeof(cl_double), (void *)&B);
+     error_code = clSetKernelArg(horizontalkernel, 9, sizeof(cl_double16), (void *)&double16);
+     error_code = clSetKernelArg(horizontalkernel, 10, sizeof(cl_mem), (void *)&intermediate_mem_obj);
+     error_code = clSetKernelArg(horizontalkernel, 11, sizeof(cl_mem), (void *)&olddst_mem_obj);
+
      /*
      error_code = clSetKernelArg(dampingkernel, 0, sizeof(cl_mem), (void *)&olddst_mem_obj);
      error_code = clSetKernelArg(dampingkernel, 1, sizeof(cl_mem), (void *)&div_mem_obj);
@@ -1733,7 +1794,10 @@ N.B. The preparatory work done by the regular gaussianBlur_impl function (e.g. w
       switch (gausstype)
 	{
 	case GAUSS_STANDARD :
+	  // if (_size == size::x3x3)
 	  kernel = standardkernel;
+	  /*	  else if  (_size == size::large)
+		  kernel = horizontalkernel; */
 	  break;
 	case GAUSS_DIV :
 	  kernel = divkernel;
