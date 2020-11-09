@@ -192,7 +192,7 @@ if(WIN32)
         ${GTK_INCLUDE_DIRS}
         ${LENSFUN_INCLUDE_DIRS}
 	${RSVG_INCLUDE_DIRS}
-        "C:/Progra~1/NVIDIAGPUComputingToolkit/CUDA/v10.0/include"
+	${OpenCL_INCLUDE_DIRS}
         )
     link_directories(. "${PROJECT_SOURCE_DIR}/rtexif"
         ${EXTRA_LIBDIR}
@@ -204,7 +204,7 @@ if(WIN32)
         ${GTK_LIBRARY_DIRS}
         ${LENSFUN_LIBRARY_DIRS}
 	${RSVG_LIBRARY_DIRS}
-	"C:/Progra~1/NVIDIAGPUComputingToolkit/CUDA/v10.0/lib/x64"
+	${OpenCL_LIBRARY}
         )
 else()
     include_directories(${EXTRA_INCDIR}
@@ -223,7 +223,7 @@ else()
         ${LCMS_INCLUDE_DIRS}
         ${LENSFUN_INCLUDE_DIRS}
 	${RSVG_INCLUDE_DIRS}
-        "C:/Progra~1/NVIDIAGPUComputingToolkit/CUDA/v10.0/include"
+	${OpenCL_INCLUDE_DIRS}
         )
     link_directories(${EXTRA_LIBDIR}
         ${CANBERRA-GTK_LIBRARY_DIRS}
@@ -241,7 +241,7 @@ else()
         ${LCMS_LIBRARY_DIRS}
         ${LENSFUN_LIBRARY_DIRS}
 	${RSVG_LIBRARY_DIRS}
-        "C:/Progra~1/NVIDIAGPUComputingToolkit/CUDA/v10.0/lib/x64"
+	${OpenCL_LIBRARY}
         )
 endif()
 
@@ -296,7 +296,7 @@ target_link_libraries(rth rtengine
     ${LENSFUN_LIBRARIES}
     ${RSVG_LIBRARIES}
     ${TCMALLOC_LIBRARIES}
-    "C:/Progra~1/NVIDIAGPUComputingToolkit/CUDA/v10.0/lib/x64/OpenCL.lib"
+    ${OpenCL_LIBRARY}
     )
 
 target_link_libraries(rth-cli rtengine
@@ -319,7 +319,7 @@ target_link_libraries(rth-cli rtengine
     ${LENSFUN_LIBRARIES}
     ${RSVG_LIBRARIES}
     ${TCMALLOC_LIBRARIES}
-    "C:/Progra~1/NVIDIAGPUComputingToolkit/CUDA/v10.0/lib/x64/OpenCL.lib"
+    ${OpenCL_LIBRARY}
     )
 
 # Install executables
