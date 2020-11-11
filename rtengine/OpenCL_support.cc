@@ -69,12 +69,20 @@ cl_kernel  OpenCL_helper::setup_kernel(const char *kernel_filename, const char *
             size_t source_size;
             cl_int error_code = 0;
             char full_kernel_filename[80]; char alt_full_kernel_filename[80];
-            strcpy(full_kernel_filename, "..\\..\\clkernels\\"); strcpy(alt_full_kernel_filename, "clkernels\\");
+            strcpy(full_kernel_filename, "..\\..\\clkernels\\"); strcpy(alt_full_kernel_filename, ".\\clkernels\\");
             strncat(full_kernel_filename, kernel_filename, 61); strncat(alt_full_kernel_filename, kernel_filename, 61);
 
+            //std::string r = Options::rtdir;
+            //std::string e = g_get_home_dir();
+            //std::cout << "\nrtdir is " << r;
+            //std::cout << "\nhomedir is " << e;
+
             fp = fopen(full_kernel_filename, "r");
+	    printf("FKF is %s", full_kernel_filename);
             if (!fp) {
 	     fp = fopen(alt_full_kernel_filename, "r");
+	     	    printf("AFKF is %s", alt_full_kernel_filename);
+
 	     if (!fp) {
 	        printf("Failed to load kernel.\n");
 	        exit(1);

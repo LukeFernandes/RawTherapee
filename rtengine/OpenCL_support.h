@@ -23,6 +23,7 @@
 #include <map>
 #include <iostream>
 #include "jaggedarray.h"
+#include "../rtgui/options.h"
 
 #include "stdio.h"
 
