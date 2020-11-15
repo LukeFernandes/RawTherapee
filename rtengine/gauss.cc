@@ -24,7 +24,6 @@
 #include "stdio.h"
 #include <time.h>
 //#include "StopWatch.h"
-#include <CL/cl.h>
 #include <cstring>
 
 #include "gauss.h"

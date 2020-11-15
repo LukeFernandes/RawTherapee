@@ -177,16 +177,20 @@ void OpenCL_intial_setup_and_max(float* lum, JaggedArray<float> &tmpA, OpenCL_he
       //create the OpenCL memory objects that coresspond to the input luminance and the return value
 	
     error_code = clEnqueueWriteBuffer(helper->command_queue, input_mem_obj, CL_TRUE, 0, W*H*sizeof(float), lum, 0, NULL, NULL);
-    if (error_code != 0) printf("OpenCL Error code (0 is success):%d\n", error_code); 
+    //if (error_code != 0)
+      printf("\nxOpenCL Max enqueue write error code (0 is success):%d\n", error_code); 
       
       error_code = clSetKernelArg(mykernel, 0, sizeof(cl_mem), (void *)&input_mem_obj);
-    if (error_code != 0) printf("OpenCL Error code (0 is success):%d\n", error_code);  
+      //if (error_code != 0)
+      printf("OpenCL set mem object kernel error code (0 is success):%d\n", error_code);  
       error_code = clSetKernelArg(mykernel, 1, sizeof(cl_mem), (void *)&ret_mem_obj);
-    if (error_code != 0) printf("OpenCL Error code (0 is success):%d\n", error_code); 
+      //if (error_code != 0)
+      printf("OpenCL set mem object kernel error code (0 is success):%d\n", error_code); 
     
       error_code = clEnqueueNDRangeKernel(helper->command_queue, mykernel, 1, NULL, global_item_size, local_item_size, 0, NULL, NULL);
       
-    if (error_code != 0) printf("OpenCL Error code (0 is success):%d\n", error_code);
+      //if (error_code != 0)
+      printf("OpenCL kernel enqueue error code (0 is success):%d\n", error_code);
 
 }
 
@@ -389,10 +393,11 @@ BENCHFUN
     cl_mem lum_mem_obj, tmpI_mem_obj, blend_mem_obj, blur_mem_obj, tmp_mem_obj, index_X_mem_obj, index_Y_mem_obj = nullptr; //Produces GPU equivalents in memory - just empty handles at the moment - will be initialised later
 
     int *Xindex, *Yindex;  float *read_storage;
-     /* figure out local work group size. The gPu determined maximum  is usually 512 and 1024 */
+     /* figure out local work group size. The gPu determined maximum is usually 512 and 1024 */
      size_t local_item_size; 
      helper->getLocalWorkGroupSize(&local_item_size);
 
+     /*this is to figure out what the global work group size should be. This will be the multiple of the max local item size (usually 512/1024 units) which equals, or is closest too and above, the number of pixels to be computed */
      size_t global_item_size = round_cl(H*W, local_item_size);
      
      printf("global size is %d\n", (int)global_item_size);
@@ -703,19 +708,6 @@ BENCHFUN
 	{
 	printf("\nCPU luminance result after second intp is %f\n", luminance[sampleI][sampleJ]);
 	}
-
-       /* in debug mode, we check that before going into multi-iteration blur, the values from the CPU and gPu line up */
-     if (OpenCL_helper::OpenCL_usable(gpuSelected) == debug_)
-      {
-	printf("\n\nCheck: luminance CPU is %f\n", luminance[sampleI][sampleJ]); printf("Check: luminance gPu is %f\n", helper->debug_get_value_from_GPU_buffer(lum_mem_obj, sampleI, sampleJ, W, H));
-	printf("Check: gPu BUFFER tmpI (src) for %d,%d is %f \n", sampleI, sampleJ, helper->debug_get_value_from_GPU_buffer(tmpI_mem_obj, sampleI, sampleJ, W, H)); printf("Check: CPU tmpI (src) is %d,%d is %f \n", sampleI, sampleJ, tmpI[sampleI][sampleJ]);
-	printf("Check: gPu BUFFER blend for %d,%d is %f \n", sampleI, sampleJ, helper->debug_get_value_from_GPU_buffer(blend_mem_obj, sampleI, sampleJ, W, H)); printf("Check: CPU blend for %d,%d is %f \n", sampleI, sampleJ, blend_jagged_array[sampleI][sampleJ]);
-    
-	if (blur_mem_obj != nullptr) printf("Check: gPu BUFFER Blur for %d,%d is %f \n", sampleI, sampleJ, helper->debug_get_value_from_GPU_buffer(blur_mem_obj, sampleI, sampleJ, W, H));
-	if (blurbuffer != nullptr) printf("Check: CPU Blur for %d,%d is %f \n\n\n", sampleI, sampleJ, (*blurbuffer)[sampleI][sampleJ]);
-      }
-
- 
 
         if (sharpenParam.blurradius >= 0.25) {
             JaggedArray<float> &blur = *blurbuffer;

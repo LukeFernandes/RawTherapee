@@ -31,16 +31,29 @@ OpenCL_helper::OpenCL_helper() {
     /**
       Setting up OpenCL
     **/ 
-    cl_platform_id platform_id = NULL;
+  cl_platform_id platform_id[5] = {0};
     cl_uint ret_num_devices;
     cl_uint ret_num_platforms;
     cl_int error_code = 0;
 
-    error_code = clGetPlatformIDs(1, &platform_id, &ret_num_platforms);
+      // get all platforms
+    /*cl_platform_id* platforms;
+    clGetPlatformIDs(0, NULL, &ret_num_platforms);
+    platforms = (cl_platform_id*) malloc(sizeof(cl_platform_id) * platformCount);
+    clGetPlatformIDs(platformCount, platforms, NULL); */
+    error_code = clGetPlatformIDs(2, platform_id, &ret_num_platforms);
     printf("Get Platform error code is (0 is success):%d\n", error_code);
      if ( CL_SUCCESS == error_code)
       {
-	error_code = clGetDeviceIDs(platform_id, CL_DEVICE_TYPE_GPU, 1, &device_id, &ret_num_devices);
+	char plat[200];
+	for (int i=0; i<ret_num_platforms; i++) {
+	error_code = clGetPlatformInfo(platform_id[i], CL_PLATFORM_NAME, 200*sizeof(char), (void*)plat, NULL);
+	printf("platform %d is %s\n", i, plat);
+	}
+	
+	error_code = clGetDeviceIDs(platform_id[0], CL_DEVICE_TYPE_GPU, 1, &device_id, &ret_num_devices);
+	printf("First platform selected\n\n");
+
 	     printf("Get Device error code is (0 is success):%d\n", error_code);
 	if (CL_SUCCESS == error_code)
 	  {
@@ -50,14 +63,18 @@ OpenCL_helper::OpenCL_helper() {
 	    printf("OpenCL Command Queue error code (0 is success):%d\n", error_code);
 	      // kernels.reserve(MAX_NO_KERNELS);
 	      program = NULL;
-	  }	
+	  }
+	     else {
+	       printf("OpenCL available, but something went wrong when accessing the platform's devices. Error code is %d\n", error_code);
+	       OpenCL_available_ = false_;
+	     }
+  printf("OpenCL helper class created. \n");
   }
      else {
        printf("OpenCL not available on host platform.\n");
        OpenCL_available_ = false_;
 
      }
-     printf("OpenCL helper class created. \n");
  }
 
 cl_kernel  OpenCL_helper::setup_kernel(const char *kernel_filename, const char *kernel_name) {
@@ -69,6 +86,8 @@ cl_kernel  OpenCL_helper::setup_kernel(const char *kernel_filename, const char *
             size_t source_size;
             cl_int error_code = 0;
             char full_kernel_filename[80]; char alt_full_kernel_filename[80];
+            std::string er = argv0;
+            //printf("er is %s", er);
             strcpy(full_kernel_filename, "..\\..\\clkernels\\"); strcpy(alt_full_kernel_filename, ".\\clkernels\\");
             strncat(full_kernel_filename, kernel_filename, 61); strncat(alt_full_kernel_filename, kernel_filename, 61);
 
@@ -78,16 +97,15 @@ cl_kernel  OpenCL_helper::setup_kernel(const char *kernel_filename, const char *
             //std::cout << "\nhomedir is " << e;
 
             fp = fopen(full_kernel_filename, "r");
-	    printf("FKF is %s", full_kernel_filename);
+            // printf("FKF is %s", full_kernel_filename);
             if (!fp) {
-	     fp = fopen(alt_full_kernel_filename, "r");
-	     	    printf("AFKF is %s", alt_full_kernel_filename);
-
+	   fp = fopen(alt_full_kernel_filename, "r");
+	   //printf("AFKF is %s", alt_full_kernel_filename);
 	     if (!fp) {
 	        printf("Failed to load kernel.\n");
 	        exit(1);
 	               }	                        
-                      }
+              } 
     
             source_str = (char*)malloc(MAX_SOURCE_SIZE);
             source_size = fread( source_str, 1, MAX_SOURCE_SIZE, fp);
@@ -95,15 +113,15 @@ cl_kernel  OpenCL_helper::setup_kernel(const char *kernel_filename, const char *
 
 	    /*  clCreateProgramWithSource and clBuildProgram are the two functions we use to build the kernel program */
             program = clCreateProgramWithSource(context, 1, const_cast<const char**>(&source_str), (const size_t *)&source_size, &error_code);
-	    if (error_code != 0) printf("Setup kernel error codes:%d,", error_code);
+	    if (error_code != 0) printf("Create program error code: %d \n", error_code); else printf("Created %s program from source\n", kernel_name);
 	    
 	    /* There are many options for building kernels which affect the performance/precision of the floating point arithmetic. The "-cl-fp32-correctly-rounded-divide-sqrt" flag gives IEEE-754 conformance, so the results should closely match what we get on CPU SSE */
 	    error_code = clBuildProgram(program, 1, &device_id, "-cl-fp32-correctly-rounded-divide-sqrt", NULL, NULL); //"-cl-fp32-correctly-rounded-divide-sqrt -cl-opt-disable" "-cl-fast-relaxed-math"
-	    if (error_code != 0) printf("%d,", error_code);
+	    if (error_code != 0) printf("Build error code is %d, \n", error_code); else printf("Built %s kernel\n", kernel_name);
 	    
 	     cl_kernel kernel; 
 	     kernel = clCreateKernel(program, kernel_name, &error_code); 
-	    if (error_code != 0) printf("%d\n", error_code);
+	     if (error_code != 0) printf("Create kernel error code is %d \n", error_code); else printf("Created %s kernel\n", kernel_name);
 	    
                   free(source_str);
 	    //return kernel to be stored in our collection
@@ -165,7 +183,7 @@ cl_mem OpenCL_helper::reuse_or_create_buffer(std::string string, int W, int H, c
 			 if (optionaldata != nullptr) {
 			    error_code = clEnqueueWriteBuffer(command_queue, input_buffer, CL_TRUE, 0, W*H*sizeof(float), optionaldata, 0, NULL, NULL);
 			    if (error_code == 0)  std::cout << "\nThe old buffer " << string << " has been rewritten successfully";
-			    else std::cout << "\nOpenCL error " << error_code;
+			    else std::cout << "\nOld buffer rewrite error is " << error_code;
 			  }
 			 // std::cout << "OpenCL Old memory object " << string << " reused\n";
 	       }
@@ -174,6 +192,7 @@ cl_mem OpenCL_helper::reuse_or_create_buffer(std::string string, int W, int H, c
      {
                                             // create the buffer and store it in the buffers collection
 			  input_buffer = clCreateBuffer(context, flag, W*H*sizeof(float), NULL, &error_code);
+			   if (error_code != 0)  std::cout << "\nThe buffer " << string << " could not be created and the error code is %d";
 			  buffer_set.insert({string, bufferWithDims{input_buffer, W, H}});
 			 		     
 			  //std::cout << "New buffer " << string << " created and stored; OpenCL Error code (0 is success): " << error_code << "\n"; 
@@ -181,7 +200,7 @@ cl_mem OpenCL_helper::reuse_or_create_buffer(std::string string, int W, int H, c
 			  if (optionaldata != nullptr) {
 			    error_code = clEnqueueWriteBuffer(command_queue, input_buffer, CL_TRUE, 0, W*H*sizeof(float), optionaldata, 0, NULL, NULL);
 			    if (error_code == 0)  std::cout << "\nThe buffer " << string << " has been created and written successfully";
-			    else std::cout << "\nOpenCL error " << error_code << " with writing data to " << string << " buffer";
+			    else std::cout << "\nOpenCL error " << error_code << " with writing data to " << string << " buffer newly created";
 			  }
 			  else  std::cout << "\nThe buffer " << string << " has been created";
 		   }

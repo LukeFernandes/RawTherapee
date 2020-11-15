@@ -18,6 +18,7 @@
  *  along with RawTherapee.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#define CL_TARGET_OPENCL_VERSION 120
 #include <CL/cl.h>
 #include <vector>
 #include <map>
