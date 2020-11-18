@@ -381,6 +381,7 @@ BENCHFUN
 	   helper = this->helper;     
       }
      }
+    clFinish(helper->command_queue);
 
     //Timing how long it took to setup
     auto finish = std::chrono::high_resolution_clock::now();

@@ -73,6 +73,7 @@ typedef enum {
     static int OpenCL_available_;
     int max_local_item_size = 0;
   public:
+    bool cl_754_support = false;
     cl_context context;
     cl_command_queue command_queue;
     cl_program program;
@@ -94,6 +95,7 @@ typedef enum {
    float debug_get_value_from_GPU_buffer(cl_mem buffer, int X, int Y, int W, int H);
    static bool OpenCL_available();
    static OpenCL_use OpenCL_usable(OpenCL_use user_selection);
+   // bool cl_754_supported();
   };
 #endif
 

@@ -59,10 +59,29 @@ OpenCL_helper::OpenCL_helper() {
 	  {
 	    context = clCreateContext(NULL, 1, &device_id, NULL, NULL, &error_code);
 	    printf("OpenCL Context error code (0 is success):%d\n", error_code);
+	    // cl_device_id d[5];
+	    //cl_int clGetContextInfo(CL_CONTEXT_DEVICES, sizeof(cl_device_id) *5,d, NULL);
 	    command_queue = clCreateCommandQueue(context, device_id, 0, &error_code);
 	    printf("OpenCL Command Queue error code (0 is success):%d\n", error_code);
 	      // kernels.reserve(MAX_NO_KERNELS);
 	      program = NULL;
+	    cl_device_fp_config cl_Fp;
+                 error_code =  clGetDeviceInfo(device_id, CL_DEVICE_SINGLE_FP_CONFIG, sizeof(cl_device_fp_config), &cl_Fp, NULL);
+	    printf("OpenCL get device info error code (0 is success):%d\n", error_code);
+	     char buffer [33];
+	     itoa ((int)cl_Fp, buffer, 2);
+                  printf ("binary: %s\n", buffer);
+
+	    if (cl_Fp & CL_FP_CORRECTLY_ROUNDED_DIVIDE_SQRT)
+	      {
+	       printf("Option CL_FP_CORRECTLY_ROUNDED_DIVIDE_SQRT available on device");
+	       cl_754_support = true;
+	      }
+	    else
+	    {
+	       printf("Option CL_FP_CORRECTLY_ROUNDED_DIVIDE_SQRT not available on device");
+	       cl_754_support = false;
+	    }
 	  }
 	     else {
 	       printf("OpenCL available, but something went wrong when accessing the platform's devices. Error code is %d\n", error_code);
@@ -86,7 +105,7 @@ cl_kernel  OpenCL_helper::setup_kernel(const char *kernel_filename, const char *
             size_t source_size;
             cl_int error_code = 0;
             char full_kernel_filename[80]; char alt_full_kernel_filename[80];
-            std::string er = argv0;
+            // std::string er = argv0;
             //printf("er is %s", er);
             strcpy(full_kernel_filename, "..\\..\\clkernels\\"); strcpy(alt_full_kernel_filename, ".\\clkernels\\");
             strncat(full_kernel_filename, kernel_filename, 61); strncat(alt_full_kernel_filename, kernel_filename, 61);
@@ -116,8 +135,19 @@ cl_kernel  OpenCL_helper::setup_kernel(const char *kernel_filename, const char *
 	    if (error_code != 0) printf("Create program error code: %d \n", error_code); else printf("Created %s program from source\n", kernel_name);
 	    
 	    /* There are many options for building kernels which affect the performance/precision of the floating point arithmetic. The "-cl-fp32-correctly-rounded-divide-sqrt" flag gives IEEE-754 conformance, so the results should closely match what we get on CPU SSE */
-	    error_code = clBuildProgram(program, 1, &device_id, "-cl-fp32-correctly-rounded-divide-sqrt", NULL, NULL); //"-cl-fp32-correctly-rounded-divide-sqrt -cl-opt-disable" "-cl-fast-relaxed-math"
+	    //To account for GPUs without ""-cl-fp32-correctly-rounded-divide-sqrt" support
+	    char* flags = "-cl-fp32-correctly-rounded-divide-sq-rt";
+	    char* alt_flags = "";
+	    error_code = clBuildProgram(program, 1, &device_id, cl_754_support ? flags : alt_flags, NULL, NULL); //"-cl-fp32-correctly-rounded-divide-sqrt -cl-opt-disable" "-cl-fast-relaxed-math"
 	    if (error_code != 0) printf("Build error code is %d, \n", error_code); else printf("Built %s kernel\n", kernel_name);
+
+	    size_t build_log_size;
+	    error_code = clGetProgramBuildInfo(program, device_id, CL_PROGRAM_BUILD_LOG, 0, NULL, &build_log_size);
+	    printf("Get build info error code is %d, \n", error_code);
+	    char *build_log = (char*)malloc(build_log_size);
+	    error_code =  clGetProgramBuildInfo(program, device_id, CL_PROGRAM_BUILD_LOG, build_log_size, build_log, NULL);
+	    printf("Get build info error code is %d, \n", error_code);
+	    printf("\nlog is %s", build_log);
 	    
 	     cl_kernel kernel; 
 	     kernel = clCreateKernel(program, kernel_name, &error_code); 
@@ -136,7 +166,8 @@ void OpenCL_helper::getLocalWorkGroupSize(size_t* worksize)
        cl_device_id* devices = &device_id;
           if (devices != nullptr)
 	    {
-	 clGetDeviceInfo(devices[0], CL_DEVICE_MAX_WORK_GROUP_SIZE, sizeof(size_t), &max_local_item_size, NULL);
+	cl_int error_code =  clGetDeviceInfo(devices[0], CL_DEVICE_MAX_WORK_GROUP_SIZE, sizeof(size_t), &max_local_item_size, NULL);
+	printf("Query device error code is %d", error_code);
 	 *worksize = max_local_item_size;
 	    }
           else  {
@@ -337,4 +368,31 @@ OpenCL_use OpenCL_helper::OpenCL_usable(OpenCL_use user_selection) {
       }
       else return false_;
 }
+
+/*bool OpenCL_helper::cl_754_supported() {
+
+  //To determine whether device has "-cl-fp32-correctly-rounded-divide-sqrt" support
+
+  if (cl_754_support == -1) { //unknown, first run
+          cl_device_fp_config cl_Fp;
+          clGetDeviceInfo(device_id, CL_DEVICE_SINGLE_FP_CONFIG, sizeof(cl_device_fp_config), &cl_Fp, NULL);
+           if (cl_Fp & CL_FP_CORRECTLY_ROUNDED_DIVIDE_SQRT)
+	      {
+	       cl_754_support = 1;
+	       printf("Option CL_FP_CORRECTLY_ROUNDED_DIVIDE_SQRT available on device");
+	       return true;
+	      }
+           else
+	     {
+	        cl_754_support = 0;
+	       printf("Option CL_FP_CORRECTLY_ROUNDED_DIVIDE_SQRT not available on device");
+	       return false;
+	     }
+    }
+  else if (cl_754_support == 0) //established not present
+       return false;
+  else if  (cl_754_support == 1)  //established present
+      return true;
+      } */
+   
    

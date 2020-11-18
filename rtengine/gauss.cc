@@ -1534,7 +1534,7 @@ template <class T> void reprocess(T** RESTRICT src, T** RESTRICT dst, const int 
 		  double b1a, b2, b3, B, M[4][4];
 		    calculateYvVFactors2<double>(sigma, b1a, b2, b3, B, M);
 		    data._size = size::large;
-		    data.to_be_done_on_CPU = true;
+		    data.to_be_done_on_CPU = false;
                     return;
                 }
                 }
@@ -1793,10 +1793,10 @@ N.B. The preparatory work done by the regular gaussianBlur_impl function (e.g. w
       switch (gausstype)
 	{
 	case GAUSS_STANDARD :
-	  // if (_size == size::x3x3)
+	   if (_size == size::x3x3)
 	  kernel = standardkernel;
-	  /*	  else if  (_size == size::large)
-		  kernel = horizontalkernel; */
+	  else if  (_size == size::large)
+	  kernel = horizontalkernel; 
 	  break;
 	case GAUSS_DIV :
 	  kernel = divkernel;
