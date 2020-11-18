@@ -1,3 +1,5 @@
+#pragma OPENCL EXTENSION cl_khr_fp64 : enable
+
 __kernel void intp_plus_version2(__global const float *blend, __global const float *tmpI, __global float *lum, const float amount) {
  
     // Get the index of the current element to be processed
