@@ -391,8 +391,9 @@ BENCHFUN
     /*OpenCL definitions ***************** */
     float* lum;
     cl_kernel max_kernel; // provides a handle to the fmax kernel we are going to create on GPU
-    cl_mem lum_mem_obj, tmpI_mem_obj, blend_mem_obj, blur_mem_obj, tmp_mem_obj, index_X_mem_obj, index_Y_mem_obj = nullptr; //Produces GPU equivalents in memory - just empty handles at the moment - will be initialised later
-
+    cl_mem lum_mem_obj , tmpI_mem_obj, blend_mem_obj, blur_mem_obj, tmp_mem_obj, index_X_mem_obj, index_Y_mem_obj;
+    lum_mem_obj = tmpI_mem_obj = blend_mem_obj = blur_mem_obj = tmp_mem_obj = index_X_mem_obj = index_Y_mem_obj = nullptr; //Produces GPU equivalents in memory - just empty handles at the moment - will be initialised later
+    
     int *Xindex, *Yindex;  float *read_storage;
      /* figure out local work group size. The gPu determined maximum is usually 512 and 1024 */
      size_t local_item_size; 

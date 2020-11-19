@@ -147,11 +147,11 @@ cl_kernel  OpenCL_helper::setup_kernel(const char *kernel_filename, const char *
 	    char *build_log = (char*)malloc(build_log_size);
 	    error_code =  clGetProgramBuildInfo(program, device_id, CL_PROGRAM_BUILD_LOG, build_log_size, build_log, NULL);
 	    //printf("Get build info error code is %d, \n", error_code);
-	    if (strcmp(build_log,"") != 0) printf("log is %s", build_log);
+	    if (build_log = ""printf("\nlog is %s", build_log);
 	    
 	     cl_kernel kernel; 
 	     kernel = clCreateKernel(program, kernel_name, &error_code); 
-	     if (error_code != 0) printf("Create kernel error code is %d \n", error_code); else printf("%s kernel is ready\n", kernel_name);
+	     if (error_code != 0) printf("Create kernel error code is %d \n", error_code); else printf("Created %s kernel\n", kernel_name);
 	    
                   free(source_str);
 	    //return kernel to be stored in our collection

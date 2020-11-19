@@ -1534,7 +1534,7 @@ template <class T> void reprocess(T** RESTRICT src, T** RESTRICT dst, const int 
 		  double b1a, b2, b3, B, M[4][4];
 		    calculateYvVFactors2<double>(sigma, b1a, b2, b3, B, M);
 		    data._size = size::large;
-		    data.to_be_done_on_CPU = false;
+		    data.to_be_done_on_CPU = true;
                     return;
                 }
                 }
@@ -1629,7 +1629,7 @@ N.B. The preparatory work done by the regular gaussianBlur_impl function (e.g. w
     mul3kernel = helper->reuse_or_create_kernel("gauss3x3mul", "gauss_3x3_mult_whole.cl", "gauss_3x3_mult_whole");
     mul5kernel = helper->reuse_or_create_kernel("gauss5x5mul", "gauss_5x5_mult_whole.cl", "gauss_5x5_mult_whole");
 
-    horizontalkernel = helper->reuse_or_create_kernel("gaussHorizontal", "gauss_horizontal.cl", "gauss_horizontal");
+    //horizontalkernel = helper->reuse_or_create_kernel("gaussHorizontal", "gauss_horizontal.cl", "gauss_horizontal");
 
     cl_mem double16 = clCreateBuffer(helper->context, CL_MEM_READ_ONLY, sizeof(cl_double16), M, &error_code);
     error_code = clEnqueueWriteBuffer(helper->command_queue, double16, CL_TRUE, 0, sizeof(cl_double16), M, 0, nullptr, nullptr);
@@ -1716,7 +1716,7 @@ N.B. The preparatory work done by the regular gaussianBlur_impl function (e.g. w
      error_code = clSetKernelArg(div5kernel, 11, sizeof(cl_mem), (void *)&olddst_mem_obj);
      }
 
-     error_code = clSetKernelArg(horizontalkernel, 0, sizeof(cl_mem), (void *)&oldsrc_mem_obj);
+     /* error_code = clSetKernelArg(horizontalkernel, 0, sizeof(cl_mem), (void *)&oldsrc_mem_obj);
      error_code = clSetKernelArg(horizontalkernel, 1, sizeof(cl_mem), (void *)&index_X_mem_obj);
      error_code = clSetKernelArg(horizontalkernel, 2, sizeof(cl_mem), (void *)&index_Y_mem_obj);
      error_code = clSetKernelArg(horizontalkernel, 3, sizeof(cl_int), (void *)&W);
@@ -1727,7 +1727,7 @@ N.B. The preparatory work done by the regular gaussianBlur_impl function (e.g. w
      error_code = clSetKernelArg(horizontalkernel, 8, sizeof(cl_double), (void *)&B);
      error_code = clSetKernelArg(horizontalkernel, 9, sizeof(cl_double16), (void *)&double16);
      error_code = clSetKernelArg(horizontalkernel, 10, sizeof(cl_mem), (void *)&intermediate_mem_obj);
-     error_code = clSetKernelArg(horizontalkernel, 11, sizeof(cl_mem), (void *)&olddst_mem_obj);
+     error_code = clSetKernelArg(horizontalkernel, 11, sizeof(cl_mem), (void *)&olddst_mem_obj); */
 
      /*
      error_code = clSetKernelArg(dampingkernel, 0, sizeof(cl_mem), (void *)&olddst_mem_obj);
@@ -1793,10 +1793,10 @@ N.B. The preparatory work done by the regular gaussianBlur_impl function (e.g. w
       switch (gausstype)
 	{
 	case GAUSS_STANDARD :
-	   if (_size == size::x3x3)
+	  //  if (_size == size::x3x3)
 	  kernel = standardkernel;
-	  else if  (_size == size::large)
-	  kernel = horizontalkernel; 
+	  /* else if  (_size == size::large)
+	     kernel = horizontalkernel; */
 	  break;
 	case GAUSS_DIV :
 	  kernel = divkernel;
