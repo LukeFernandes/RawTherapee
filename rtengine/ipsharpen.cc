@@ -761,7 +761,7 @@ BENCHFUN
      elapsed = finish - start_ch;
     std::cout << "Time: " << elapsed.count() << " s\n";
 	// } // end parallel
-    delete blurbuffer;
+      if (sharpenParam.blurradius >= 0.25) delete blurbuffer;
 }
 
 void ImProcFunctions::deconvsharpeningloc (float** luminance, float** tmp, int W, int H, float** loctemp, int damp, double radi, int ite, int amo, int contrast, double blurrad, int sk)
