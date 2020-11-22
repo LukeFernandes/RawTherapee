@@ -10,7 +10,7 @@ float max_func(float divBuffer, float tmp)
 
 __kernel void gauss_3x3_div_whole( __global const float *oldsrc, __global const int *X, __global const int *Y,  const int W, const int H, const double b0, const double b1, const double c0, const double c1, const double c2, __global float *div, __global float *olddst) {
 
-int totalpix = W*H;
+  int totalpix = (W*H)-1;
 // Get the index of the current element to be processed
 int index = get_global_id(0);
  index = clamp(index, 0, totalpix);

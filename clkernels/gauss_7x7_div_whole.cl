@@ -2,7 +2,7 @@
 
 __kernel void gauss_5x5_div_whole( __global const float *oldsrc, __global const int *X, __global const int *Y,  const int W, const int H, const float c31, const float c30, const float c22, const float c21, const float c20, const float c11, const float c10, const float c00, __global float *div, __global float *olddst) {
 
-int totalpix = W*H;
+int totalpix = (W*H)-1;;
 // Get the index of the current element to be processed
 int index = get_global_id(0);
  index = clamp(index, 0, totalpix);

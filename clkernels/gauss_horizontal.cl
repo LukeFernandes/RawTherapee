@@ -5,7 +5,7 @@
 __kernel void gauss_horizontal( __global const float *src, __global const int *X, __global const int *Y,  const int W, const int H, const double b1, const double b2, const double b3, const double B, __global const double16 *Maddr, __global double *intermediate, __global float *dst) {
 
   double16 M = *Maddr;
-int totalpix = W*H;
+int totalpix = (W*H)-1;;
 // Get the index of the current element to be processed
 int index = get_global_id(0);
 
