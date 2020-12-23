@@ -143,8 +143,8 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Werror=unused-label")
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Werror=delete-incomplete")
 
 #for comparison of gpu and CPU
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -ffloat-store")
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -ffloat-store")
+#set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -ffloat-store")
+#set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -ffloat-store")
 # Do net set math errno, as we never check its value.
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fno-math-errno")
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fno-math-errno")
@@ -512,8 +512,8 @@ if(WITH_MYFILE_MMAP)
     add_definitions(-DMYFILE_MMAP)
 endif()
 
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -ffloat-store")
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -ffloat-store")
+#set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -ffloat-store")
+#set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -ffloat-store")
 
 
 if(WITH_LTO)
