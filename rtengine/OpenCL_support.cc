@@ -136,7 +136,7 @@ cl_kernel  OpenCL_helper::setup_kernel(const char *kernel_filename, const char *
 	    
 	    /* There are many options for building kernels which affect the performance/precision of the floating point arithmetic. The "-cl-fp32-correctly-rounded-divide-sqrt" flag gives IEEE-754 conformance, so the results should closely match what we get on CPU SSE */
 	    //To account for GPUs without ""-cl-fp32-correctly-rounded-divide-sqrt" support
-	    char* flags = "-cl-fp32-correctly-rounded-divide-sq-rt";
+	    char* flags = ""; // "-cl-fast-relaxed-math"; "-cl-fp32-correctly-rounded-divide-sq-rt";
 	    char* alt_flags = "";
 	    error_code = clBuildProgram(program, 1, &device_id, cl_754_support ? flags : alt_flags, NULL, NULL); //"-cl-fp32-correctly-rounded-divide-sqrt -cl-opt-disable" "-cl-fast-relaxed-math"
 	    if (error_code != 0) printf("Build error code is %d, \n", error_code); else printf("Built %s kernel\n", kernel_name);
